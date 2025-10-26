@@ -11,15 +11,63 @@ export async function request<T>(
   path: string,
   options?: RequestInit
 ): Promise<T> {
-  const url = API_URL
-    ? `${API_URL}${path}`
-    : mockUrls[`../mock${path}.json`]?.default;
+  // Normalize base URL and path to avoid double slashes
+  const normalizeBase = (u?: string | null) => (u ? u.replace(/\/+$/, "") : u);
+  const ensureLeading = (p: string) => (p.startsWith("/") ? p : `/${p}`);
 
-  if (!API_URL) {
+  const normalizedBase = normalizeBase(API_URL);
+  const safePath = ensureLeading(path);
+
+  const url = normalizedBase
+    ? `${normalizedBase}${safePath}`
+    : mockUrls[`../mock${safePath}.json`]?.default;
+
+  if (!normalizedBase) {
+    // keep a small delay to emulate network latency for mocks
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  const response = await fetch(url, options);
-  return response.json() as T;
+
+  const response = await fetch(url as string, options);
+
+  // Validate response and parse JSON when appropriate.
+  const contentType = response.headers.get("content-type") || "";
+  const clone = response.clone();
+  const bodyText = await clone.text();
+
+  // Conditional debug logging. Enable by setting localStorage.DEBUG_API = '1' in the runtime
+  // or when running on localhost.
+  try {
+    const isLocalhost = typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname);
+    const debugFlag = typeof window !== "undefined" && localStorage.getItem("DEBUG_API") === "1";
+    const DEBUG = isLocalhost || debugFlag;
+    if (DEBUG) {
+      console.debug("fetch response debug", {
+        url,
+        status: response.status,
+        ok: response.ok,
+        contentType,
+        bodyPreview: bodyText.slice(0, 2000),
+      });
+    }
+  } catch (e) {
+    // ignore logging errors
+  }
+
+  if (!response.ok) {
+    const err = new Error(`Request failed with status ${response.status}`);
+    (err as any).status = response.status;
+    (err as any).body = bodyText;
+    throw err;
+  }
+
+  if (contentType.includes("application/json") || contentType.includes("application/ld+json")) {
+    return (await response.json()) as T;
+  }
+
+  const err = new Error(`Expected JSON response but got '${contentType}'`);
+  (err as any).status = response.status;
+  (err as any).body = bodyText;
+  throw err;
 }
 
 export async function requestWithFallback<T>(
@@ -29,10 +77,7 @@ export async function requestWithFallback<T>(
   try {
     return await request<T>(path);
   } catch (error) {
-    console.warn(
-      "An error occurred while fetching data. Falling back to default value!"
-    );
-    console.warn({ path, error, fallbackValue });
+    // Silent fallback: return fallbackValue without noisy debug logs
     return fallbackValue;
   }
 }

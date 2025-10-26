@@ -30,6 +30,20 @@ import { calculateDistance } from "./utils/location";
 import { formatDistant } from "./utils/format";
 import CONFIG from "./config";
 
+// Helper to normalize API responses that may wrap arrays in different shapes
+function extractArray<T>(res: any): T[] {
+  if (!res) return [];
+  if (Array.isArray(res)) return res as T[];
+  if (res.data && Array.isArray(res.data)) return res.data as T[];
+  if (res.banners && Array.isArray(res.banners)) return res.banners as T[];
+  if (res.categories && Array.isArray(res.categories)) return res.categories as T[];
+  if (res.products && Array.isArray(res.products)) return res.products as T[];
+  if (res.stations && Array.isArray(res.stations)) return res.stations as T[];
+  if (res.payload && Array.isArray(res.payload)) return res.payload as T[];
+  if (res.payload && Array.isArray(res.payload.data)) return res.payload.data as T[];
+  // unexpected shape - return empty array silently
+  return [];
+}
 export const userInfoKeyState = atom(0);
 
 export const userInfoState = atom<Promise<UserInfo>>(async (get) => {
@@ -94,17 +108,19 @@ export const phoneState = atom(async () => {
   return phone;
 });
 
-export const bannersState = atom(() =>
-  requestWithFallback<string[]>("/banners", [])
-);
+export const bannersState = atom(async () => {
+  const res = await requestWithFallback<any>("/banners", []);
+  return extractArray<string>(res);
+});
 
 export const tabsState = atom(["Tất cả", "Nam", "Nữ", "Trẻ em"]);
 
 export const selectedTabIndexState = atom(0);
 
-export const categoriesState = atom(() =>
-  requestWithFallback<Category[]>("/categories", [])
-);
+export const categoriesState = atom(async () => {
+  const res = await requestWithFallback<any>("/categories", []);
+  return extractArray<Category>(res);
+});
 
 export const categoriesStateUpwrapped = unwrap(
   categoriesState,
@@ -113,9 +129,8 @@ export const categoriesStateUpwrapped = unwrap(
 
 export const productsState = atom(async (get) => {
   const categories = await get(categoriesState);
-  const products = await requestWithFallback<
-    (Product & { categoryId: number })[]
-  >("/products", []);
+  const res = await requestWithFallback<any>("/products", []);
+  const products = extractArray<Product & { categoryId: number }>(res);
   return products.map((product) => ({
     ...product,
     category: categories.find(
@@ -194,7 +209,8 @@ export const stationsState = atom(async () => {
     console.warn(error);
   }
 
-  const stations = await requestWithFallback<Station[]>("/stations", []);
+  const res = await requestWithFallback<any>("/stations", []);
+  const stations = extractArray<Station>(res);
   const stationsWithDistance = stations.map((station) => ({
     ...station,
     distance: location
@@ -228,7 +244,8 @@ export const ordersState = atomFamily((status: OrderStatus) =>
   atomWithRefresh(async () => {
     // Phía tích hợp thay đổi logic filter server-side nếu cần:
     // const serverSideFilteredData = await requestWithFallback<Order[]>(`/orders?status=${status}`, []);
-    const allMockOrders = await requestWithFallback<Order[]>("/orders", []);
+    const res = await requestWithFallback<any>("/orders", []);
+    const allMockOrders = extractArray<Order>(res);
     const clientSideFilteredData = allMockOrders.filter(
       (order) => order.status === status
     );
