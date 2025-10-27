@@ -239,19 +239,46 @@ export const stationsState = atom(async () => {
 
   const res = await requestWithFallback<any>("/stations", []);
   const stations = extractArray<Station>(res);
-  const stationsWithDistance = stations.map((station) => ({
-    ...station,
-    distance: location
-      ? formatDistant(
-          calculateDistance(
-            location.lat,
-            location.lng,
-            station.location.lat,
-            station.location.lng
-          )
-        )
-      : undefined,
-  }));
+  const stationsWithDistance = stations.map((station) => {
+    // normalize possible location shapes and guard missing data
+    const rawLoc: any = station.location ?? (station as any).coords ?? (station as any).latlng ?? null;
+    let lat: number | undefined;
+    let lng: number | undefined;
+    if (rawLoc) {
+      // support { lat, lng } or { latitude, longitude } or [lng, lat]
+      lat = Number(rawLoc.lat ?? rawLoc.latitude ?? rawLoc[0] ?? rawLoc.latitude_deg);
+      lng = Number(rawLoc.lng ?? rawLoc.longitude ?? rawLoc[1] ?? rawLoc.longitude_deg);
+      if (Number.isNaN(lat)) lat = undefined;
+      if (Number.isNaN(lng)) lng = undefined;
+    }
+
+    const hasLoc = typeof lat === "number" && typeof lng === "number";
+
+    // Dev-only warn when station lacks location info
+    // try {
+    //   const isLocal = typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname);
+    //   const debugFlag = typeof window !== "undefined" && localStorage.getItem("DEBUG_API") === "1";
+    //   if (isLocal || debugFlag) {
+    //     if (!hasLoc) {
+    //       console.warn("stationsState: station missing/invalid location", station);
+    //     }
+    //   }
+    // } catch (e) {
+    //   /* ignore */
+    // }
+
+    const distance =
+      hasLoc && location
+        ? formatDistant(calculateDistance(location.lat, location.lng, lat!, lng!))
+        : undefined;
+
+    // ensure returned station has a normalized location when available
+    const normalizedStation = hasLoc ? { ...station, location: { lat: lat!, lng: lng! } } : station;
+    return {
+      ...normalizedStation,
+      distance,
+    };
+  });
 
   return stationsWithDistance;
 });

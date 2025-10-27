@@ -5,10 +5,10 @@ import { bannersState } from "@/state";
 export default function Banners() {
   const banners = useAtomValue(bannersState);
 
-  // Debug: log the raw banners value (set localStorage.DEBUG_API = '1' to enable request logging)
-  if (typeof window !== "undefined" && (localStorage.getItem("DEBUG_API") === "1" || /localhost|127\.0\.0\.1/.test(window.location.hostname))) {
-    console.debug("banners raw:", banners);
-  }
+  // // Debug: log the raw banners value (set localStorage.DEBUG_API = '1' to enable request logging)
+  // if (typeof window !== "undefined" && (localStorage.getItem("DEBUG_API") === "1" || /localhost|127\.0\.0\.1/.test(window.location.hostname))) {
+  //   console.debug("banners raw:", banners);
+  // }
 
   // Normalize banners: accept array of strings or array of objects with common image fields
   const slides: string[] = [];
