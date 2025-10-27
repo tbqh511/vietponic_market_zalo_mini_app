@@ -130,6 +130,7 @@ export function useCheckout() {
           price: item.product.price,
           quantity: item.quantity,
         })),
+        mac: ""
       });
       setCart([]);
       refreshNewOrders();

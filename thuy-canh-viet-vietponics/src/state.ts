@@ -130,12 +130,40 @@ export const categoriesStateUpwrapped = unwrap(
 export const productsState = atom(async (get) => {
   const categories = await get(categoriesState);
   const res = await requestWithFallback<any>("/products", []);
-  const products = extractArray<Product & { categoryId: number }>(res);
+  // Extract and normalize product fields (coerce ids to numbers) to avoid type mismatch
+  const productsRaw = extractArray<any>(res);
+  const products = productsRaw.map((p: any) => {
+    // Accept multiple possible field names from backend (categoryId, category_id, catId, cat_id)
+    const rawId = p.id ?? p._id;
+    const rawCategory =
+      p.categoryId ?? p.category_id ?? p.catId ?? p.cat_id ?? p.category;
+    const id = Number(rawId);
+    const categoryId = Number(rawCategory);
+    return {
+      // keep original fields but normalize id/categoryId
+      ...p,
+      id: Number.isFinite(id) ? id : NaN,
+      categoryId: Number.isFinite(categoryId) ? categoryId : NaN,
+    } as Product & { categoryId: number };
+  });
+
+  // Dev-only: warn if some products couldn't be normalized (helps detect unexpected field names)
+  try {
+    const isLocal = typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname);
+    const debugFlag = typeof window !== "undefined" && localStorage.getItem("DEBUG_API") === "1";
+    if (isLocal || debugFlag) {
+      const bad = products.filter((p) => Number.isNaN(p.categoryId) || Number.isNaN(p.id));
+      if (bad.length) {
+        // show a small sample (max 5) to avoid spamming logs
+        console.warn("productsState: some products have invalid id/categoryId after normalization", bad.slice(0, 5));
+      }
+    }
+  } catch (e) {
+    /* ignore in non-browser environments */
+  }
   return products.map((product) => ({
     ...product,
-    category: categories.find(
-      (category) => category.id === product.categoryId
-    )!,
+    category: categories.find((category) => category.id === product.categoryId)!,
   }));
 });
 

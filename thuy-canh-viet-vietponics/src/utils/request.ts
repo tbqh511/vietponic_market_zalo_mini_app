@@ -39,16 +39,16 @@ export async function request<T>(
   try {
     const isLocalhost = typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname);
     const debugFlag = typeof window !== "undefined" && localStorage.getItem("DEBUG_API") === "1";
-    const DEBUG = isLocalhost || debugFlag;
-    if (DEBUG) {
-      console.debug("fetch response debug", {
-        url,
-        status: response.status,
-        ok: response.ok,
-        contentType,
-        bodyPreview: bodyText.slice(0, 2000),
-      });
-    }
+    // const DEBUG = isLocalhost || debugFlag;
+    // if (DEBUG) {
+    //   console.warn("fetch response debug", {
+    //     url,
+    //     status: response.status,
+    //     ok: response.ok,
+    //     contentType,
+    //     bodyPreview: bodyText.slice(0, 2000),
+    //   });
+    // }
   } catch (e) {
     // ignore logging errors
   }
