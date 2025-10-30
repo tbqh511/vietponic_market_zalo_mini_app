@@ -3,7 +3,6 @@ const CONFIG = {
     USER_INFO: "userInfo",
     DELIVERY: "delivery",
     SHIPPING_ADDRESS: "shippingAddress",
-    TOKEN: "token",
   },
 };
 

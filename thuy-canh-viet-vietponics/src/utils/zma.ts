@@ -1,5 +1,3 @@
-import { getAccessToken as getZaloAccessToken } from "zmp-sdk/apis";
-
 export function getBasePath() {
   const urlParams = new URLSearchParams(window.location.search);
   const appEnv = urlParams.get("env");
@@ -14,9 +12,4 @@ export function getBasePath() {
   }
 
   return window.BASE_PATH || "";
-}
-
-export async function getAccessToken(): Promise<string> {
-  const accessToken = await getZaloAccessToken({});
-  return accessToken;
 }

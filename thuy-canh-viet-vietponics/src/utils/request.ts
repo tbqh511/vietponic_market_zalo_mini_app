@@ -27,14 +27,7 @@ export async function request<T>(
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
-  // Add Authorization header if token exists
-  const token = localStorage.getItem("token");
-  const headers = {
-    ...options?.headers,
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
-  const response = await fetch(url as string, { ...options, headers });
+  const response = await fetch(url as string, options);
 
   // Validate response and parse JSON when appropriate.
   const contentType = response.headers.get("content-type") || "";
@@ -100,17 +93,4 @@ export async function requestWithPost<P, T>(
     },
     body: JSON.stringify(payload),
   });
-}
-
-export async function authenticate(accessToken: string): Promise<{
-  token: string;
-  user: {
-    id: number;
-    name: string;
-    email: string;
-    profile: string | null;
-    mobile: string | null;
-  };
-}> {
-  return await requestWithPost("/authenticate", { access_token: accessToken });
 }
