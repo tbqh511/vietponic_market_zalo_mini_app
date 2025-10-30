@@ -19,6 +19,7 @@ import {
   UserInfo,
 } from "@/types";
 import { requestWithFallback } from "@/utils/request";
+import { authenticateWithServer } from "@/utils/auth";
 import {
   getLocation,
   getPhoneNumber,
@@ -51,12 +52,26 @@ export const userInfoState = atom<Promise<UserInfo>>(async (get) => {
 
   // Nếu người dùng đã chỉnh sửa thông tin tài khoản trước đó, sử dụng thông tin đã lưu trữ
   const savedUserInfo = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_INFO);
-  // Phía tích hợp có thể thay đổi logic này thành fetch từ server
-  // const savedUserInfo = await fetchUserInfo({ token: await getAccessToken() });
   if (savedUserInfo) {
     return JSON.parse(savedUserInfo);
   }
 
+  // Try to authenticate with backend server first
+  try {
+    const serverUserInfo = await authenticateWithServer();
+    if (serverUserInfo) {
+      // Save user info to localStorage for future use
+      localStorage.setItem(
+        CONFIG.STORAGE_KEYS.USER_INFO,
+        JSON.stringify(serverUserInfo)
+      );
+      return serverUserInfo;
+    }
+  } catch (error) {
+    console.warn("Failed to authenticate with server, falling back to Zalo SDK:", error);
+  }
+
+  // Fallback to Zalo SDK if server authentication fails
   const {
     authSetting: {
       "scope.userInfo": grantedUserInfo,
