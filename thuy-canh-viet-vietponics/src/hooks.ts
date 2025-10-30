@@ -8,7 +8,6 @@ import {
   ordersState,
   userInfoKeyState,
   userInfoState,
-  productsState,
 } from "@/state";
 import { Product } from "@/types";
 import { getConfig } from "@/utils/template";
@@ -60,50 +59,29 @@ export function useRequestInformation() {
 
 export function useAddToCart(product: Product) {
   const [cart, setCart] = useAtom(cartState);
-  // prefer normalized product object from productsState when available
-  const normalizedProducts = useAtomValue(productsState);
-
-  const normalizedProduct =
-    normalizedProducts.find((p) => p.id === product.id) ?? product;
 
   const currentCartItem = useMemo(
-    () => cart.find((item) => item.product.id === normalizedProduct.id),
-    [cart, normalizedProduct.id]
+    () => cart.find((item) => item.product.id === product.id),
+    [cart, product.id]
   );
 
   const addToCart = (
     quantity: number | ((oldQuantity: number) => number),
     options?: { toast: boolean }
   ) => {
-    // Dev-only warning if normalized product lacks expected fields
-    try {
-      const isLocal =
-        typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname);
-      const debugFlag = typeof window !== "undefined" && localStorage.getItem("DEBUG_API") === "1";
-      if (isLocal || debugFlag) {
-        if (!normalizedProduct || typeof normalizedProduct.id !== "number") {
-          console.warn("useAddToCart: adding product with invalid id", normalizedProduct);
-        }
-      }
-    } catch (e) {
-      /* ignore */
-    }
-
     setCart((cart) => {
       const newQuantity =
         typeof quantity === "function"
           ? quantity(currentCartItem?.quantity ?? 0)
           : quantity;
       if (newQuantity <= 0) {
-        if (currentCartItem) {
-          cart.splice(cart.indexOf(currentCartItem), 1);
-        }
+        cart.splice(cart.indexOf(currentCartItem!), 1);
       } else {
         if (currentCartItem) {
           currentCartItem.quantity = newQuantity;
         } else {
           cart.push({
-            product: normalizedProduct as Product,
+            product,
             quantity: newQuantity,
           });
         }
