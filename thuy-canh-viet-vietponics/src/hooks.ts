@@ -8,6 +8,7 @@ import {
   ordersState,
   userInfoKeyState,
   userInfoState,
+  productsState,
 } from "@/state";
 import { Product } from "@/types";
 import { getConfig } from "@/utils/template";
@@ -60,9 +61,14 @@ export function useRequestInformation() {
 export function useAddToCart(product: Product) {
   const [cart, setCart] = useAtom(cartState);
 
+   // prefer normalized product object from productsState when available
+  const normalizedProducts = useAtomValue(productsState);
+  const normalizedProduct =
+    normalizedProducts.find((p) => p.id === product.id) ?? product;
+
   const currentCartItem = useMemo(
-    () => cart.find((item) => item.product.id === product.id),
-    [cart, product.id]
+    () => cart.find((item) => item.product.id === normalizedProduct.id),
+    [cart, normalizedProduct.id]
   );
 
   const addToCart = (
@@ -75,13 +81,15 @@ export function useAddToCart(product: Product) {
           ? quantity(currentCartItem?.quantity ?? 0)
           : quantity;
       if (newQuantity <= 0) {
-        cart.splice(cart.indexOf(currentCartItem!), 1);
+        if (currentCartItem) {
+          cart.splice(cart.indexOf(currentCartItem), 1);
+        }
       } else {
         if (currentCartItem) {
           currentCartItem.quantity = newQuantity;
         } else {
           cart.push({
-            product,
+            product: normalizedProduct as Product,
             quantity: newQuantity,
           });
         }
