@@ -1,6 +1,18 @@
 import { getConfig } from "./template";
+import CONFIG from "@/config";
 
 const API_URL = getConfig((config) => config.template.apiUrl);
+
+/**
+ * Get stored JWT token from localStorage
+ */
+function getAuthToken(): string | null {
+  try {
+    return localStorage.getItem(CONFIG.STORAGE_KEYS.JWT_TOKEN);
+  } catch (error) {
+    return null;
+  }
+}
 
 const mockUrls = import.meta.glob<{ default: string }>("../mock/*.json", {
   query: "url",
@@ -27,7 +39,20 @@ export async function request<T>(
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
-  const response = await fetch(url as string, options);
+  // Add JWT token to headers if available
+  const token = getAuthToken();
+  const headers: HeadersInit = {
+    ...(options?.headers || {}),
+  };
+  
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url as string, {
+    ...options,
+    headers,
+  });
 
   // Validate response and parse JSON when appropriate.
   const contentType = response.headers.get("content-type") || "";
