@@ -100,10 +100,144 @@ The other files (such as `tailwind.config.js`, `vite.config.mts`, `tsconfig.json
    - `GET  /banners`: Retrieve a list of banner images to display on the home page.
    - `GET  /stations`: Retrieve a list of pickup stations.
    - `GET  /orders`: Retrieve a list of orders the user has placed.
+   - `POST /authenticate`: Authenticate user with Zalo access token and return JWT token (see below).
 
 > Refer to the `src/mock/*.json` files for sample data and structure.
 
-> You may wish to add more APIs to support your business needs. For authorization required APIs, the user's identity can be retrieved from the `Authorization: Bearer ${ACCESS_TOKEN}` header sent along with each API request. Visit the [Login with Zalo](https://mini.zalo.me/intro/authen-user/) documentation for more detailed instructions.
+> You may wish to add more APIs to support your business needs. For authorization required APIs, the user's identity can be retrieved from the `Authorization: Bearer ${JWT_TOKEN}` header sent along with each API request. Visit the [Login with Zalo](https://mini.zalo.me/intro/authen-user/) documentation for more detailed instructions.
+
+### Authentication with Backend Server
+
+This template now supports backend authentication integration. When a user opens the mini app, it will:
+
+1. Get the Zalo access token from the Zalo SDK
+2. Send the access token to your backend server at `POST /authenticate`
+3. Your server validates the access token with Zalo API and returns user information + JWT token
+4. The JWT token is stored and automatically included in subsequent API requests
+
+#### Backend Authentication Endpoint
+
+Your server should implement the following endpoint:
+
+**POST /authenticate**
+
+Request body:
+```json
+{
+  "access_token": "string"
+}
+```
+
+Response format:
+```json
+{
+  "error": false,
+  "message": "Authentication successful",
+  "data": {
+    "token": "jwt_token_here",
+    "user": {
+      "id": 1,
+      "name": "User Name",
+      "email": "user@example.com",
+      "profile": "https://avatar-url.com/avatar.jpg",
+      "mobile": "0912345678"
+    }
+  }
+}
+```
+
+#### Laravel Backend Example
+
+Here's a sample Laravel controller implementation:
+
+```php
+public function authenticate(Request $request)
+{
+    $request->validate([
+        'access_token' => 'required|string',
+    ]);
+
+    $accessToken = $request->access_token;
+
+    try {
+        // Call Zalo Open API to get user profile
+        $response = Http::withHeaders([
+            'access_token' => $accessToken,
+        ])->get(config('services.zalo.api_base_url') . '/v2.0/me');
+
+        if (!$response->successful()) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Failed to get user profile from Zalo'
+            ], 400);
+        }
+
+        $zaloProfile = $response->json();
+
+        if (!isset($zaloProfile['id'])) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Invalid Zalo profile response'
+            ], 400);
+        }
+
+        // Find or create customer based on Zalo ID
+        $customer = Customer::where('firebase_id', $zaloProfile['id'])->first();
+
+        if (!$customer) {
+            // Create new customer
+            $customer = Customer::create([
+                'name' => $zaloProfile['name'] ?? 'Zalo User',
+                'email' => isset($zaloProfile['id']) ? $zaloProfile['id'] . '@zalo.user' : null,
+                'firebase_id' => $zaloProfile['id'],
+                'mobile' => null,
+                'profile' => null,
+                'address' => null,
+                'fcm_id' => null,
+                'logintype' => 'zalo',
+                'isActive' => 1,
+            ]);
+        }
+
+        // Generate JWT token
+        $token = JWTAuth::fromUser($customer);
+
+        return response()->json([
+            'error' => false,
+            'message' => 'Authentication successful',
+            'data' => [
+                'token' => $token,
+                'user' => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'email' => $customer->email,
+                    'profile' => $customer->profile,
+                    'mobile' => $customer->mobile,
+                ]
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => true,
+            'message' => 'Authentication failed: ' . $e->getMessage()
+        ], 500);
+    }
+}
+```
+
+#### How It Works
+
+1. **User opens mini app**: The app automatically calls `getAccessToken()` from Zalo SDK
+2. **Sends to backend**: The access token is sent to `POST /authenticate` endpoint
+3. **Backend validates**: Your server validates the token with Zalo API and gets user profile
+4. **Returns JWT**: Server returns a JWT token along with user information
+5. **Stores JWT**: The mini app stores the JWT token in localStorage
+6. **Authenticated requests**: All subsequent API requests automatically include the JWT token in the `Authorization: Bearer ${token}` header
+
+#### Fallback Behavior
+
+If the backend authentication fails or is unavailable, the app will fall back to using the local Zalo SDK authentication method to ensure the user can still use the app.
 
 ### Link Official Account
 
