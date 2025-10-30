@@ -18,7 +18,8 @@ import {
   Station,
   UserInfo,
 } from "@/types";
-import { requestWithFallback } from "@/utils/request";
+import { requestWithFallback, authenticate } from "@/utils/request";
+import { getAccessToken } from "@/utils/zma";
 import {
   getLocation,
   getPhoneNumber,
@@ -46,39 +47,64 @@ function extractArray<T>(res: any): T[] {
 }
 export const userInfoKeyState = atom(0);
 
+export const tokenState = atomWithStorage<string | null>(
+  CONFIG.STORAGE_KEYS.TOKEN,
+  null
+);
+
 export const userInfoState = atom<Promise<UserInfo>>(async (get) => {
   get(userInfoKeyState);
 
   // Nếu người dùng đã chỉnh sửa thông tin tài khoản trước đó, sử dụng thông tin đã lưu trữ
   const savedUserInfo = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_INFO);
-  // Phía tích hợp có thể thay đổi logic này thành fetch từ server
-  // const savedUserInfo = await fetchUserInfo({ token: await getAccessToken() });
   if (savedUserInfo) {
     return JSON.parse(savedUserInfo);
   }
 
-  const {
-    authSetting: {
-      "scope.userInfo": grantedUserInfo,
-      "scope.userPhonenumber": grantedPhoneNumber,
-    },
-  } = await getSetting({});
-  const isDev = !window.ZJSBridge;
-  if (grantedUserInfo || isDev) {
-    // Người dùng cho phép truy cập tên và ảnh đại diện
-    const { userInfo } = await getUserInfo({});
-    const phone =
-      grantedPhoneNumber || isDev // Người dùng cho phép truy cập số điện thoại
-        ? await get(phoneState)
-        : "";
+  // Fetch từ server
+  try {
+    const accessToken = await getAccessToken();
+    const authResponse = await authenticate(accessToken);
+    
+    // Lưu token
+    localStorage.setItem(CONFIG.STORAGE_KEYS.TOKEN, authResponse.token);
+    
+    // Trả về user info
+    const user = authResponse.user;
     return {
-      id: userInfo.id,
-      name: userInfo.name,
-      avatar: userInfo.avatar,
-      phone,
-      email: "",
+      id: user.id.toString(),
+      name: user.name,
+      avatar: user.profile || "",
+      phone: user.mobile || "",
+      email: user.email,
       address: "",
     };
+  } catch (error) {
+    console.error("Authentication failed:", error);
+    // Fallback to old logic if server fails
+    const {
+      authSetting: {
+        "scope.userInfo": grantedUserInfo,
+        "scope.userPhonenumber": grantedPhoneNumber,
+      },
+    } = await getSetting({});
+    const isDev = !window.ZJSBridge;
+    if (grantedUserInfo || isDev) {
+      const { userInfo } = await getUserInfo({});
+      const phone =
+        grantedPhoneNumber || isDev
+          ? await get(phoneState)
+          : "";
+      return {
+        id: userInfo.id,
+        name: userInfo.name,
+        avatar: userInfo.avatar,
+        phone,
+        email: "",
+        address: "",
+      };
+    }
+    throw error;
   }
 });
 
