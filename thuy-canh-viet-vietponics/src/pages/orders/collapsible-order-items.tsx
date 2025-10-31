@@ -1,10 +1,31 @@
-import { CartItem } from "@/types";
+import { CartItem, ApiOrderItem } from "@/types";
 import OrderItem from "./order-item";
 import { useState } from "react";
 import { Icon, List } from "zmp-ui";
 
+// Adapter để convert ApiOrderItem thành format tương thích với OrderItem
+function adaptOrderItem(item: CartItem | ApiOrderItem): CartItem {
+  if ('product' in item) {
+    // Đã là CartItem format
+    return item;
+  } else {
+    // Convert từ ApiOrderItem
+    return {
+      product: {
+        id: parseInt(item.product_id),
+        name: item.name,
+        price: parseFloat(item.price),
+        image: item.image,
+        category: { id: 0, name: '', image: '' }, // Placeholder
+        detail: item.detail
+      },
+      quantity: parseInt(item.quantity)
+    };
+  }
+}
+
 function CollapsibleOrderItems(props: {
-  items: CartItem[];
+  items: (CartItem | ApiOrderItem)[];
   defaultExpanded?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(
@@ -15,9 +36,10 @@ function CollapsibleOrderItems(props: {
   return (
     <>
       <List noSpacing>
-        {displayItems.map((item) => (
-          <OrderItem key={item.product.id} {...item} />
-        ))}
+        {displayItems.map((item) => {
+          const adaptedItem = adaptOrderItem(item);
+          return <OrderItem key={adaptedItem.product.id} {...adaptedItem} />;
+        })}
       </List>
       {displayItems.length < props.items.length && (
         <button

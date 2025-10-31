@@ -75,3 +75,43 @@ export interface Order {
   total: number;
   note: string;
 }
+
+// Order interface từ API response
+export interface ApiOrder {
+  id: string;
+  customer_id: string;
+  status: OrderStatus;
+  payment_status: PaymentStatus;
+  created_at: string;
+  received_at: string;
+  total: string;
+  note: string;
+  items: ApiOrderItem[];
+  delivery: ApiDelivery;
+}
+
+export interface ApiOrderItem {
+  id: number;
+  order_id: string;
+  product_id: string;
+  name: string;
+  price: string;
+  quantity: string;
+  image: string;
+  detail: string;
+}
+
+export interface ApiDelivery {
+  id: number;
+  order_id: string;
+  type: "shipping" | "pickup";
+  alias: string | null;
+  address: string;
+  name: string;
+  phone: string | null;
+  station_id?: string;
+  station_name?: string;
+  station_image?: string;
+  lat?: string;
+  lng?: string;
+}

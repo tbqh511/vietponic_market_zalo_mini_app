@@ -94,3 +94,24 @@ export async function requestWithPost<P, T>(
     body: JSON.stringify(payload),
   });
 }
+
+export async function requestWithGet<T>(
+  path: string,
+  params?: Record<string, string>
+): Promise<T> {
+  const url = params ? `${path}?${new URLSearchParams(params)}` : path;
+  return await request<T>(url);
+}
+
+export async function authenticate(accessToken: string): Promise<{
+  token: string;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    profile: string | null;
+    mobile: string | null;
+  };
+}> {
+  return await requestWithPost("/authenticate", { access_token: accessToken });
+}

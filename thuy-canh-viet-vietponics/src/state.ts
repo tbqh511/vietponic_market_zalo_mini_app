@@ -8,6 +8,7 @@ import {
 } from "jotai/utils";
 import {
   Cart,
+  CartItem,
   Category,
   Delivery,
   Location,
@@ -17,8 +18,11 @@ import {
   ShippingAddress,
   Station,
   UserInfo,
+  ApiOrder,
+  ApiOrderItem,
 } from "@/types";
-import { requestWithFallback } from "@/utils/request";
+import { requestWithFallback, authenticate } from "@/utils/request";
+import { getAccessToken, decodeToken } from "@/utils/zma";
 import {
   getLocation,
   getPhoneNumber,
@@ -43,6 +47,53 @@ function extractArray<T>(res: any): T[] {
   if (res.payload && Array.isArray(res.payload.data)) return res.payload.data as T[];
   // unexpected shape - return empty array silently
   return [];
+}
+
+// Convert ApiOrderItem to CartItem format for UI compatibility
+function convertApiOrderItemToCartItem(item: ApiOrderItem): CartItem {
+  return {
+    product: {
+      id: parseInt(item.product_id),
+      name: item.name,
+      price: parseFloat(item.price),
+      image: item.image,
+      category: { id: 0, name: '', image: '' }, // Placeholder
+      detail: item.detail
+    },
+    quantity: parseInt(item.quantity)
+  };
+}
+
+// Convert ApiOrder to Order format for UI compatibility
+function convertApiOrderToOrder(apiOrder: ApiOrder): Order {
+  let delivery: Delivery;
+  
+  if (apiOrder.delivery.type === 'shipping') {
+    delivery = {
+      type: 'shipping',
+      alias: apiOrder.delivery.alias || '',
+      address: apiOrder.delivery.address,
+      name: apiOrder.delivery.name,
+      phone: apiOrder.delivery.phone || ''
+    };
+  } else {
+    delivery = {
+      type: 'pickup',
+      stationId: parseInt(apiOrder.delivery.station_id || '0')
+    };
+  }
+
+  return {
+    id: parseInt(apiOrder.id),
+    status: apiOrder.status,
+    paymentStatus: apiOrder.payment_status,
+    createdAt: new Date(apiOrder.created_at),
+    receivedAt: new Date(apiOrder.received_at),
+    items: apiOrder.items.map(convertApiOrderItemToCartItem),
+    delivery,
+    total: parseFloat(apiOrder.total),
+    note: apiOrder.note
+  };
 }
 export const userInfoKeyState = atom(0);
 
@@ -89,19 +140,9 @@ export const phoneState = atom(async () => {
   try {
     const { token } = await getPhoneNumber({});
     // Phía tích hợp làm theo hướng dẫn tại https://mini.zalo.me/documents/api/getPhoneNumber/ để chuyển đổi token thành số điện thoại người dùng ở server.
-    // phone = await decodeToken(token);
-
-    // Các bước bên dưới để demo chức năng, phía tích hợp có thể bỏ đi sau.
-    toast(
-      "Đã lấy được token chứa số điện thoại người dùng. Phía tích hợp cần decode token này ở server. Giả lập số điện thoại 0912345678...",
-      {
-        icon: "ℹ",
-        duration: 10000,
-      }
-    );
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    phone = "0912345678";
-    // End demo
+    if (token) {
+      phone = await decodeToken(token);
+    }
   } catch (error) {
     console.warn(error);
   }
@@ -297,14 +338,24 @@ export const shippingAddressState = atomWithStorage<
 
 export const ordersState = atomFamily((status: OrderStatus) =>
   atomWithRefresh(async () => {
-    // Phía tích hợp thay đổi logic filter server-side nếu cần:
-    // const serverSideFilteredData = await requestWithFallback<Order[]>(`/orders?status=${status}`, []);
-    const res = await requestWithFallback<any>("/orders", []);
-    const allMockOrders = extractArray<Order>(res);
-    const clientSideFilteredData = allMockOrders.filter(
-      (order) => order.status === status
-    );
-    return clientSideFilteredData;
+    try {
+      // Try to fetch from API first
+      const res = await requestWithFallback<any>("/orders", []);
+      const apiOrders = extractArray<ApiOrder>(res);
+      
+      // Convert API orders to UI-compatible format
+      const convertedOrders = apiOrders.map(convertApiOrderToOrder);
+      
+      // Filter by status
+      return convertedOrders.filter(order => order.status === status);
+    } catch (error) {
+      console.warn("Failed to fetch orders from API, falling back to mock data:", error);
+      
+      // Fallback to mock data
+      const res = await requestWithFallback<any>("/orders", []);
+      const allMockOrders = extractArray<Order>(res);
+      return allMockOrders.filter(order => order.status === status);
+    }
   })
 );
 
