@@ -41,3 +41,32 @@ export async function decodeToken(token: string): Promise<string> {
 
   return response.data.number;
 }
+
+export async function decodeLocationToken(token: string): Promise<{ lat: number; lng: number }> {
+  const accessToken = await getAccessToken();
+  const response = await requestWithPost<{
+    access_token: string;
+    code: string;
+  }, {
+    error: boolean;
+    message: string;
+    data?: {
+      provider: string | null;
+      latitude: number | null;
+      longitude: number | null;
+      timestamp: number | null;
+    };
+  }>("/get-location", {
+    access_token: accessToken,
+    code: token,
+  });
+
+  if (response.error || !response.data?.latitude || !response.data?.longitude) {
+    throw new Error(response.message || "Failed to decode location token");
+  }
+
+  return {
+    lat: response.data.latitude,
+    lng: response.data.longitude,
+  };
+}

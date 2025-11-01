@@ -144,7 +144,12 @@ export function useCheckout() {
       };
       
       const { mac } = await prepareOrder(orderData);
+      // console.warn("Received MAC:", mac);
+      // console.warn("Order Data:", orderData);
       
+      //slect methjod of paymentmeth
+      //select extradata
+
       // Create order with MAC
       await createOrder({
         ...orderData,

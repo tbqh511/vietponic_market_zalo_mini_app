@@ -22,7 +22,7 @@ import {
   ApiOrderItem,
 } from "@/types";
 import { requestWithFallback, authenticate } from "@/utils/request";
-import { getAccessToken, decodeToken } from "@/utils/zma";
+import { getAccessToken, decodeToken, decodeLocationToken } from "@/utils/zma";
 import {
   getLocation,
   getPhoneNumber,
@@ -258,24 +258,11 @@ export const stationsState = atom(async () => {
   try {
     const { token } = await getLocation({});
     // Phía tích hợp làm theo hướng dẫn tại https://mini.zalo.me/documents/api/getLocation/ để chuyển đổi token thành thông tin vị trí người dùng ở server.
-    // location = await decodeToken(token);
-
-    // Các bước bên dưới để demo chức năng, phía tích hợp có thể bỏ đi sau.
-    toast(
-      "Đã lấy được token chứa thông tin vị trí người dùng. Phía tích hợp cần decode token này ở server. Giả lập vị trí tại VNG Campus...",
-      {
-        icon: "ℹ",
-        duration: 10000,
-      }
-    );
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    location = {
-      lat: 10.773756,
-      lng: 106.689247,
-    };
-    // End demo
+    if (token) {
+      location = await decodeLocationToken(token);
+    }
   } catch (error) {
-    console.warn(error);
+    console.warn("Failed to get user location:", error);
   }
 
   const res = await requestWithFallback<any>("/stations", []);
