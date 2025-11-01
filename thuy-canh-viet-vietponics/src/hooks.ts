@@ -12,6 +12,7 @@ import {
 } from "@/state";
 import { Product } from "@/types";
 import { getConfig } from "@/utils/template";
+import { prepareOrder } from "@/utils/request";
 import { authorize, createOrder, openChat } from "zmp-sdk/apis";
 import { useAtomCallback } from "jotai/utils";
 
@@ -129,7 +130,9 @@ export function useCheckout() {
   return async () => {
     try {
       await requestInfo();
-      await createOrder({
+      
+      // Prepare order data and get MAC from server
+      const orderData = {
         amount: totalAmount,
         desc: "Thanh toán đơn hàng",
         item: cart.map((item) => ({
@@ -138,8 +141,16 @@ export function useCheckout() {
           price: item.product.price,
           quantity: item.quantity,
         })),
-        mac: ""
+      };
+      
+      const { mac } = await prepareOrder(orderData);
+      
+      // Create order with MAC
+      await createOrder({
+        ...orderData,
+        mac: mac
       });
+      
       setCart([]);
       refreshNewOrders();
       navigate("/orders", {

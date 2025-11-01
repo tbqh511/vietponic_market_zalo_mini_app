@@ -115,3 +115,21 @@ export async function authenticate(accessToken: string): Promise<{
 }> {
   return await requestWithPost("/authenticate", { access_token: accessToken });
 }
+
+export async function prepareOrder(orderData: {
+  amount: number;
+  desc: string;
+  item: Array<{
+    id: number;
+    name: string;
+    price: number;
+    quantity: number;
+  }>;
+  extradata?: any;
+  method?: string;
+}): Promise<{
+  mac: string;
+  orderData: typeof orderData;
+}> {
+  return await requestWithPost("/prepare-order", orderData);
+}
