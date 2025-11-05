@@ -1,5 +1,5 @@
-import { useAtomValue } from "jotai";
-import { cartState } from "@/state";
+import { useAtom, useAtomValue } from "jotai";
+import { cartState, noteState } from "@/state";
 import CartItem from "./cart-item";
 import Section from "@/components/section";
 import { Icon, Input } from "zmp-ui";
@@ -7,6 +7,7 @@ import HorizontalDivider from "@/components/horizontal-divider";
 
 export default function CartList() {
   const cart = useAtomValue(cartState);
+  const [note, setNote] = useAtom(noteState);
 
   return (
     <Section
@@ -33,6 +34,8 @@ export default function CartList() {
           type="text"
           placeholder="Lưu ý cho người bán..."
           className="text-sm text-right flex-1 focus:outline-none"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
         />
       </div>
     </Section>

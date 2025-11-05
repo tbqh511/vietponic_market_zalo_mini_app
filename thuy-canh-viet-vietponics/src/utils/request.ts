@@ -39,7 +39,7 @@ export async function request<T>(
   try {
     const isLocalhost = typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname);
     const debugFlag = typeof window !== "undefined" && localStorage.getItem("DEBUG_API") === "1";
-    // const DEBUG = isLocalhost || debugFlag;
+    const DEBUG = isLocalhost || debugFlag;
     // if (DEBUG) {
     //   console.warn("fetch response debug", {
     //     url,
@@ -86,11 +86,13 @@ export async function requestWithPost<P, T>(
   path: string,
   payload: P
 ): Promise<T> {
+  console.log("POST request to", path, "with payload:", JSON.stringify(payload));
   return await request<T>(path, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
+    
     body: JSON.stringify(payload),
   });
 }
@@ -132,4 +134,97 @@ export async function prepareOrder(orderData: {
   orderData: typeof orderData;
 }> {
   return await requestWithPost("/prepare-order", orderData);
+}
+
+export async function createOrderAPI(orderData: {
+  customer_id: string;
+  items: Array<{
+    product_id: string;
+    name: string;
+    price: string;
+    quantity: string;
+    image: string;
+    detail: string;
+  }>;
+  delivery: {
+    type: "shipping" | "pickup";
+    address: string;
+    name: string;
+    phone?: string;
+    station_id?: string;
+  };
+  total: string;
+  note: string;
+}): Promise<{
+  id: string;
+  status: string;
+  payment_status: string;
+  created_at: string;
+  received_at: string;
+  total: string;
+  note: string;
+  items: any[];
+  delivery: any;
+}> {
+  try {
+    // Get JWT token from localStorage or authenticate if needed
+    //let token = localStorage.getItem("jwt_token");
+    
+    //if (!token) {
+      // console.log("No JWT token found, authenticating...");
+      // // If no token, authenticate first
+      // const accessToken = await import("@/utils/zma").then(m => m.getAccessToken());
+      // console.log("Got access token:", accessToken);
+      // const authResult = await authenticate(accessToken);
+      // token = authResult.token;
+      // localStorage.setItem("jwt_token", token);
+      // console.log("Got JWT token:", token);
+    //}
+
+    const requestOptions = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        //"Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify(orderData),
+    };
+
+    console.log("Creating order with URL:", `${API_URL}/orders`);
+    console.log("Request options:", requestOptions);
+
+    return await request("/orders", requestOptions);
+  } catch (error) {
+    console.error("Failed to create order:", {
+      error: error,
+      message: error instanceof Error ? error.message : String(error),
+      status: (error as any).status,
+      body: (error as any).body,
+      url: `${API_URL}/orders`,
+      orderData: orderData
+    });
+    
+    // Check if we're running on localhost - if so, show a warning but don't fail
+    const isLocalhost = typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname);
+    if (isLocalhost) {
+      console.warn("Running on localhost - order creation may fail due to CORS or backend not running locally");
+      console.warn("Order data that would be sent:", orderData);
+      
+      // Return a mock successful response for development
+      return {
+        id: Date.now().toString(),
+        status: "pending",
+        payment_status: "success",
+        created_at: new Date().toISOString(),
+        received_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours later
+        total: orderData.total,
+        note: orderData.note,
+        items: orderData.items,
+        delivery: orderData.delivery,
+      };
+    }
+    
+    // Re-throw error for production (no fallback)
+    throw error;
+  }
 }

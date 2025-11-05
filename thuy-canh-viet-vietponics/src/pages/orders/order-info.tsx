@@ -9,9 +9,9 @@ function OrderInfo(props: { order: Order }) {
       {props.order.delivery.type === "pickup" ? (
         <DeliverySummary
           icon={<HomeIcon />}
-          title="Giao đến"
-          subtitle={props.order.delivery.name}
-          description={props.order.delivery.address}
+          title="Nhận tại điểm"
+          subtitle={`Điểm giao hàng ${props.order.delivery.stationId}`}
+          description="Vui lòng đến điểm giao hàng để nhận hàng"
         />
       ) : (
         <DeliverySummary

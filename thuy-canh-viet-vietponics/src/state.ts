@@ -21,7 +21,7 @@ import {
   ApiOrder,
   ApiOrderItem,
 } from "@/types";
-import { requestWithFallback, authenticate } from "@/utils/request";
+import { requestWithFallback, request, authenticate } from "@/utils/request";
 import { getAccessToken, decodeToken, decodeLocationToken } from "@/utils/zma";
 import {
   getLocation,
@@ -323,25 +323,62 @@ export const shippingAddressState = atomWithStorage<
   ShippingAddress | undefined
 >(CONFIG.STORAGE_KEYS.SHIPPING_ADDRESS, undefined);
 
+
+
 export const ordersState = atomFamily((status: OrderStatus) =>
-  atomWithRefresh(async () => {
+  atomWithRefresh(async (get) => {
     try {
-      // Try to fetch from API first
-      const res = await requestWithFallback<any>("/orders", []);
+      // Check if user is logged in first
+      const userInfo = await get(userInfoState);
+
+      if (!userInfo || !userInfo.id) {
+        return [];
+      }
+
+      // Get JWT token for authentication
+      let token = localStorage.getItem("jwt_token");
+
+      // if (!token) {
+      //   console.warn(`[ORDERS_STATE] No JWT token found, starting authentication...`);
+      //   // If no token, authenticate first
+      //   const accessToken = await getAccessToken();
+      //   console.warn(`[ORDERS_STATE] Got Zalo access token:`, accessToken ? `${accessToken}` : 'null');
+
+      //   if (!accessToken) {
+      //     console.warn(`[ORDERS_STATE] No Zalo access token available, user may not be logged in`);
+      //     return [];
+      //   }
+      //   console.warn(`[ORDERS_STATE] Authentication result starting`);
+      //   const authResult = await authenticate(accessToken);
+      //   console.warn(`[ORDERS_STATE] Authentication result:`, authResult);
+
+      //   token = authResult.token;
+      //   console.warn(`[ORDERS_STATE] New JWT token:`, token ? `${token.substring(0, 20)}...` : 'null');
+
+      //   localStorage.setItem("jwt_token", token);
+      //   console.warn(`[ORDERS_STATE] JWT token saved to localStorage`);
+      // }
+
+      // Fetch from API with authentication (no fallback to mock)
+      const res = await request("/orders", {
+        headers: {
+          // "Authorization": `Bearer ${token}`,
+        },
+      });
+
       const apiOrders = extractArray<ApiOrder>(res);
-      
+
       // Convert API orders to UI-compatible format
       const convertedOrders = apiOrders.map(convertApiOrderToOrder);
-      
+
       // Filter by status
-      return convertedOrders.filter(order => order.status === status);
+      const filteredOrders = convertedOrders.filter(order => order.status === status);
+
+      return filteredOrders;
+
     } catch (error) {
-      console.warn("Failed to fetch orders from API, falling back to mock data:", error);
-      
-      // Fallback to mock data
-      const res = await requestWithFallback<any>("/orders", []);
-      const allMockOrders = extractArray<Order>(res);
-      return allMockOrders.filter(order => order.status === status);
+      // Return empty array instead of throwing error when API fails
+      return [];
     }
   })
 );
@@ -350,3 +387,5 @@ export const deliveryModeState = atomWithStorage<Delivery["type"]>(
   CONFIG.STORAGE_KEYS.DELIVERY,
   "shipping"
 );
+
+export const noteState = atom("");

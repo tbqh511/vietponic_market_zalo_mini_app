@@ -9,10 +9,15 @@ import {
   userInfoKeyState,
   userInfoState,
   productsState,
+  shippingAddressState,
+  selectedStationState,
+  deliveryModeState,
+  noteState,
+  phoneState,
 } from "@/state";
 import { Product } from "@/types";
 import { getConfig } from "@/utils/template";
-import { prepareOrder } from "@/utils/request";
+import { prepareOrder, createOrderAPI } from "@/utils/request";
 import { authorize, createOrder, openChat } from "zmp-sdk/apis";
 import { useAtomCallback } from "jotai/utils";
 
@@ -126,10 +131,17 @@ export function useCheckout() {
   const requestInfo = useRequestInformation();
   const navigate = useNavigate();
   const refreshNewOrders = useSetAtom(ordersState("pending"));
+  const shippingAddress = useAtomValue(shippingAddressState);
+  const selectedStation = useAtomValue(selectedStationState);
+  const deliveryMode = useAtomValue(deliveryModeState);
+  const note = useAtomValue(noteState);
+  const setNote = useSetAtom(noteState);
+  const phone = useAtomValue(phoneState);
+
 
   return async () => {
     try {
-      await requestInfo();
+      const userInfo = await requestInfo();
       
       // Prepare order data and get MAC from server
       const orderData = {
@@ -138,25 +150,64 @@ export function useCheckout() {
         item: cart.map((item) => ({
           id: item.product.id,
           name: item.product.name,
-          price: item.product.price,
+          price: parseFloat(item.product.price.toString()), // Ensure price is number
           quantity: item.quantity,
         })),
       };
-      
-      const { mac } = await prepareOrder(orderData);
-      // console.warn("Received MAC:", mac);
-      // console.warn("Order Data:", orderData);
-      
-      //slect methjod of paymentmeth
-      //select extradata
+     
+      console.warn("Order data for MAC generation:", JSON.stringify(orderData));
+      const prepareResponse = await prepareOrder(orderData);
+      console.warn("Prepare order response:", prepareResponse);
+      const { mac } = prepareResponse;
+      console.warn("Received MAC:", mac);
 
-      // Create order with MAC
+      // Create order with MAC (Zalo payment)
+      console.warn("Calling createOrder with data:", { ...orderData, mac });
       await createOrder({
         ...orderData,
         mac: mac
       });
       
+      // Prepare order data for API
+      const deliveryData = deliveryMode === "shipping" 
+        ? {
+            type: "shipping" as const,
+            address: shippingAddress?.address || "",
+            name: shippingAddress?.name || userInfo?.name || "",
+            phone: phone || shippingAddress?.phone || userInfo?.phone || "",
+          }
+        : {
+            type: "pickup" as const,
+            address: selectedStation?.address || "",
+            name: userInfo?.name || "",
+            phone: phone || userInfo?.phone || "",
+            station_id: selectedStation?.id.toString(),
+          };
+      
+      const apiOrderData = {
+        customer_id: userInfo?.id || "",
+        items: cart.map((item) => ({
+          product_id: item.product.id.toString(),
+          name: item.product.name,
+          price: item.product.price.toString(),
+          quantity: item.quantity.toString(),
+          image: item.product.image,
+          detail: item.product.detail || "",
+        })),
+        delivery: deliveryData,
+        total: totalAmount.toString(),
+        note: note,
+        created_at: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).replace(' ', 'T') + '+07:00',
+      };
+      
+      console.warn("User info:", userInfo);
+      console.warn("API order data:", apiOrderData);
+      
+      // Save order to database
+      await createOrderAPI(apiOrderData);
+      
       setCart([]);
+      setNote("");
       refreshNewOrders();
       navigate("/orders", {
         viewTransition: true,
