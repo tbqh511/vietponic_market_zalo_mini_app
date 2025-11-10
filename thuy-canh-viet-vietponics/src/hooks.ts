@@ -15,10 +15,10 @@ import {
   noteState,
   phoneState,
 } from "@/state";
-import { Product } from "@/types";
+import { Product, CreateOrderRequest, CreateOrderResponse } from "@/types";
 import { getConfig } from "@/utils/template";
-import { prepareOrder, createOrderAPI } from "@/utils/request";
-import { authorize, createOrder, openChat } from "zmp-sdk/apis";
+import {  requestWithPost } from "@/utils/request";
+import { authorize,createOrder,events,EventName, openChat,CheckoutSDK } from "zmp-sdk/apis";
 import { useAtomCallback } from "jotai/utils";
 
 export function useRealHeight(
@@ -142,32 +142,6 @@ export function useCheckout() {
   return async () => {
     try {
       const userInfo = await requestInfo();
-      
-      // Prepare order data and get MAC from server
-      const orderData = {
-        amount: totalAmount,
-        desc: "Thanh toán đơn hàng",
-        item: cart.map((item) => ({
-          id: item.product.id,
-          name: item.product.name,
-          price: parseFloat(item.product.price.toString()), // Ensure price is number
-          quantity: item.quantity,
-        })),
-      };
-     
-      console.warn("Order data for MAC generation:", JSON.stringify(orderData));
-      const prepareResponse = await prepareOrder(orderData);
-      console.warn("Prepare order response:", prepareResponse);
-      const { mac } = prepareResponse;
-      console.warn("Received MAC:", mac);
-
-      // Create order with MAC (Zalo payment)
-      console.warn("Calling createOrder with data:", { ...orderData, mac });
-      await createOrder({
-        ...orderData,
-        mac: mac
-      });
-      
       // Prepare order data for API
       const deliveryData = deliveryMode === "shipping" 
         ? {
@@ -183,39 +157,135 @@ export function useCheckout() {
             phone: phone || userInfo?.phone || "",
             station_id: selectedStation?.id.toString(),
           };
-      
-      const apiOrderData = {
-        customer_id: userInfo?.id || "",
-        items: cart.map((item) => ({
+      const mappedItems = cart.map((item) => ({
           product_id: item.product.id.toString(),
           name: item.product.name,
           price: item.product.price.toString(),
           quantity: item.quantity.toString(),
           image: item.product.image,
           detail: item.product.detail || "",
-        })),
-        delivery: deliveryData,
-        total: totalAmount.toString(),
-        note: note,
-        created_at: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).replace(' ', 'T') + '+07:00',
+      }));
+      const orderPayload = {
+          customer_id: userInfo?.id || "",
+          items: mappedItems, // Sử dụng biến đã ánh xạ
+          delivery: deliveryData,
+          total: totalAmount.toString(),
+          note: note,
+          created_at: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).replace(' ', 'T') + '+07:00',
       };
-      
-      console.warn("User info:", userInfo);
-      console.warn("API order data:", apiOrderData);
-      
+      // 1. Tạo đơn hàng ở phía hệ thống của bạn
+      //Chuẩn bị dữ liệu đơn hàng cho API tạo đơn hàng trên database
+      console.log("User info:", userInfo);
       // Save order to database
-      await createOrderAPI(apiOrderData);
+      console.log("API order data:",  orderPayload);
+      const { orderId: myOrderId } = await requestWithPost<
+        CreateOrderRequest,
+        CreateOrderResponse
+      >("/orders", orderPayload);
+      console.log("My order created by id:", myOrderId);
+      // Chuẩn bị params để tạo MAC
+      const amount = totalAmount;
+      const desc = `Thanh toán cho đơn hàng #${myOrderId}`;
+      const item = cart.map<{ id: number; amount: number }>((cartItem) => ({
+        id: cartItem.product.id,
+        amount: cartItem.product.price * cartItem.quantity,
+      }));
+      const extradata = JSON.stringify({
+        myOrderId, // truyền theo định danh của đơn hàng đã được tạo ở phía hệ thống của bạn
+      });
+      const method = JSON.stringify({
+        id: "COD_SANDBOX", // Phương thức thanh toán
+        isCustom: false, // false: Phương thức thanh toán của Platform, true: Phương thức thanh toán riêng của đối tác
+      });
+
+      const payload = { amount, desc, item, extradata, method };
+      const { mac } = await requestWithPost<typeof payload, { mac: string }>(
+        "/prepare-order",
+        payload
+      );
+      console.log("MAC number created:", mac);
+      // 2. Kích hoạt giao dịch thanh toán
+      const { orderId: checkoutSdkOrderId } = await createOrder({
+        desc,
+        item,
+        amount: totalAmount,
+        extradata,
+        method,
+        mac,
+        success: async (res) => {
+          setCart([]);
+          setNote("");
+          refreshNewOrders();
+          console.log("Checkout SDK order id:", res);
+          navigate("/orders", {
+            viewTransition: true,
+          });
+          toast.success("Đặt hàng thành công. Thanh toán khi nhận hàng!", {
+            icon: "🎉",
+            duration: 5000,
+          });
+        },
+        fail: (err) => {
+          toast.error("Thanh toán thất bại!");
+          console.log("Checkout SDK thất bại:", err);
+        },
+      });
+      console.log("Checkout SDK order id:", checkoutSdkOrderId);
+      // 3. Liên kết đơn hàng với giao dịch
+      // await requestWithPost("/link", {
+      //   orderId: myOrderId,
+      //   checkoutSdkOrderId,
+      //   miniAppId: window.APP_ID,
+      // });
       
-      setCart([]);
-      setNote("");
-      refreshNewOrders();
-      navigate("/orders", {
-        viewTransition: true,
-      });
-      toast.success("Thanh toán thành công. Cảm ơn bạn đã mua hàng!", {
-        icon: "🎉",
-        duration: 5000,
-      });
+      // 5. Thông báo kết quả giao dịch
+      // events.once(EventName.PaymentDone, async (data) => {
+      //   const result = await CheckoutSDK.checkTransaction({ data });
+
+      //   if (result.resultCode >= 0) {
+      //     setCart([]);
+      //     refreshNewOrders();
+      //     navigate("/orders", {
+      //       viewTransition: true,
+      //     });
+      //   }
+      //   console.log("Payment result:", result);
+      //   switch (result.resultCode) {
+      //     case 1:
+      //       toast.success("Thanh toán thành công. Cảm ơn bạn đã mua hàng!", {
+      //         icon: "🎉",
+      //         duration: 5000,
+      //       });
+      //       break;
+      //     case 0:
+      //       toast("Giao dịch đang xử lý. Cảm ơn bạn đã mua hàng!", {
+      //         icon: "⏳",
+      //         duration: 5000,
+      //       });
+      //       break;
+      //     case -1:
+      //       toast.error("Giao dịch không thành công. Vui lòng thử lại sau.");
+      //       break;
+      //     case -2:
+      //       toast.error("Vui lòng chọn phương thức thanh toán!");
+      //       break;
+      //     default:
+      //       // Giao dịch không hợp lệ, kiểm tra `result.err` & `result.msg` để biết thêm thông tin
+      //       console.error(result);
+      //       toast.error(result.msg);
+      //   }
+      // });
+
+      // setCart([]);
+      // setNote("");
+      // refreshNewOrders();
+      // navigate("/orders", {
+      //   viewTransition: true,
+      // });
+      // toast.success("Đặt hàng thành công. Thanh toán khi nhận hàng!", {
+      //   icon: "🎉",
+      //   duration: 5000,
+      // });
     } catch (error) {
       console.warn(error);
       toast.error(

@@ -115,3 +115,33 @@ export interface ApiDelivery {
   lat?: string;
   lng?: string;
 }
+interface CreateOrderItem {
+  product_id: string;
+  name: string;
+  price: string;
+  quantity: string;
+  image: string;
+  detail: string;
+}
+
+interface CreateOrderDelivery {
+  type: "shipping" | "pickup";
+  address: string;
+  name: string;
+  phone: string;
+  station_id?: string;
+}
+
+interface CreateOrderRequest {
+  customer_id: string;
+  items: CreateOrderItem[];
+  delivery: CreateOrderDelivery;
+  total: string;
+  note: string;
+  created_at: string;
+}
+
+interface CreateOrderResponse {
+  message: string;
+  orderId: number;
+}
