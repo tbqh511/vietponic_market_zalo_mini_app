@@ -144,7 +144,7 @@ export const phoneState = atom(async () => {
       phone = await decodeToken(token);
     }
   } catch (error) {
-    console.warn(error);
+    console.warn("Error retrieving phone number:", error);
   }
   return phone;
 });

@@ -18,7 +18,7 @@ import {
 import { Product, CreateOrderRequest, CreateOrderResponse } from "@/types";
 import { getConfig } from "@/utils/template";
 import {  requestWithPost } from "@/utils/request";
-import { authorize,createOrder,events,EventName, openChat,CheckoutSDK } from "zmp-sdk/apis";
+import { authorize,createOrder,events,EventName, openChat,CheckoutSDK, Payment } from "zmp-sdk/apis";
 import { useAtomCallback } from "jotai/utils";
 
 export function useRealHeight(
@@ -142,6 +142,25 @@ export function useCheckout() {
   return async () => {
     try {
       const userInfo = await requestInfo();
+
+      // Chọn phương thức thanh toán
+      const selectedMethod = await new Promise<{ method: string; isCustom?: boolean; logo?: string; displayName?: string; subMethod?: string }>((resolve, reject) => {
+        Payment.selectPaymentMethod({
+          channels: [
+            { method: "COD_SANDBOX" },
+            { method: "BANK_SANDBOX" },
+          ],
+          success: (data) => {
+            console.log("Selected payment method:", data);
+            resolve(data);
+          },
+          fail: (err) => {
+            console.log("Payment method selection failed:", err);
+            reject(new Error("Chọn phương thức thanh toán thất bại"));
+          },
+        });
+      });
+
       // Prepare order data for API
       const deliveryData = deliveryMode === "shipping" 
         ? {
@@ -185,7 +204,7 @@ export function useCheckout() {
       console.log("My order created by id:", myOrderId);
       // Chuẩn bị params để tạo MAC
       const amount = totalAmount;
-      const desc = `Thanh toán cho đơn hàng #${myOrderId}`;
+      const desc = `Thanh toán cho đơn hàng ${myOrderId}`;
       const item = cart.map<{ id: number; amount: number }>((cartItem) => ({
         id: cartItem.product.id,
         amount: cartItem.product.price * cartItem.quantity,
@@ -194,8 +213,8 @@ export function useCheckout() {
         myOrderId, // truyền theo định danh của đơn hàng đã được tạo ở phía hệ thống của bạn
       });
       const method = JSON.stringify({
-        id: "COD_SANDBOX", // Phương thức thanh toán
-        isCustom: false, // false: Phương thức thanh toán của Platform, true: Phương thức thanh toán riêng của đối tác
+        id: selectedMethod.method, // Phương thức thanh toán được chọn
+        isCustom: selectedMethod.isCustom || false, // false: Phương thức thanh toán của Platform, true: Phương thức thanh toán riêng của đối tác
       });
 
       const payload = { amount, desc, item, extradata, method };
@@ -220,7 +239,10 @@ export function useCheckout() {
           navigate("/orders", {
             viewTransition: true,
           });
-          toast.success("Đặt hàng thành công. Thanh toán khi nhận hàng!", {
+          const successMessage = selectedMethod.method === "COD_SANDBOX" 
+            ? "Đặt hàng thành công. Thanh toán khi nhận hàng!" 
+            : "Thanh toán thành công. Cảm ơn bạn đã mua hàng!";
+          toast.success(successMessage, {
             icon: "🎉",
             duration: 5000,
           });
