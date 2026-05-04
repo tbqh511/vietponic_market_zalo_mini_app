@@ -1,5 +1,5 @@
-import { shippingAddressState } from "@/state";
-import { useAtom } from "jotai";
+import { shippingAddressState, loadableUserInfoState } from "@/state";
+import { useAtom, useAtomValue } from "jotai";
 import { useResetAtom } from "jotai/utils";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +9,7 @@ function ShippingAddressPage() {
   const [address, setAddress] = useAtom(shippingAddressState);
   const resetAddress = useResetAtom(shippingAddressState);
   const navigate = useNavigate();
+  const userInfoLoadable = useAtomValue(loadableUserInfoState);
 
   return (
     <form
@@ -63,7 +64,7 @@ function ShippingAddressPage() {
             name="phone"
             label="Số điện thoại"
             placeholder="0912345678"
-            defaultValue={address?.phone}
+            defaultValue={address?.phone || (userInfoLoadable.state === 'hasData' ? userInfoLoadable.data?.phone : '') || ''}
           />
         </div>
         <Button

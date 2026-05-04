@@ -17,7 +17,8 @@ import {
 } from "@/state";
 import { Product, CreateOrderRequest, CreateOrderResponse } from "@/types";
 import { getConfig } from "@/utils/template";
-import {  requestWithPost } from "@/utils/request";
+import { requestWithPost, authenticate } from "@/utils/request";
+import { getAccessToken } from "@/utils/zma";
 import { authorize,createOrder,events,EventName, openChat,CheckoutSDK, Payment } from "zmp-sdk/apis";
 import { useAtomCallback } from "jotai/utils";
 
@@ -143,6 +144,28 @@ export function useCheckout() {
     try {
       const userInfo = await requestInfo();
 
+      // Lấy JWT token (authenticate nếu chưa có)
+      let jwtToken = localStorage.getItem("jwt_token");
+      if (!jwtToken) {
+        const accessToken = await getAccessToken();
+        if (!accessToken) {
+          toast.error("Không thể xác thực. Vui lòng thử lại.");
+          return;
+        }
+        const authResult = await authenticate(accessToken);
+        jwtToken = authResult.data?.token || authResult.token;
+        if (jwtToken) {
+          localStorage.setItem("jwt_token", jwtToken);
+        }
+      }
+
+      // Helper để tạo headers có JWT
+      const authHeaders = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": `Bearer ${jwtToken}`,
+      };
+
       // Chọn phương thức thanh toán
       const selectedMethod = await new Promise<{ method: string; isCustom?: boolean; logo?: string; displayName?: string; subMethod?: string }>((resolve, reject) => {
         Payment.selectPaymentMethod({
@@ -186,23 +209,30 @@ export function useCheckout() {
       }));
       const orderPayload = {
           customer_id: userInfo?.id || "",
-          items: mappedItems, // Sử dụng biến đã ánh xạ
+          items: mappedItems,
           delivery: deliveryData,
           total: totalAmount.toString(),
           note: note,
           created_at: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).replace(' ', 'T') + '+07:00',
       };
-      // 1. Tạo đơn hàng ở phía hệ thống của bạn
-      //Chuẩn bị dữ liệu đơn hàng cho API tạo đơn hàng trên database
-      console.log("User info:", userInfo);
-      // Save order to database
-      console.log("API order data:",  orderPayload);
-      const { orderId: myOrderId } = await requestWithPost<
-        CreateOrderRequest,
-        CreateOrderResponse
-      >("/orders", orderPayload);
+      // 1. Tạo đơn hàng ở phía hệ thống (với JWT auth)
+      console.log("API order data:", orderPayload);
+      const createOrderResponse = await fetch(
+        `${window.APP_CONFIG?.template?.apiUrl}/orders`,
+        {
+          method: "POST",
+          headers: authHeaders,
+          body: JSON.stringify(orderPayload),
+        }
+      );
+      if (!createOrderResponse.ok) {
+        const errBody = await createOrderResponse.text();
+        throw new Error(`Tạo đơn hàng thất bại: ${errBody}`);
+      }
+      const { orderId: myOrderId } = await createOrderResponse.json();
       console.log("My order created by id:", myOrderId);
-      // Chuẩn bị params để tạo MAC
+
+      // 2. Chuẩn bị params để tạo MAC (với JWT auth)
       const amount = totalAmount;
       const desc = `Thanh toán cho đơn hàng ${myOrderId}`;
       const item = cart.map<{ id: number; amount: number }>((cartItem) => ({
@@ -210,20 +240,29 @@ export function useCheckout() {
         amount: cartItem.product.price * cartItem.quantity,
       }));
       const extradata = JSON.stringify({
-        myOrderId, // truyền theo định danh của đơn hàng đã được tạo ở phía hệ thống của bạn
+        myOrderId,
       });
       const method = JSON.stringify({
-        id: selectedMethod.method, // Phương thức thanh toán được chọn
-        isCustom: selectedMethod.isCustom || false, // false: Phương thức thanh toán của Platform, true: Phương thức thanh toán riêng của đối tác
+        id: selectedMethod.method,
+        isCustom: selectedMethod.isCustom || false,
       });
 
       const payload = { amount, desc, item, extradata, method };
-      const { mac } = await requestWithPost<typeof payload, { mac: string }>(
-        "/prepare-order",
-        payload
+      const prepareResponse = await fetch(
+        `${window.APP_CONFIG?.template?.apiUrl}/prepare-order`,
+        {
+          method: "POST",
+          headers: authHeaders,
+          body: JSON.stringify(payload),
+        }
       );
+      if (!prepareResponse.ok) {
+        throw new Error("Tạo MAC thất bại");
+      }
+      const { mac } = await prepareResponse.json();
       console.log("MAC number created:", mac);
-      // 2. Kích hoạt giao dịch thanh toán
+
+      // 3. Kích hoạt giao dịch thanh toán
       const { orderId: checkoutSdkOrderId } = await createOrder({
         desc,
         item,
@@ -232,20 +271,7 @@ export function useCheckout() {
         method,
         mac,
         success: async (res) => {
-          setCart([]);
-          setNote("");
-          refreshNewOrders();
-          console.log("Checkout SDK order id:", res);
-          navigate("/orders", {
-            viewTransition: true,
-          });
-          const successMessage = selectedMethod.method === "COD_SANDBOX" 
-            ? "Đặt hàng thành công. Thanh toán khi nhận hàng!" 
-            : "Thanh toán thành công. Cảm ơn bạn đã mua hàng!";
-          toast.success(successMessage, {
-            icon: "🎉",
-            duration: 5000,
-          });
+          console.log("Checkout SDK success callback:", res);
         },
         fail: (err) => {
           toast.error("Thanh toán thất bại!");
@@ -253,61 +279,64 @@ export function useCheckout() {
         },
       });
       console.log("Checkout SDK order id:", checkoutSdkOrderId);
-      // 3. Liên kết đơn hàng với giao dịch
-      // await requestWithPost("/link", {
-      //   orderId: myOrderId,
-      //   checkoutSdkOrderId,
-      //   miniAppId: window.APP_ID,
-      // });
-      
-      // 5. Thông báo kết quả giao dịch
-      // events.once(EventName.PaymentDone, async (data) => {
-      //   const result = await CheckoutSDK.checkTransaction({ data });
 
-      //   if (result.resultCode >= 0) {
-      //     setCart([]);
-      //     refreshNewOrders();
-      //     navigate("/orders", {
-      //       viewTransition: true,
-      //     });
-      //   }
-      //   console.log("Payment result:", result);
-      //   switch (result.resultCode) {
-      //     case 1:
-      //       toast.success("Thanh toán thành công. Cảm ơn bạn đã mua hàng!", {
-      //         icon: "🎉",
-      //         duration: 5000,
-      //       });
-      //       break;
-      //     case 0:
-      //       toast("Giao dịch đang xử lý. Cảm ơn bạn đã mua hàng!", {
-      //         icon: "⏳",
-      //         duration: 5000,
-      //       });
-      //       break;
-      //     case -1:
-      //       toast.error("Giao dịch không thành công. Vui lòng thử lại sau.");
-      //       break;
-      //     case -2:
-      //       toast.error("Vui lòng chọn phương thức thanh toán!");
-      //       break;
-      //     default:
-      //       // Giao dịch không hợp lệ, kiểm tra `result.err` & `result.msg` để biết thêm thông tin
-      //       console.error(result);
-      //       toast.error(result.msg);
-      //   }
-      // });
+      // 4. Liên kết đơn hàng với giao dịch Zalo (với JWT auth)
+      try {
+        await fetch(
+          `${window.APP_CONFIG?.template?.apiUrl}/link`,
+          {
+            method: "POST",
+            headers: authHeaders,
+            body: JSON.stringify({
+              orderId: myOrderId,
+              checkoutSdkOrderId,
+              miniAppId: window.APP_ID,
+            }),
+          }
+        );
+        console.log("Order linked successfully");
+      } catch (linkError) {
+        console.warn("Failed to link order:", linkError);
+      }
 
-      // setCart([]);
-      // setNote("");
-      // refreshNewOrders();
-      // navigate("/orders", {
-      //   viewTransition: true,
-      // });
-      // toast.success("Đặt hàng thành công. Thanh toán khi nhận hàng!", {
-      //   icon: "🎉",
-      //   duration: 5000,
-      // });
+      // 5. Thông báo kết quả giao dịch (verify real-time)
+      events.once(EventName.PaymentDone, async (data) => {
+        const result = await CheckoutSDK.checkTransaction({ data });
+
+        if (result.resultCode >= 0) {
+          setCart([]);
+          setNote("");
+          refreshNewOrders();
+          navigate("/orders", {
+            viewTransition: true,
+          });
+        }
+        console.log("Payment result:", result);
+        switch (result.resultCode) {
+          case 1:
+            toast.success("Thanh toán thành công. Cảm ơn bạn đã mua hàng!", {
+              icon: "🎉",
+              duration: 5000,
+            });
+            break;
+          case 0:
+            toast("Giao dịch đang xử lý. Cảm ơn bạn đã mua hàng!", {
+              icon: "⏳",
+              duration: 5000,
+            });
+            break;
+          case -1:
+            toast.error("Giao dịch không thành công. Vui lòng thử lại sau.");
+            break;
+          case -2:
+            toast.error("Vui lòng chọn phương thức thanh toán!");
+            break;
+          default:
+            console.error(result);
+            toast.error(result.msg);
+        }
+      });
+
     } catch (error) {
       console.warn(error);
       toast.error(
