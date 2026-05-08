@@ -109,13 +109,17 @@ export async function requestWithGet<T>(
 }
 
 export async function authenticate(accessToken: string): Promise<{
-  token: string;
-  user: {
-    id: number;
-    name: string;
-    email: string;
-    profile: string | null;
-    mobile: string | null;
+  error: boolean;
+  message: string;
+  data: {
+    token: string;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+      profile: string | null;
+      mobile: string | null;
+    };
   };
 }> {
   return await requestWithPost("/authenticate", { access_token: accessToken });

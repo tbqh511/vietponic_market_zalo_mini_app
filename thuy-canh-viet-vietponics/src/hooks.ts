@@ -126,6 +126,16 @@ export function useToBeImplemented() {
     });
 }
 
+function isJwtExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (!payload.exp) return false;
+    return payload.exp * 1000 < Date.now() + 60_000;
+  } catch {
+    return true;
+  }
+}
+
 export function useCheckout() {
   const { totalAmount } = useAtomValue(cartTotalState);
   const [cart, setCart] = useAtom(cartState);
@@ -144,23 +154,42 @@ export function useCheckout() {
     try {
       const userInfo = await requestInfo();
 
-      // Lấy JWT token (authenticate nếu chưa có)
+      // Lấy JWT token (authenticate nếu chưa có hoặc đã hết hạn)
       let jwtToken = localStorage.getItem("jwt_token");
-      if (!jwtToken) {
+      if (!jwtToken || isJwtExpired(jwtToken)) {
+        if (jwtToken) localStorage.removeItem("jwt_token");
         const accessToken = await getAccessToken();
         if (!accessToken) {
           toast.error("Không thể xác thực. Vui lòng thử lại.");
           return;
         }
-        const authResult = await authenticate(accessToken);
-        jwtToken = authResult.data?.token || authResult.token;
-        if (jwtToken) {
-          localStorage.setItem("jwt_token", jwtToken);
+        try {
+          const authResult = await authenticate(accessToken);
+          jwtToken = authResult.data?.token;
+          if (jwtToken) {
+            localStorage.setItem("jwt_token", jwtToken);
+          }
+        } catch (authError: any) {
+          const isTimeout =
+            authError?.status === 503 ||
+            String(authError?.message).includes("timeout") ||
+            String(authError?.message).includes("timed out");
+          toast.error(
+            isTimeout
+              ? "Xác thực Zalo bị timeout. Vui lòng thử lại sau."
+              : "Không thể xác thực. Vui lòng thử lại."
+          );
+          return;
         }
       }
 
+      if (!jwtToken) {
+        toast.error("Không thể lấy token xác thực. Vui lòng thử lại.");
+        return;
+      }
+
       // Helper để tạo headers có JWT
-      const authHeaders = {
+      let authHeaders: Record<string, string> = {
         "Content-Type": "application/json",
         "Accept": "application/json",
         "Authorization": `Bearer ${jwtToken}`,
@@ -225,11 +254,25 @@ export function useCheckout() {
           body: JSON.stringify(orderPayload),
         }
       );
-      if (!createOrderResponse.ok) {
-        const errBody = await createOrderResponse.text();
+      let finalOrderResponse = createOrderResponse;
+      if (createOrderResponse.status === 401) {
+        localStorage.removeItem("jwt_token");
+        const newAccessToken = await getAccessToken();
+        const newAuthResult = await authenticate(newAccessToken);
+        const newToken = newAuthResult.data?.token;
+        if (!newToken) throw new Error("Không thể xác thực lại.");
+        localStorage.setItem("jwt_token", newToken);
+        authHeaders["Authorization"] = `Bearer ${newToken}`;
+        finalOrderResponse = await fetch(
+          `${window.APP_CONFIG?.template?.apiUrl}/orders`,
+          { method: "POST", headers: authHeaders, body: JSON.stringify(orderPayload) }
+        );
+      }
+      if (!finalOrderResponse.ok) {
+        const errBody = await finalOrderResponse.text();
         throw new Error(`Tạo đơn hàng thất bại: ${errBody}`);
       }
-      const { orderId: myOrderId } = await createOrderResponse.json();
+      const { orderId: myOrderId } = await finalOrderResponse.json();
       console.log("My order created by id:", myOrderId);
 
       // 2. Chuẩn bị params để tạo MAC (với JWT auth)

@@ -51,6 +51,22 @@ function ShippingAddressSummary() {
 
 function SelectedStationSummary() {
   const selectedStation = useAtomValue(selectedStationState);
+
+  if (!selectedStation) {
+    return (
+      <TransitionLink
+        className="flex flex-col space-y-2 justify-center items-center p-4 w-full"
+        to="/stations"
+      >
+        <HomeIcon />
+        <div className="flex space-x-1 items-center text-center p-2">
+          <PlusIcon width={16} height={16} />
+          <span className="text-sm font-medium">Chọn điểm nhận hàng</span>
+        </div>
+      </TransitionLink>
+    );
+  }
+
   return (
     <DeliverySummary
       icon={<HomeIcon />}
