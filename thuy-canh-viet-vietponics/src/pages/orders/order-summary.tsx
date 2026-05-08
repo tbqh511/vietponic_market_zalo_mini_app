@@ -1,7 +1,7 @@
 import HorizontalDivider from "@/components/horizontal-divider";
 import Section from "@/components/section";
 import { Order } from "@/types";
-import { formatPrice } from "@/utils/format";
+import { formatPrice, formatDate } from "@/utils/format";
 import CollapsibleOrderItems from "./collapsible-order-items";
 import { useNavigate } from "react-router-dom";
 
@@ -12,7 +12,7 @@ function OrderSummary(props: { order: Order; full?: boolean }) {
       title={
         <div className="w-full flex justify-between items-center space-x-2 font-normal">
           <span className="text-xs truncate">
-            Thời gian nhận: Từ 16h, 20/1/2025
+            Dự kiến nhận: {formatDate(props.order.receivedAt)}
           </span>
           <span
             className={`text-xs ${

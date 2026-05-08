@@ -7,6 +7,7 @@ import {
   unwrap,
 } from "jotai/utils";
 import {
+  BackendOrderStatus,
   Cart,
   CartItem,
   Category,
@@ -325,59 +326,39 @@ export const shippingAddressState = atomWithStorage<
 
 
 
+// Maps frontend tab key to the set of backend statuses it represents
+const ORDER_STATUS_MAP: Record<OrderStatus, BackendOrderStatus[]> = {
+  pending:   ["pending", "confirmed", "preparing"],
+  shipping:  ["delivering"],
+  completed: ["delivered", "cancelled"],
+};
+
 export const ordersState = atomFamily((status: OrderStatus) =>
   atomWithRefresh(async (get) => {
     try {
-      // Check if user is logged in first
       const userInfo = await get(userInfoState);
-
       if (!userInfo || !userInfo.id) {
         return [];
       }
 
-      // Get JWT token for authentication
-      let token = localStorage.getItem("jwt_token");
+      const token = localStorage.getItem("jwt_token");
+      if (!token) {
+        return [];
+      }
 
-      // if (!token) {
-      //   console.warn(`[ORDERS_STATE] No JWT token found, starting authentication...`);
-      //   // If no token, authenticate first
-      //   const accessToken = await getAccessToken();
-      //   console.warn(`[ORDERS_STATE] Got Zalo access token:`, accessToken ? `${accessToken}` : 'null');
-
-      //   if (!accessToken) {
-      //     console.warn(`[ORDERS_STATE] No Zalo access token available, user may not be logged in`);
-      //     return [];
-      //   }
-      //   console.warn(`[ORDERS_STATE] Authentication result starting`);
-      //   const authResult = await authenticate(accessToken);
-      //   console.warn(`[ORDERS_STATE] Authentication result:`, authResult);
-
-      //   token = authResult.token;
-      //   console.warn(`[ORDERS_STATE] New JWT token:`, token ? `${token.substring(0, 20)}...` : 'null');
-
-      //   localStorage.setItem("jwt_token", token);
-      //   console.warn(`[ORDERS_STATE] JWT token saved to localStorage`);
-      // }
-
-      // Fetch from API with authentication (no fallback to mock)
       const res = await request("/orders", {
         headers: {
-          // "Authorization": `Bearer ${token}`,
+          "Authorization": `Bearer ${token}`,
         },
       });
 
       const apiOrders = extractArray<ApiOrder>(res);
-
-      // Convert API orders to UI-compatible format
       const convertedOrders = apiOrders.map(convertApiOrderToOrder);
 
-      // Filter by status
-      const filteredOrders = convertedOrders.filter(order => order.status === status);
-
-      return filteredOrders;
+      const allowedStatuses = ORDER_STATUS_MAP[status];
+      return convertedOrders.filter(order => allowedStatuses.includes(order.status));
 
     } catch (error) {
-      // Return empty array instead of throwing error when API fails
       return [];
     }
   })

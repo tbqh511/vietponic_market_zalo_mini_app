@@ -61,12 +61,22 @@ export type Delivery =
       stationId: number;
     };
 
+// Statuses trả về từ backend (chính xác như trong DB)
+export type BackendOrderStatus =
+  | "pending"
+  | "confirmed"
+  | "preparing"
+  | "delivering"
+  | "delivered"
+  | "cancelled";
+
+// Frontend tab identifiers (dùng trong URL params và ordersState atom key)
 export type OrderStatus = "pending" | "shipping" | "completed";
 export type PaymentStatus = "pending" | "success" | "failed";
 
 export interface Order {
   id: number;
-  status: OrderStatus;
+  status: BackendOrderStatus;
   paymentStatus: PaymentStatus;
   createdAt: Date;
   receivedAt: Date;
@@ -80,7 +90,7 @@ export interface Order {
 export interface ApiOrder {
   id: string;
   customer_id: string;
-  status: OrderStatus;
+  status: BackendOrderStatus;
   payment_status: PaymentStatus;
   created_at: string;
   received_at: string;
