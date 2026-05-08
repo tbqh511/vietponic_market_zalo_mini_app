@@ -252,7 +252,7 @@ export function useCheckout() {
       // 1. Tạo đơn hàng ở phía hệ thống (với JWT auth)
       console.log("API order data:", orderPayload);
       const createOrderResponse = await fetch(
-        `${window.APP_CONFIG?.template?.apiUrl}/orders`,
+        `${window.APP_CONFIG?.template?.apiUrl}/create-order`,
         {
           method: "POST",
           headers: authHeaders,
@@ -269,7 +269,7 @@ export function useCheckout() {
         localStorage.setItem("jwt_token", newToken);
         authHeaders["Authorization"] = `Bearer ${newToken}`;
         finalOrderResponse = await fetch(
-          `${window.APP_CONFIG?.template?.apiUrl}/orders`,
+          `${window.APP_CONFIG?.template?.apiUrl}/create-order`,
           { method: "POST", headers: authHeaders, body: JSON.stringify(orderPayload) }
         );
       }
@@ -290,10 +290,9 @@ export function useCheckout() {
       const extradata = JSON.stringify({
         myOrderId,
       });
-      const method = JSON.stringify({
-        id: selectedMethod.method,
-        isCustom: selectedMethod.isCustom || false,
-      });
+      const method = selectedMethod.isCustom
+        ? { id: selectedMethod.method, isCustom: true as const }
+        : selectedMethod.method;
 
       const payload = { amount, desc, item, extradata, method };
       console.log("[ZaloCheckout] callback/overallMac - payload gửi đi:", payload);
@@ -320,13 +319,6 @@ export function useCheckout() {
         extradata,
         method,
         mac,
-        success: async (res) => {
-          console.log("[ZaloCheckout] createOrder - success callback:", res);
-        },
-        fail: (err) => {
-          toast.error("Thanh toán thất bại!");
-          console.log("[ZaloCheckout] createOrder - fail callback:", err);
-        },
       });
       console.log("[ZaloCheckout] createOrder - orderId trả về:", checkoutSdkOrderId);
 
@@ -388,11 +380,16 @@ export function useCheckout() {
         }
       });
 
-    } catch (error) {
-      console.warn(error);
-      toast.error(
-        "Thanh toán thất bại. Vui lòng kiểm tra nội dung lỗi bên trong Console."
-      );
+    } catch (error: any) {
+      console.error("[ZaloCheckout] Lỗi thanh toán:", {
+        error,
+        message: error?.message,
+        status: error?.status,
+        body: error?.body,
+        stack: error?.stack,
+      });
+      const msg = error?.message || (typeof error === "string" ? error : null);
+      toast.error(msg || "Thanh toán thất bại. Vui lòng thử lại.");
     }
   };
 }
