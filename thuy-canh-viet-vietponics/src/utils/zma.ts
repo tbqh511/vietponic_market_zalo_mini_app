@@ -44,6 +44,8 @@ export async function decodeToken(token: string): Promise<string> {
 
 export async function decodeLocationToken(token: string): Promise<{ lat: number; lng: number }> {
   const accessToken = await getAccessToken();
+  const locationParams = { access_token: accessToken, code: token };
+  console.log("[ZaloCheckout] /get-location - params gửi:", locationParams);
   const response = await requestWithPost<{
     access_token: string;
     code: string;
@@ -56,10 +58,8 @@ export async function decodeLocationToken(token: string): Promise<{ lat: number;
       longitude: number | null;
       timestamp: number | null;
     };
-  }>("/get-location", {
-    access_token: accessToken,
-    code: token,
-  });
+  }>("/get-location", locationParams);
+  console.log("[ZaloCheckout] /get-location - result:", response);
 
   if (response.error || !response.data?.latitude || !response.data?.longitude) {
     throw new Error(response.message || "Failed to decode location token");

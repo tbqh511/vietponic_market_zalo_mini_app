@@ -122,7 +122,10 @@ export async function authenticate(accessToken: string): Promise<{
     };
   };
 }> {
-  return await requestWithPost("/authenticate", { access_token: accessToken });
+  console.log("[ZaloCheckout] /authenticate - access_token gửi:", accessToken);
+  const result = await requestWithPost("/authenticate", { access_token: accessToken });
+  console.log("[ZaloCheckout] /authenticate - result:", result);
+  return result;
 }
 
 export async function prepareOrder(orderData: {

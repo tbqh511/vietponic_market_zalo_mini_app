@@ -291,6 +291,7 @@ export function useCheckout() {
       });
 
       const payload = { amount, desc, item, extradata, method };
+      console.log("[ZaloCheckout] callback/overallMac - payload gửi đi:", payload);
       const prepareResponse = await fetch(
         `${window.APP_CONFIG?.template?.apiUrl}/prepare-order`,
         {
@@ -303,9 +304,10 @@ export function useCheckout() {
         throw new Error("Tạo MAC thất bại");
       }
       const { mac } = await prepareResponse.json();
-      console.log("MAC number created:", mac);
+      console.log("[ZaloCheckout] callback/overallMac - mac nhận về:", mac);
 
       // 3. Kích hoạt giao dịch thanh toán
+      console.log("[ZaloCheckout] createOrder - params gửi đi:", { desc, item, amount: totalAmount, extradata, method, mac });
       const { orderId: checkoutSdkOrderId } = await createOrder({
         desc,
         item,
@@ -314,37 +316,39 @@ export function useCheckout() {
         method,
         mac,
         success: async (res) => {
-          console.log("Checkout SDK success callback:", res);
+          console.log("[ZaloCheckout] createOrder - success callback:", res);
         },
         fail: (err) => {
           toast.error("Thanh toán thất bại!");
-          console.log("Checkout SDK thất bại:", err);
+          console.log("[ZaloCheckout] createOrder - fail callback:", err);
         },
       });
-      console.log("Checkout SDK order id:", checkoutSdkOrderId);
+      console.log("[ZaloCheckout] createOrder - orderId trả về:", checkoutSdkOrderId);
 
       // 4. Liên kết đơn hàng với giao dịch Zalo (với JWT auth)
+      const linkPayload = { orderId: myOrderId, checkoutSdkOrderId, miniAppId: window.APP_ID };
+      console.log("[ZaloCheckout] getOrderStatus/link - payload gửi:", linkPayload);
       try {
-        await fetch(
+        const linkResponse = await fetch(
           `${window.APP_CONFIG?.template?.apiUrl}/link`,
           {
             method: "POST",
             headers: authHeaders,
-            body: JSON.stringify({
-              orderId: myOrderId,
-              checkoutSdkOrderId,
-              miniAppId: window.APP_ID,
-            }),
+            body: JSON.stringify(linkPayload),
           }
         );
-        console.log("Order linked successfully");
+        const linkResult = await linkResponse.json().catch(() => null);
+        console.log("[ZaloCheckout] getOrderStatus/link - result:", linkResult);
       } catch (linkError) {
-        console.warn("Failed to link order:", linkError);
+        console.warn("[ZaloCheckout] getOrderStatus/link - lỗi:", linkError);
       }
 
       // 5. Thông báo kết quả giao dịch (verify real-time)
       events.once(EventName.PaymentDone, async (data) => {
+        console.log("[ZaloCheckout] notify/PaymentDone - data nhận được:", data);
+        console.log("[ZaloCheckout] notify - checkTransaction params:", { data });
         const result = await CheckoutSDK.checkTransaction({ data });
+        console.log("[ZaloCheckout] notify - checkTransaction result:", result);
 
         if (result.resultCode >= 0) {
           setCart([]);
@@ -354,7 +358,6 @@ export function useCheckout() {
             viewTransition: true,
           });
         }
-        console.log("Payment result:", result);
         switch (result.resultCode) {
           case 1:
             toast.success("Thanh toán thành công. Cảm ơn bạn đã mua hàng!", {
