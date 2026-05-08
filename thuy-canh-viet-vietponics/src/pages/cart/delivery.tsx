@@ -104,7 +104,7 @@ function Delivery() {
           ).map((option) => (
             <button
               key={option.type}
-              className={"flex justify-center items-center space-x-2 text-base font-medium bg-background rounded-full h-12 px-3.5 ".concat(
+              className={"flex flex-col justify-center items-center gap-1 text-sm font-medium bg-background rounded-2xl h-16 px-2 w-full ".concat(
                 selectedDeliveryMode === option.type
                   ? "border border-primary text-primary"
                   : ""
@@ -112,7 +112,7 @@ function Delivery() {
               onClick={() => setSelectedDeliveryMode(option.type)}
             >
               {option.icon}
-              <span>{option.name}</span>
+              <span className="leading-tight text-center">{option.name}</span>
             </button>
           ))}
         </div>
