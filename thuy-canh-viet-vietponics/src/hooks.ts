@@ -252,7 +252,7 @@ export function useCheckout() {
       // 1. Tạo đơn hàng ở phía hệ thống (với JWT auth)
       console.log("API order data:", orderPayload);
       const createOrderResponse = await fetch(
-        `${window.APP_CONFIG?.template?.apiUrl}/create-order`,
+        `${window.APP_CONFIG?.template?.apiUrl}/checkout`,
         {
           method: "POST",
           headers: authHeaders,
@@ -269,7 +269,7 @@ export function useCheckout() {
         localStorage.setItem("jwt_token", newToken);
         authHeaders["Authorization"] = `Bearer ${newToken}`;
         finalOrderResponse = await fetch(
-          `${window.APP_CONFIG?.template?.apiUrl}/create-order`,
+          `${window.APP_CONFIG?.template?.apiUrl}/checkout`,
           { method: "POST", headers: authHeaders, body: JSON.stringify(orderPayload) }
         );
       }
