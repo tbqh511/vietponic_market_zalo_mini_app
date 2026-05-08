@@ -27,7 +27,21 @@ export async function request<T>(
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
-  const response = await fetch(url as string, options);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  let response: Response;
+  try {
+    response = await fetch(url as string, { ...options, signal: controller.signal });
+  } catch (e: any) {
+    if (e?.name === "AbortError") {
+      const err = new Error("Request timed out after 15s");
+      (err as any).status = 503;
+      throw err;
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   // Validate response and parse JSON when appropriate.
   const contentType = response.headers.get("content-type") || "";
