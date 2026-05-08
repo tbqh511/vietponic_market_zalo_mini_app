@@ -250,15 +250,16 @@ export function useCheckout() {
           created_at: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).replace(' ', 'T') + '+07:00',
       };
       // 1. Tạo đơn hàng ở phía hệ thống (với JWT auth)
-      console.log("API order data:", orderPayload);
-      const createOrderResponse = await fetch(
-        `${window.APP_CONFIG?.template?.apiUrl}/checkout`,
-        {
-          method: "POST",
-          headers: authHeaders,
-          body: JSON.stringify(orderPayload),
-        }
-      );
+      const apiBase = getConfig((c) => c.template.apiUrl).replace(/\/+$/, "");
+      const checkoutUrl = `${apiBase}/checkout`;
+      console.log("[ZaloCheckout] POST URL:", checkoutUrl);
+      console.log("[ZaloCheckout] API order data:", orderPayload);
+      const createOrderResponse = await fetch(checkoutUrl, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify(orderPayload),
+      });
+      console.log("[ZaloCheckout] checkout response status:", createOrderResponse.status, "url:", createOrderResponse.url);
       let finalOrderResponse = createOrderResponse;
       if (createOrderResponse.status === 401) {
         localStorage.removeItem("jwt_token");
@@ -268,14 +269,26 @@ export function useCheckout() {
         if (!newToken) throw new Error("Không thể xác thực lại.");
         localStorage.setItem("jwt_token", newToken);
         authHeaders["Authorization"] = `Bearer ${newToken}`;
-        finalOrderResponse = await fetch(
-          `${window.APP_CONFIG?.template?.apiUrl}/checkout`,
-          { method: "POST", headers: authHeaders, body: JSON.stringify(orderPayload) }
-        );
+        finalOrderResponse = await fetch(checkoutUrl, {
+          method: "POST",
+          headers: authHeaders,
+          body: JSON.stringify(orderPayload),
+        });
+        console.log("[ZaloCheckout] checkout retry status:", finalOrderResponse.status, "url:", finalOrderResponse.url);
       }
       if (!finalOrderResponse.ok) {
         const errBody = await finalOrderResponse.text();
-        throw new Error(`Tạo đơn hàng thất bại: ${errBody}`);
+        const respHeaders: Record<string, string> = {};
+        finalOrderResponse.headers.forEach((value, key) => {
+          respHeaders[key] = value;
+        });
+        console.error("[ZaloCheckout] checkout failed:", {
+          status: finalOrderResponse.status,
+          url: finalOrderResponse.url,
+          headers: respHeaders,
+          bodyPreview: errBody.slice(0, 500),
+        });
+        throw new Error(`Tạo đơn hàng thất bại (${finalOrderResponse.status} từ ${finalOrderResponse.url}): ${errBody.slice(0, 200)}`);
       }
       const { orderId: myOrderId } = await finalOrderResponse.json();
       console.log("My order created by id:", myOrderId);
@@ -297,7 +310,7 @@ export function useCheckout() {
       const payload = { amount, desc, item, extradata, method };
       console.log("[ZaloCheckout] callback/overallMac - payload gửi đi:", payload);
       const prepareResponse = await fetch(
-        `${window.APP_CONFIG?.template?.apiUrl}/prepare-order`,
+        `${apiBase}/prepare-order`,
         {
           method: "POST",
           headers: authHeaders,
@@ -327,7 +340,7 @@ export function useCheckout() {
       console.log("[ZaloCheckout] getOrderStatus/link - payload gửi:", linkPayload);
       try {
         const linkResponse = await fetch(
-          `${window.APP_CONFIG?.template?.apiUrl}/link`,
+          `${apiBase}/link`,
           {
             method: "POST",
             headers: authHeaders,

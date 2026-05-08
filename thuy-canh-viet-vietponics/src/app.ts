@@ -16,9 +16,14 @@ import "@/css/app.scss";
 // Expose app configuration
 import appConfig from "../app-config.json";
 
-if (!window.APP_CONFIG) {
-  window.APP_CONFIG = appConfig;
-}
+window.APP_CONFIG = {
+  ...appConfig,
+  ...(window.APP_CONFIG ?? {}),
+  template: {
+    ...appConfig.template,
+    ...(window.APP_CONFIG?.template ?? {}),
+  },
+};
 
 // Mount the app
 const root = createRoot(document.getElementById("app")!);
