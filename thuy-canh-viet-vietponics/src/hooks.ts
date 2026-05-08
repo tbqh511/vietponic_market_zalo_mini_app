@@ -170,6 +170,11 @@ export function useCheckout() {
             localStorage.setItem("jwt_token", jwtToken);
           }
         } catch (authError: any) {
+          console.error("[ZaloCheckout] /authenticate - error:", {
+            status: authError?.status,
+            message: authError?.message,
+            body: authError?.body,
+          });
           const isTimeout =
             authError?.status === 503 ||
             String(authError?.message).includes("timeout") ||
