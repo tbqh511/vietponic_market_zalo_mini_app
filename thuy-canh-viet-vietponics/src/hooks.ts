@@ -206,6 +206,7 @@ export function useCheckout() {
           channels: [
             { method: "COD_SANDBOX" },
             { method: "BANK_SANDBOX" },
+            { method: "ZALOPAY_SANDBOX" },
           ],
           success: (data) => {
             console.log("Selected payment method:", data);
