@@ -366,13 +366,12 @@ export function useCheckout() {
           setCart([]);
           setNote("");
           refreshNewOrders();
-          // Hoãn navigate 1 tick để Zalo Pay sheet đóng xong trước khi React Router
-          // bắt đầu viewTransition — tránh DOMException InvalidStateError.
-          setTimeout(() => {
-            navigate("/orders", {
-              viewTransition: true,
-            });
-          }, 0);
+          // Bỏ viewTransition cho navigate sau thanh toán: trên Zalo WebView (device thật),
+          // document.visibilityState chưa kịp restore khi sheet native đóng → startViewTransition
+          // ném InvalidStateError. Đây là route push thường, không cần shared-element animation.
+          requestAnimationFrame(() => {
+            navigate("/orders");
+          });
           // Poll thêm để bắt update payment_status từ webhook /notify hoặc job fallback.
           setTimeout(() => refreshNewOrders(), 2500);
           setTimeout(() => refreshNewOrders(), 7000);
