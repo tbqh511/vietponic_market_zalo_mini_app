@@ -207,6 +207,7 @@ export function useCheckout() {
             { method: "COD_SANDBOX" },
             { method: "BANK_SANDBOX" },
             { method: "ZALOPAY_SANDBOX" },
+            { method: "MOMO_SANDBOX" },
           ],
           success: (data) => {
             console.log("Selected payment method:", data);
