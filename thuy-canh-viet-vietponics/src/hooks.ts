@@ -19,6 +19,7 @@ import { Product, CreateOrderRequest, CreateOrderResponse } from "@/types";
 import { getConfig } from "@/utils/template";
 import { requestWithPost, authenticate } from "@/utils/request";
 import { getAccessToken } from "@/utils/zma";
+import { applyPendingReferral } from "@/utils/affiliate";
 import { authorize,createOrder,events,EventName, openChat,CheckoutSDK, Payment } from "zmp-sdk/apis";
 import { useAtomCallback } from "jotai/utils";
 
@@ -136,6 +137,28 @@ function isJwtExpired(token: string): boolean {
   }
 }
 
+export function useEnsureJwt() {
+  return async (): Promise<string | null> => {
+    let token = localStorage.getItem("jwt_token");
+    if (token && !isJwtExpired(token)) return token;
+    if (token) localStorage.removeItem("jwt_token");
+    try {
+      const accessToken = await getAccessToken();
+      if (!accessToken) return null;
+      const result = await authenticate(accessToken);
+      const newToken = result.data?.token;
+      if (newToken) {
+        localStorage.setItem("jwt_token", newToken);
+        applyPendingReferral(newToken);
+        return newToken;
+      }
+    } catch (err) {
+      console.warn("[useEnsureJwt] authenticate failed", err);
+    }
+    return null;
+  };
+}
+
 export function useCheckout() {
   const { totalAmount } = useAtomValue(cartTotalState);
   const [cart, setCart] = useAtom(cartState);
@@ -168,6 +191,7 @@ export function useCheckout() {
           jwtToken = authResult.data?.token;
           if (jwtToken) {
             localStorage.setItem("jwt_token", jwtToken);
+            applyPendingReferral(jwtToken);
           }
         } catch (authError: any) {
           console.error("[ZaloCheckout] /authenticate - error:", {
@@ -270,6 +294,7 @@ export function useCheckout() {
         const newToken = newAuthResult.data?.token;
         if (!newToken) throw new Error("Không thể xác thực lại.");
         localStorage.setItem("jwt_token", newToken);
+        applyPendingReferral(newToken);
         authHeaders["Authorization"] = `Bearer ${newToken}`;
         finalOrderResponse = await fetch(checkoutUrl, {
           method: "POST",

@@ -1,4 +1,5 @@
 import ProfileActions from "./actions";
+import AffiliateEntryCard from "./affiliate-entry-card";
 import FollowOA from "./follow-oa";
 import Points from "./points";
 import UserInfo from "./user-info";
@@ -9,6 +10,7 @@ export default function ProfilePage() {
       <UserInfo>
         <Points />
       </UserInfo>
+      <AffiliateEntryCard />
       <ProfileActions />
       <FollowOA />
     </div>

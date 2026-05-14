@@ -25,6 +25,17 @@ window.APP_CONFIG = {
   },
 };
 
+// Persist incoming affiliate referral code so it can be applied after JWT auth.
+try {
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get("ref");
+  if (ref) {
+    localStorage.setItem("pending_ref_code", ref.toUpperCase());
+  }
+} catch (e) {
+  // ignore — referral capture must never block app boot
+}
+
 // Mount the app
 const root = createRoot(document.getElementById("app")!);
 root.render(createElement(RouterProvider, { router }));
