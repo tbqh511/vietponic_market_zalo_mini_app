@@ -11,7 +11,9 @@ import {
   Cart,
   CartItem,
   Category,
+  CustomerProfile,
   Delivery,
+  InventoryProduct,
   Location,
   Order,
   OrderStatus,
@@ -370,3 +372,24 @@ export const deliveryModeState = atomWithStorage<Delivery["type"]>(
 );
 
 export const noteState = atom("");
+
+// Customer profile sau khi authenticate (bao gồm is_farm_partner flag)
+// Persist sang localStorage để không mất sau khi refresh
+export const customerProfileState = atomWithStorage<CustomerProfile | null>(
+  "customer_profile",
+  null
+);
+
+// Farm inventory – refresh-able atom
+export const farmInventoryState = atomWithRefresh(async () => {
+  const token = localStorage.getItem("jwt_token");
+  if (!token) return [] as InventoryProduct[];
+  try {
+    const res = await request<any>("/farm/inventory", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return extractArray<InventoryProduct>(res);
+  } catch {
+    return [] as InventoryProduct[];
+  }
+});

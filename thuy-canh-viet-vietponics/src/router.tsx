@@ -14,6 +14,8 @@ import StationsPage from "./pages/cart/stations";
 import OrderDetailPage from "./pages/orders/detail";
 import ProfileEditorPage from "./pages/profile/editor";
 import AffiliatePage from "./pages/profile/affiliate";
+import FarmDashboardPage from "./pages/farm";
+import FarmMovementsPage from "./pages/farm/movements";
 
 const router = createBrowserRouter(
   [
@@ -125,6 +127,22 @@ const router = createBrowserRouter(
             search: true,
             title: "Tìm kiếm",
             noFooter: true,
+          },
+        },
+        {
+          path: "/farm",
+          element: <FarmDashboardPage />,
+          handle: {
+            title: "Quản lý kho",
+            noFloatingCart: true,
+          },
+        },
+        {
+          path: "/farm/movements/:id",
+          element: <FarmMovementsPage />,
+          handle: {
+            title: "Lịch sử biến động",
+            noFloatingCart: true,
           },
         },
       ],

@@ -1,10 +1,11 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { MutableRefObject, useLayoutEffect, useMemo, useState } from "react";
+import { MutableRefObject, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { UIMatch, useMatches, useNavigate } from "react-router-dom";
 import {
   cartState,
   cartTotalState,
+  customerProfileState,
   ordersState,
   userInfoKeyState,
   userInfoState,
@@ -138,6 +139,8 @@ function isJwtExpired(token: string): boolean {
 }
 
 export function useEnsureJwt() {
+  const setCustomerProfile = useSetAtom(customerProfileState);
+
   return async (): Promise<string | null> => {
     let token = localStorage.getItem("jwt_token");
     if (token && !isJwtExpired(token)) return token;
@@ -149,6 +152,10 @@ export function useEnsureJwt() {
       const newToken = result.data?.token;
       if (newToken) {
         localStorage.setItem("jwt_token", newToken);
+        // Lưu customer profile (bao gồm is_farm_partner) vào state
+        if (result.data?.user) {
+          setCustomerProfile(result.data.user);
+        }
         applyPendingReferral(newToken);
         return newToken;
       }
@@ -157,6 +164,19 @@ export function useEnsureJwt() {
     }
     return null;
   };
+}
+
+export function useFarmGuard() {
+  const navigate = useNavigate();
+  const profile = useAtomValue(customerProfileState);
+
+  useEffect(() => {
+    if (profile !== null && !profile.is_farm_partner) {
+      navigate("/");
+    }
+  }, [profile, navigate]);
+
+  return profile?.is_farm_partner ?? false;
 }
 
 export function useCheckout() {

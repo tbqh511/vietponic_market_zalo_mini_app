@@ -155,3 +155,36 @@ interface CreateOrderResponse {
   message: string;
   orderId: number;
 }
+
+// Customer profile trả về từ /authenticate (bao gồm is_farm_partner)
+export interface CustomerProfile {
+  id: number;
+  name: string;
+  email: string;
+  profile: string | null;
+  mobile: string | null;
+  is_farm_partner: boolean;
+}
+
+// Tồn kho sản phẩm (dùng trong farm dashboard)
+export interface InventoryProduct {
+  id: number;
+  name: string;
+  category: string | null;
+  stock: number;
+  stock_reserved: number;
+  stock_available: number;
+  reorder_point: number;
+  is_low_stock: boolean;
+}
+
+// Biến động tồn kho
+export interface StockMovement {
+  id: number;
+  movement_type: "import" | "export" | "adjustment" | "reserved" | "unreserved" | "return" | "damage";
+  quantity_change: number;
+  quantity_before: number;
+  quantity_after: number;
+  note: string | null;
+  created_at: string;
+}

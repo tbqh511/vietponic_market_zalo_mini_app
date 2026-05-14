@@ -133,11 +133,29 @@ export async function authenticate(accessToken: string): Promise<{
       email: string;
       profile: string | null;
       mobile: string | null;
+      is_farm_partner: boolean;
     };
   };
 }> {
   console.log("[ZaloCheckout] /authenticate - access_token gửi:", accessToken);
-  const result = await requestWithPost("/authenticate", { access_token: accessToken });
+  const result = await requestWithPost<
+    { access_token: string },
+    {
+      error: boolean;
+      message: string;
+      data: {
+        token: string;
+        user: {
+          id: number;
+          name: string;
+          email: string;
+          profile: string | null;
+          mobile: string | null;
+          is_farm_partner: boolean;
+        };
+      };
+    }
+  >("/authenticate", { access_token: accessToken });
   console.log("[ZaloCheckout] /authenticate - result:", result);
   return result;
 }
