@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { MutableRefObject, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { MutableRefObject, useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { UIMatch, useMatches, useNavigate } from "react-router-dom";
 import {
@@ -174,38 +174,71 @@ export function useEnsureJwt() {
 }
 
 // Gọi trong Layout để đảm bảo customerProfile luôn được load khi app khởi động.
-// Nếu JWT còn hạn nhưng profile chưa có (session mới), sẽ re-authenticate để lấy profile mới nhất.
+// Mỗi lần mở mini app, nếu cột `mobile` của customer chưa có giá trị (DB NULL),
+// sẽ tự động sync số điện thoại bằng cách gửi phone_token (nếu user đã cấp quyền)
+// đến /authenticate để backend decode và update DB.
 export function useInitAuth() {
   const ensureJwt = useEnsureJwt();
-  const [profile, setProfile] = useAtom(customerProfileState);
+  const setProfile = useSetAtom(customerProfileState);
+  const getProfile = useAtomCallback(
+    useCallback((get) => get(customerProfileState), [])
+  );
 
   useEffect(() => {
-    if (!profile) {
-      ensureJwt();
-      return;
-    }
-    // Profile tồn tại nhưng mobile chưa có — thử lấy phone token ngầm nếu user đã cấp quyền
-    if (!profile.mobile) {
-      (async () => {
-        try {
-          const { getSetting } = await import("zmp-sdk/apis");
-          const { authSetting } = await getSetting({});
-          if (!authSetting["scope.userPhonenumber"]) return; // chưa cấp quyền → để PhoneRequiredGate xử lý
-          const { getPhoneNumber } = await import("zmp-sdk/apis");
-          const { token: phoneToken } = await getPhoneNumber({});
-          if (!phoneToken) return;
-          const accessToken = await getAccessToken();
-          if (!accessToken) return;
-          const result = await authenticate(accessToken, phoneToken);
-          if (result.data?.user?.mobile) {
-            setProfile(result.data.user);
+    let cancelled = false;
+
+    (async () => {
+      // 1. Đảm bảo có JWT (re-auth nếu cần — nhánh này có thể đã set profile)
+      const token = await ensureJwt();
+      if (cancelled || !token) return;
+
+      // 2. Đọc profile mới nhất sau khi ensureJwt chạy xong
+      const profile = getProfile();
+
+      // 3. Nếu profile chưa có HOẶC mobile rỗng → re-auth (silent) với phone_token
+      //    để backend update mobile vào DB. Không show prompt nếu chưa cấp quyền —
+      //    PhoneRequiredGate sẽ xử lý trường hợp đó.
+      if (profile && profile.mobile) return;
+
+      try {
+        const { getSetting, getPhoneNumber } = await import("zmp-sdk/apis");
+        const { authSetting } = await getSetting({});
+        const phoneGranted = !!authSetting["scope.userPhonenumber"];
+
+        // Nếu profile null (cần load) HOẶC mobile null + đã cấp quyền (cần sync)
+        // thì mới gọi authenticate. Nếu profile đã có nhưng mobile null + chưa cấp quyền
+        // → để PhoneRequiredGate xử lý, không làm gì thêm.
+        if (profile && !phoneGranted) return;
+
+        let phoneToken: string | undefined;
+        if (phoneGranted) {
+          try {
+            const result = await getPhoneNumber({});
+            phoneToken = result?.token ?? undefined;
+          } catch {
+            // ignore — vẫn có thể auth không có phone_token để load profile
+          }
+        }
+
+        const accessToken = await getAccessToken();
+        if (cancelled || !accessToken) return;
+
+        const result = await authenticate(accessToken, phoneToken);
+        if (cancelled) return;
+        if (result.data?.user) {
+          setProfile(result.data.user);
+          if (result.data.token) {
             localStorage.setItem("jwt_token", result.data.token);
           }
-        } catch {
-          // silent — PhoneRequiredGate sẽ xử lý nếu vẫn thiếu mobile
         }
-      })();
-    }
+      } catch {
+        // silent — PhoneRequiredGate sẽ xử lý nếu vẫn thiếu mobile
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
