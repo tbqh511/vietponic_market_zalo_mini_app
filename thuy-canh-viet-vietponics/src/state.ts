@@ -13,7 +13,8 @@ import {
   Category,
   CustomerProfile,
   Delivery,
-  InventoryProduct,
+  InventoryFilters,
+  InventoryStats,
   Location,
   Order,
   OrderStatus,
@@ -380,16 +381,15 @@ export const customerProfileState = atomWithStorage<CustomerProfile | null>(
   null
 );
 
-// Farm inventory – refresh-able atom
-export const farmInventoryState = atomWithRefresh(async () => {
-  const token = localStorage.getItem("jwt_token");
-  if (!token) return [] as InventoryProduct[];
-  try {
-    const res = await request<any>("/farm/inventory", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return extractArray<InventoryProduct>(res);
-  } catch {
-    return [] as InventoryProduct[];
-  }
+// Farm inventory filter state (persisted across navigation within session)
+export const farmInventoryFiltersState = atom<InventoryFilters>({
+  q: "",
+  category_id: "all",
+  stock_status: "all",
+  sort: "name",
 });
+
+export const farmInventoryStatsState = atom<InventoryStats | null>(null);
+
+// Bumped after every successful import/export to force the inventory hook to refetch.
+export const farmInventoryRefreshTokenState = atom(0);

@@ -171,11 +171,45 @@ export interface InventoryProduct {
   id: number;
   name: string;
   category: string | null;
+  category_id: number | null;
+  image_url: string;
   stock: number;
   stock_reserved: number;
   stock_available: number;
   reorder_point: number;
   is_low_stock: boolean;
+  is_out_of_stock: boolean;
+}
+
+export type InventoryStockStatus = "all" | "low" | "out" | "in_stock";
+export type InventorySort = "name" | "stock_asc" | "stock_desc" | "low_first";
+
+export interface InventoryFilters {
+  q: string;
+  category_id: number | "all";
+  stock_status: InventoryStockStatus;
+  sort: InventorySort;
+}
+
+export interface InventoryMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
+export interface InventoryStats {
+  total_products: number;
+  low_stock_count: number;
+  out_of_stock_count: number;
+  total_stock: number;
+}
+
+export interface InventoryResponse {
+  error: boolean;
+  data: InventoryProduct[];
+  meta: InventoryMeta;
+  stats: InventoryStats;
 }
 
 // Biến động tồn kho

@@ -15,10 +15,21 @@ import {
   deliveryModeState,
   noteState,
   phoneState,
+  farmInventoryFiltersState,
+  farmInventoryStatsState,
+  farmInventoryRefreshTokenState,
 } from "@/state";
-import { Product, CreateOrderRequest, CreateOrderResponse } from "@/types";
+import {
+  Product,
+  CreateOrderRequest,
+  CreateOrderResponse,
+  InventoryFilters,
+  InventoryProduct,
+  InventoryStats,
+  InventoryMeta,
+} from "@/types";
 import { getConfig } from "@/utils/template";
-import { requestWithPost, authenticate } from "@/utils/request";
+import { requestWithPost, request, authenticate } from "@/utils/request";
 import { getAccessToken } from "@/utils/zma";
 import { applyPendingReferral } from "@/utils/affiliate";
 import { authorize,createOrder,events,EventName, openChat,CheckoutSDK, Payment } from "zmp-sdk/apis";
@@ -253,6 +264,134 @@ export function useFarmGuard() {
   }, [profile, navigate]);
 
   return profile?.is_farm_partner ?? false;
+}
+
+export function useFarmInventory() {
+  const [filters, setFilters] = useAtom(farmInventoryFiltersState);
+  const [stats, setStats] = useAtom(farmInventoryStatsState);
+  const [refreshToken, setRefreshToken] = useAtom(farmInventoryRefreshTokenState);
+
+  const [items, setItems] = useState<InventoryProduct[]>([]);
+  const [meta, setMeta] = useState<InventoryMeta | null>(null);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Debounce only the search query — category/status/sort apply immediately.
+  const [debouncedQ, setDebouncedQ] = useState(filters.q);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(filters.q), 300);
+    return () => clearTimeout(t);
+  }, [filters.q]);
+
+  const queryKey = useMemo(
+    () =>
+      JSON.stringify({
+        q: debouncedQ.trim(),
+        category_id: filters.category_id,
+        stock_status: filters.stock_status,
+        sort: filters.sort,
+        refreshToken,
+      }),
+    [debouncedQ, filters.category_id, filters.stock_status, filters.sort, refreshToken]
+  );
+
+  const fetchPage = useCallback(
+    async (targetPage: number, signal?: AbortSignal) => {
+      const token = localStorage.getItem("jwt_token");
+      if (!token) {
+        setItems([]);
+        setMeta(null);
+        setStats(null);
+        return;
+      }
+
+      const params = new URLSearchParams();
+      const qTrimmed = debouncedQ.trim();
+      if (qTrimmed) params.set("q", qTrimmed);
+      if (filters.category_id !== "all")
+        params.set("category_id", String(filters.category_id));
+      if (filters.stock_status !== "all")
+        params.set("stock_status", filters.stock_status);
+      if (filters.sort !== "name") params.set("sort", filters.sort);
+      params.set("page", String(targetPage));
+      params.set("per_page", "20");
+
+      const isFirstPage = targetPage === 1;
+      isFirstPage ? setLoading(true) : setLoadingMore(true);
+      setError(null);
+
+      try {
+        const res = await request<{
+          error: boolean;
+          data: InventoryProduct[];
+          meta: InventoryMeta;
+          stats: InventoryStats;
+        }>(`/farm/inventory?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal,
+        });
+
+        if (signal?.aborted) return;
+
+        setItems((prev) =>
+          isFirstPage ? res.data ?? [] : [...prev, ...(res.data ?? [])]
+        );
+        setMeta(res.meta ?? null);
+        if (res.stats) setStats(res.stats);
+        setPage(targetPage);
+      } catch (err: any) {
+        if (err?.name === "AbortError") return;
+        setError("Không thể tải danh sách tồn kho.");
+      } finally {
+        if (!signal?.aborted) {
+          isFirstPage ? setLoading(false) : setLoadingMore(false);
+        }
+      }
+    },
+    [debouncedQ, filters.category_id, filters.stock_status, filters.sort, setStats]
+  );
+
+  // Refetch page 1 whenever filters/sort/refreshToken change.
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchPage(1, controller.signal);
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey]);
+
+  const hasMore = meta ? meta.current_page < meta.last_page : false;
+
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return;
+    fetchPage(page + 1);
+  }, [loading, loadingMore, hasMore, page, fetchPage]);
+
+  const refresh = useCallback(() => {
+    setRefreshToken((n) => n + 1);
+  }, [setRefreshToken]);
+
+  const updateFilters = useCallback(
+    (patch: Partial<InventoryFilters>) => {
+      setFilters((prev) => ({ ...prev, ...patch }));
+    },
+    [setFilters]
+  );
+
+  return {
+    items,
+    meta,
+    stats,
+    filters,
+    loading,
+    loadingMore,
+    hasMore,
+    error,
+    setFilters: updateFilters,
+    loadMore,
+    refresh,
+  };
 }
 
 export function useCheckout() {
