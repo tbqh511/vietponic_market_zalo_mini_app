@@ -122,7 +122,7 @@ export async function requestWithGet<T>(
   return await request<T>(url);
 }
 
-export async function authenticate(accessToken: string): Promise<{
+export async function authenticate(accessToken: string, phoneToken?: string): Promise<{
   error: boolean;
   message: string;
   data: {
@@ -138,8 +138,10 @@ export async function authenticate(accessToken: string): Promise<{
   };
 }> {
   console.log("[ZaloCheckout] /authenticate - access_token gửi:", accessToken);
+  const body: { access_token: string; phone_token?: string } = { access_token: accessToken };
+  if (phoneToken) body.phone_token = phoneToken;
   const result = await requestWithPost<
-    { access_token: string },
+    { access_token: string; phone_token?: string },
     {
       error: boolean;
       message: string;
@@ -155,7 +157,7 @@ export async function authenticate(accessToken: string): Promise<{
         };
       };
     }
-  >("/authenticate", { access_token: accessToken });
+  >("/authenticate", body);
   console.log("[ZaloCheckout] /authenticate - result:", result);
   return result;
 }

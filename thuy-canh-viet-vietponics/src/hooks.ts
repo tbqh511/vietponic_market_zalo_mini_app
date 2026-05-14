@@ -146,9 +146,16 @@ export function useEnsureJwt() {
     if (token && !isJwtExpired(token)) return token;
     if (token) localStorage.removeItem("jwt_token");
     try {
-      const accessToken = await getAccessToken();
-      if (!accessToken) return null;
-      const result = await authenticate(accessToken);
+      const [accessToken, phoneTokenResult] = await Promise.allSettled([
+        getAccessToken(),
+        import("zmp-sdk/apis").then(({ getPhoneNumber }) => getPhoneNumber({})),
+      ]);
+      if (accessToken.status !== "fulfilled" || !accessToken.value) return null;
+      const phoneToken =
+        phoneTokenResult.status === "fulfilled"
+          ? phoneTokenResult.value?.token ?? undefined
+          : undefined;
+      const result = await authenticate(accessToken.value, phoneToken);
       const newToken = result.data?.token;
       if (newToken) {
         localStorage.setItem("jwt_token", newToken);
