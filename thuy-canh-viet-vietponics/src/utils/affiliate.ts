@@ -151,3 +151,32 @@ export async function fetchAffiliateCommissions(
   if (!res) return { items: [], lastPage: 1 };
   return { items: res.data ?? [], lastPage: res.meta?.last_page ?? 1 };
 }
+
+export interface AffiliateReferralRow {
+  id: number;
+  name: string;
+  mobile_masked: string | null;
+  joined_at: string;
+  orders_count: number;
+  orders_total: number;
+  commission_total: number;
+}
+
+export async function fetchAffiliateReferrals(
+  page = 1
+): Promise<{
+  items: AffiliateReferralRow[];
+  lastPage: number;
+  total: number;
+}> {
+  const res = await authJson<{
+    data: AffiliateReferralRow[];
+    meta: { last_page: number; total: number };
+  }>(`/affiliate/referrals?page=${page}`);
+  if (!res) return { items: [], lastPage: 1, total: 0 };
+  return {
+    items: res.data ?? [],
+    lastPage: res.meta?.last_page ?? 1,
+    total: res.meta?.total ?? 0,
+  };
+}

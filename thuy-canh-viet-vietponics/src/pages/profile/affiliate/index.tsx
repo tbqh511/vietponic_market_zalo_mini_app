@@ -11,6 +11,7 @@ import ReferralLinkCard from "./referral-link-card";
 import ReferralQRCard from "./referral-qr-card";
 import CommissionSummary from "./commission-summary";
 import CommissionList from "./commission-list";
+import ReferralsList from "./referrals-list";
 import LockedInfoNotice from "./locked-info-notice";
 import BankInfoForm from "./bank-info-form";
 
@@ -142,6 +143,8 @@ export default function AffiliatePage() {
         }}
         onUpdated={(p) => setProfile(p)}
       />
+
+      <ReferralsList />
 
       <CommissionList />
     </div>
