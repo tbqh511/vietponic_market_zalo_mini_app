@@ -6,8 +6,12 @@ import { PageSkeleton } from "./skeleton";
 import { Toaster } from "react-hot-toast";
 import { ScrollRestoration } from "./scroll-restoration";
 import FloatingCartPreview from "./floating-cart-preview";
+import PhoneRequiredGate from "./phone-required-gate";
+import { useInitAuth } from "@/hooks";
 
 export default function Layout() {
+  useInitAuth();
+
   return (
     <div className="w-screen h-screen flex flex-col bg-section text-foreground">
       <Header />
@@ -24,6 +28,7 @@ export default function Layout() {
         }}
       />
       <FloatingCartPreview />
+      <PhoneRequiredGate />
       <ScrollRestoration />
     </div>
   );

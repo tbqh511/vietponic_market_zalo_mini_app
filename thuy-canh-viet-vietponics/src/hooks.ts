@@ -173,6 +173,20 @@ export function useEnsureJwt() {
   };
 }
 
+// Gọi trong Layout để đảm bảo customerProfile luôn được load khi app khởi động.
+// Nếu JWT còn hạn nhưng profile chưa có (session mới), sẽ re-authenticate để lấy profile mới nhất.
+export function useInitAuth() {
+  const ensureJwt = useEnsureJwt();
+  const profile = useAtomValue(customerProfileState);
+
+  useEffect(() => {
+    // Nếu chưa có profile trong memory, chạy auth để populate (và cập nhật mobile nếu có)
+    if (!profile) {
+      ensureJwt();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 export function useFarmGuard() {
   const navigate = useNavigate();
   const profile = useAtomValue(customerProfileState);
