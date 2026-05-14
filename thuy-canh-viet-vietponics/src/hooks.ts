@@ -177,12 +177,34 @@ export function useEnsureJwt() {
 // Nếu JWT còn hạn nhưng profile chưa có (session mới), sẽ re-authenticate để lấy profile mới nhất.
 export function useInitAuth() {
   const ensureJwt = useEnsureJwt();
-  const profile = useAtomValue(customerProfileState);
+  const [profile, setProfile] = useAtom(customerProfileState);
 
   useEffect(() => {
-    // Nếu chưa có profile trong memory, chạy auth để populate (và cập nhật mobile nếu có)
     if (!profile) {
       ensureJwt();
+      return;
+    }
+    // Profile tồn tại nhưng mobile chưa có — thử lấy phone token ngầm nếu user đã cấp quyền
+    if (!profile.mobile) {
+      (async () => {
+        try {
+          const { getSetting } = await import("zmp-sdk/apis");
+          const { authSetting } = await getSetting({});
+          if (!authSetting["scope.userPhonenumber"]) return; // chưa cấp quyền → để PhoneRequiredGate xử lý
+          const { getPhoneNumber } = await import("zmp-sdk/apis");
+          const { token: phoneToken } = await getPhoneNumber({});
+          if (!phoneToken) return;
+          const accessToken = await getAccessToken();
+          if (!accessToken) return;
+          const result = await authenticate(accessToken, phoneToken);
+          if (result.data?.user?.mobile) {
+            setProfile(result.data.user);
+            localStorage.setItem("jwt_token", result.data.token);
+          }
+        } catch {
+          // silent — PhoneRequiredGate sẽ xử lý nếu vẫn thiếu mobile
+        }
+      })();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }
