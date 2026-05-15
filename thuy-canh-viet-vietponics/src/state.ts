@@ -19,8 +19,10 @@ import {
   Order,
   OrderStatus,
   Product,
+  ProductUnit,
   ShippingAddress,
   Station,
+  SystemUnit,
   UserInfo,
   ApiOrder,
   ApiOrderItem,
@@ -37,6 +39,21 @@ import toast from "react-hot-toast";
 import { calculateDistance } from "./utils/location";
 import { formatDistant } from "./utils/format";
 import CONFIG from "./config";
+
+function normalizeUnit(raw: any): ProductUnit | undefined {
+  if (!raw) return undefined;
+  const label = raw.unit_label ?? raw.unitLabel ?? null;
+  const sys = (raw.system_unit ?? raw.systemUnit) as SystemUnit | undefined;
+  const factor = Number(raw.conversion_factor ?? raw.conversionFactor);
+  if (!sys && !label && (!Number.isFinite(factor) || factor === 1)) {
+    return undefined;
+  }
+  return {
+    unitLabel: label,
+    systemUnit: (sys ?? "piece") as SystemUnit,
+    conversionFactor: Number.isFinite(factor) && factor > 0 ? factor : 1,
+  };
+}
 
 // Helper to normalize API responses that may wrap arrays in different shapes
 function extractArray<T>(res: any): T[] {
@@ -62,7 +79,8 @@ function convertApiOrderItemToCartItem(item: ApiOrderItem): CartItem {
       price: parseFloat(item.price),
       image: item.image,
       category: { id: 0, name: '', image: '' }, // Placeholder
-      detail: item.detail
+      detail: item.detail,
+      unit: normalizeUnit(item),
     },
     quantity: parseInt(item.quantity)
   };
@@ -189,6 +207,7 @@ export const productsState = atom(async (get) => {
       ...p,
       id: Number.isFinite(id) ? id : NaN,
       categoryId: Number.isFinite(categoryId) ? categoryId : NaN,
+      unit: normalizeUnit(p),
     } as Product & { categoryId: number };
   });
 

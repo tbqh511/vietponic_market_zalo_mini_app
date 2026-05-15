@@ -1,6 +1,6 @@
 import { useAddToCart } from "@/hooks";
 import { CartItem as CartItemProps } from "@/types";
-import { formatPrice } from "@/utils/format";
+import { formatPrice, formatQuantityWithUnit } from "@/utils/format";
 import { animated, useSpring } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
 import { useAtom } from "jotai";
@@ -77,7 +77,9 @@ export default function CartItem(props: CartItemProps) {
             )}
           </div>
         </div>
-        <div className="text-sm font-medium">x{quantity}</div>
+        <div className="text-sm font-medium text-right">
+          {formatQuantityWithUnit(quantity, props.product.unit)}
+        </div>
       </animated.div>
     </div>
   );

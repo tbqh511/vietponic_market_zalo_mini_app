@@ -7,6 +7,14 @@ export interface UserInfo {
   address: string;
 }
 
+export type SystemUnit = "g" | "ml" | "piece";
+
+export interface ProductUnit {
+  unitLabel?: string | null;
+  systemUnit: SystemUnit;
+  conversionFactor: number;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -17,6 +25,7 @@ export interface Product {
   detail?: string;
   sizes?: Size[];
   colors?: Color[];
+  unit?: ProductUnit;
 }
 
 export interface Category {
@@ -109,6 +118,10 @@ export interface ApiOrderItem {
   quantity: string;
   image: string;
   detail: string;
+  unit_label?: string | null;
+  system_unit?: SystemUnit | null;
+  conversion_factor?: string | number | null;
+  system_total?: string | number | null;
 }
 
 export interface ApiDelivery {

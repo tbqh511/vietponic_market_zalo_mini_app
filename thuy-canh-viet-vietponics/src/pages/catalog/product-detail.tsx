@@ -2,19 +2,22 @@ import HorizontalDivider from "@/components/horizontal-divider";
 import { useAtomValue } from "jotai";
 import { useNavigate, useParams } from "react-router-dom";
 import { productState } from "@/state";
-import { formatPrice } from "@/utils/format";
+import { formatPrice, formatQuantityWithUnit } from "@/utils/format";
 import ShareButton from "./share-buttont";
 import RelatedProducts from "./related-products";
 import { useAddToCart } from "@/hooks";
 import { Button } from "zmp-ui";
 import Section from "@/components/section";
+import { useState } from "react";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const product = useAtomValue(productState(Number(id)))!;
+  const [quantity, setQuantity] = useState(1);
 
   const navigate = useNavigate();
   const { addToCart } = useAddToCart(product);
+  const unitLabel = product.unit?.unitLabel;
 
   return (
     <div className="w-full h-full flex flex-col">
@@ -48,6 +51,36 @@ export default function ProductDetailPage() {
             )}
             <div className="text-sm mt-1">{product.name}</div>
           </div>
+          <div className="flex items-center justify-between bg-background rounded-lg px-3 py-2">
+            <div className="text-sm">
+              <div className="text-subtitle text-2xs mb-0.5">Số lượng</div>
+              <div className="font-medium">{formatQuantityWithUnit(quantity, product.unit)}</div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <button
+                aria-label="Giảm số lượng"
+                className="w-8 h-8 rounded-full bg-white border border-black/10 text-lg disabled:opacity-40"
+                disabled={quantity <= 1}
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              >
+                −
+              </button>
+              <div className="w-8 text-center font-medium">{quantity}</div>
+              <button
+                aria-label="Tăng số lượng"
+                className="w-8 h-8 rounded-full bg-white border border-black/10 text-lg"
+                onClick={() => setQuantity((q) => q + 1)}
+              >
+                +
+              </button>
+            </div>
+          </div>
+          {unitLabel && (
+            <div className="text-2xs text-subtitle">
+              1 {unitLabel} ≈ {product.unit!.conversionFactor.toLocaleString("vi-VN")}
+              {product.unit!.systemUnit === "piece" ? " cái" : product.unit!.systemUnit}
+            </div>
+          )}
           <ShareButton product={product} />
         </div>
         {product.detail && (
@@ -71,19 +104,15 @@ export default function ProductDetailPage() {
         <Button
           variant="tertiary"
           onClick={() => {
-            addToCart(1, {
-              toast: true,
-            });
+            addToCart((q) => q + quantity, { toast: true });
           }}
         >
           Thêm vào giỏ
         </Button>
         <Button
           onClick={() => {
-            addToCart(1);
-            navigate("/cart", {
-              viewTransition: true,
-            });
+            addToCart((q) => q + quantity);
+            navigate("/cart", { viewTransition: true });
           }}
         >
           Mua ngay
