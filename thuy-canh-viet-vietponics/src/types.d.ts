@@ -80,19 +80,35 @@ export type BackendOrderStatus =
   | "cancelled";
 
 // Frontend tab identifiers (dùng trong URL params và ordersState atom key)
-export type OrderStatus = "pending" | "shipping" | "completed";
+export type OrderStatus = "pending" | "shipping" | "completed" | "cancelled";
 export type PaymentStatus = "pending" | "success" | "failed";
+
+export type RefundStatus =
+  | "not_required"
+  | "pending_manual"
+  | "processing"
+  | "refunded"
+  | "failed";
+
+export type CancelledBy = "customer" | "admin";
 
 export interface Order {
   id: number;
   status: BackendOrderStatus;
   paymentStatus: PaymentStatus;
+  paymentMethod?: string;
   createdAt: Date;
   receivedAt: Date;
   items: CartItem[];
   delivery: Delivery;
   total: number;
   note: string;
+  cancelledAt?: Date;
+  cancelledBy?: CancelledBy;
+  cancellationReason?: string;
+  refundStatus?: RefundStatus;
+  refundAmount?: number;
+  refundedAt?: Date;
 }
 
 // Order interface từ API response
@@ -101,12 +117,23 @@ export interface ApiOrder {
   customer_id: string;
   status: BackendOrderStatus;
   payment_status: PaymentStatus;
+  payment_method?: string | null;
   created_at: string;
   received_at: string;
   total: string;
   note: string;
   items: ApiOrderItem[];
   delivery: ApiDelivery;
+  cancelled_at?: string | null;
+  cancelled_by?: string | null;
+  cancellation_reason?: string | null;
+  refund_status?: string | null;
+  refund_amount?: string | null;
+  refund_method?: string | null;
+  refund_transaction_id?: string | null;
+  refund_provider_id?: string | null;
+  refunded_at?: string | null;
+  refund_note?: string | null;
 }
 
 export interface ApiOrderItem {

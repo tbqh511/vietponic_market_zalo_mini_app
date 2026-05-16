@@ -27,6 +27,8 @@ import {
   InventoryProduct,
   InventoryStats,
   InventoryMeta,
+  ApiOrder,
+  Order,
 } from "@/types";
 import { getConfig } from "@/utils/template";
 import { requestWithPost, request, authenticate } from "@/utils/request";
@@ -692,4 +694,97 @@ export function useRouteHandle() {
   const lastMatch = matches[matches.length - 1];
 
   return [lastMatch.handle, lastMatch, matches] as const;
+}
+
+/**
+ * Huỷ đơn hàng từ phía khách. Gọi POST /orders/{id}/cancel với JWT.
+ * Refresh atom orders cho cả tab pending (nguồn) và cancelled (đích).
+ * Re-auth on 401 giống pattern useCheckout.
+ */
+export function useCancelOrder() {
+  const refreshPending = useSetAtom(ordersState("pending"));
+  const refreshCancelled = useSetAtom(ordersState("cancelled"));
+
+  return useCallback(
+    async (
+      orderId: number,
+      reasonCode: string,
+      reasonText?: string
+    ): Promise<Order> => {
+      const apiBase = getConfig((c) => c.template.apiUrl).replace(/\/+$/, "");
+      const url = `${apiBase}/orders/${orderId}/cancel`;
+      const body = JSON.stringify({
+        reason_code: reasonCode,
+        reason: reasonText ?? "",
+      });
+
+      let token = localStorage.getItem("jwt_token") || "";
+      const buildHeaders = (t: string): Record<string, string> => ({
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${t}`,
+      });
+
+      let response = await fetch(url, {
+        method: "POST",
+        headers: buildHeaders(token),
+        body,
+      });
+
+      // 401 → re-auth once và retry
+      if (response.status === 401) {
+        localStorage.removeItem("jwt_token");
+        const newAccessToken = await getAccessToken();
+        const newAuthResult = await authenticate(newAccessToken);
+        const newToken = newAuthResult.data?.token;
+        if (!newToken) throw new Error("Không thể xác thực lại.");
+        localStorage.setItem("jwt_token", newToken);
+        response = await fetch(url, {
+          method: "POST",
+          headers: buildHeaders(newToken),
+          body,
+        });
+      }
+
+      if (!response.ok) {
+        const errBody = await response.text();
+        let msg = "Huỷ đơn thất bại";
+        try {
+          const parsed = JSON.parse(errBody);
+          if (parsed?.message) msg = parsed.message;
+        } catch {
+          /* ignore parse error */
+        }
+        const err = new Error(msg);
+        (err as any).status = response.status;
+        throw err;
+      }
+
+      const json = (await response.json()) as { error: boolean; data: ApiOrder };
+      refreshPending();
+      refreshCancelled();
+
+      // Tái sử dụng converter từ state.ts để giữ shape Order nhất quán
+      const apiOrder = json.data;
+      return {
+        id: parseInt(apiOrder.id),
+        status: apiOrder.status,
+        paymentStatus: apiOrder.payment_status,
+        paymentMethod: apiOrder.payment_method ?? undefined,
+        createdAt: new Date(apiOrder.created_at),
+        receivedAt: new Date(apiOrder.received_at),
+        items: [],
+        delivery: { type: "shipping", alias: "", address: "", name: "", phone: "" },
+        total: parseFloat(apiOrder.total),
+        note: apiOrder.note,
+        cancelledAt: apiOrder.cancelled_at ? new Date(apiOrder.cancelled_at) : undefined,
+        cancelledBy: (apiOrder.cancelled_by as Order["cancelledBy"]) ?? undefined,
+        cancellationReason: apiOrder.cancellation_reason ?? undefined,
+        refundStatus: (apiOrder.refund_status as Order["refundStatus"]) ?? undefined,
+        refundAmount: apiOrder.refund_amount ? parseFloat(apiOrder.refund_amount) : undefined,
+        refundedAt: apiOrder.refunded_at ? new Date(apiOrder.refunded_at) : undefined,
+      };
+    },
+    [refreshPending, refreshCancelled]
+  );
 }

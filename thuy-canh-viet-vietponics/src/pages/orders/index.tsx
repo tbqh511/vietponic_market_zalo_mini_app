@@ -22,6 +22,9 @@ function OrdersPage() {
       <Tabs.Tab key="completed" label="Lịch sử">
         <OrderList ordersState={ordersState("completed")} />
       </Tabs.Tab>
+      <Tabs.Tab key="cancelled" label="Đã huỷ">
+        <OrderList ordersState={ordersState("cancelled")} />
+      </Tabs.Tab>
     </Tabs>
   );
 }

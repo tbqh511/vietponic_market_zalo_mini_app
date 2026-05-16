@@ -89,7 +89,7 @@ function convertApiOrderItemToCartItem(item: ApiOrderItem): CartItem {
 // Convert ApiOrder to Order format for UI compatibility
 function convertApiOrderToOrder(apiOrder: ApiOrder): Order {
   let delivery: Delivery;
-  
+
   if (apiOrder.delivery.type === 'shipping') {
     delivery = {
       type: 'shipping',
@@ -109,12 +109,19 @@ function convertApiOrderToOrder(apiOrder: ApiOrder): Order {
     id: parseInt(apiOrder.id),
     status: apiOrder.status,
     paymentStatus: apiOrder.payment_status,
+    paymentMethod: apiOrder.payment_method ?? undefined,
     createdAt: new Date(apiOrder.created_at),
     receivedAt: new Date(apiOrder.received_at),
     items: apiOrder.items.map(convertApiOrderItemToCartItem),
     delivery,
     total: parseFloat(apiOrder.total),
-    note: apiOrder.note
+    note: apiOrder.note,
+    cancelledAt: apiOrder.cancelled_at ? new Date(apiOrder.cancelled_at) : undefined,
+    cancelledBy: (apiOrder.cancelled_by as Order["cancelledBy"]) ?? undefined,
+    cancellationReason: apiOrder.cancellation_reason ?? undefined,
+    refundStatus: (apiOrder.refund_status as Order["refundStatus"]) ?? undefined,
+    refundAmount: apiOrder.refund_amount ? parseFloat(apiOrder.refund_amount) : undefined,
+    refundedAt: apiOrder.refunded_at ? new Date(apiOrder.refunded_at) : undefined,
   };
 }
 export const userInfoKeyState = atom(0);
@@ -352,7 +359,8 @@ export const shippingAddressState = atomWithStorage<
 const ORDER_STATUS_MAP: Record<OrderStatus, BackendOrderStatus[]> = {
   pending:   ["pending", "confirmed", "preparing"],
   shipping:  ["delivering"],
-  completed: ["delivered", "cancelled"],
+  completed: ["delivered"],
+  cancelled: ["cancelled"],
 };
 
 export const ordersState = atomFamily((status: OrderStatus) =>
