@@ -21,9 +21,11 @@ import {
   Product,
   ProductUnit,
   ShippingAddress,
+  ShippingService,
   Station,
   SystemUnit,
   UserInfo,
+  VtpLocation,
   ApiOrder,
   ApiOrderItem,
 } from "@/types";
@@ -420,3 +422,13 @@ export const farmInventoryStatsState = atom<InventoryStats | null>(null);
 
 // Bumped after every successful import/export to force the inventory hook to refetch.
 export const farmInventoryRefreshTokenState = atom(0);
+
+// ── Shipping ──────────────────────────────────────────────────────────────────
+
+// Dịch vụ vận chuyển user đã chọn (sau khi estimate trả về danh sách)
+export const selectedShippingServiceState = atom<ShippingService | null>(null);
+
+// Cache tạm danh sách tỉnh/huyện/xã để tránh fetch lại mỗi lần render
+export const vtpProvincesState = atom<VtpLocation[]>([]);
+export const vtpDistrictsState = atom<VtpLocation[]>([]);
+export const vtpWardsState = atom<VtpLocation[]>([]);

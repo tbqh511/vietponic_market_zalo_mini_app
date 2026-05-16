@@ -1,5 +1,6 @@
 import HorizontalDivider from "@/components/horizontal-divider";
 import Section from "@/components/section";
+import ShippingMethodPicker from "@/components/shipping-method-picker";
 import { StationSkeleton } from "@/components/skeleton";
 import TransitionLink from "@/components/transition-link";
 import {
@@ -10,11 +11,11 @@ import {
   PlusIcon,
   ShipperIcon,
 } from "@/components/vectors";
+import { useShippingFee } from "@/hooks/useShippingFee";
 import {
   deliveryModeState,
   selectedStationState,
   shippingAddressState,
-
 } from "@/state";
 import { useAtom, useAtomValue } from "jotai";
 import { Suspense } from "react";
@@ -80,6 +81,18 @@ function SelectedStationSummary() {
 
 
 
+function ShippingServiceSection() {
+  const { services, loading } = useShippingFee();
+  if (!loading && services.length === 0) return null;
+  return (
+    <Section title="Dịch vụ vận chuyển" className="rounded-lg">
+      <div className="px-4 py-3">
+        <ShippingMethodPicker services={services} loading={loading} />
+      </div>
+    </Section>
+  );
+}
+
 function Delivery() {
   const [selectedDeliveryMode, setSelectedDeliveryMode] =
     useAtom(deliveryModeState);
@@ -126,7 +139,9 @@ function Delivery() {
         )}
       </Section>
 
-      
+      {selectedDeliveryMode === "shipping" && <ShippingServiceSection />}
     </>
   );
-}export default Delivery;
+}
+
+export default Delivery;

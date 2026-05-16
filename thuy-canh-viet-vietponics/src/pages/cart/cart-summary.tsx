@@ -1,11 +1,24 @@
 import { useAtomValue } from "jotai";
-import { cartTotalState } from "@/state";
+import {
+  cartTotalState,
+  deliveryModeState,
+  selectedShippingServiceState,
+} from "@/state";
 import { formatPrice } from "@/utils/format";
 import Section from "@/components/section";
 import HorizontalDivider from "@/components/horizontal-divider";
+import { useShippingFee } from "@/hooks/useShippingFee";
 
 export default function CartSummary() {
   const { totalAmount } = useAtomValue(cartTotalState);
+  const deliveryMode = useAtomValue(deliveryModeState);
+  const selectedService = useAtomValue(selectedShippingServiceState);
+  const { loading: feeLoading } = useShippingFee();
+
+  const isShipping = deliveryMode === "shipping";
+  const shippingFee = isShipping ? (selectedService?.total_fee ?? null) : 0;
+  const finalTotal =
+    shippingFee !== null ? totalAmount + shippingFee : totalAmount;
 
   return (
     <Section title="Thanh toán" className="rounded-lg">
@@ -18,14 +31,30 @@ export default function CartSummary() {
             </tr>
             <tr>
               <th>Phí vận chuyển</th>
-              <td>0 VND</td>
+              <td>
+                {!isShipping ? (
+                  "—"
+                ) : feeLoading ? (
+                  <span className="inline-block w-16 h-3 rounded bg-gray-200 animate-pulse" />
+                ) : shippingFee !== null ? (
+                  formatPrice(shippingFee)
+                ) : (
+                  <span className="text-inactive text-xs">Chọn địa chỉ giao</span>
+                )}
+              </td>
             </tr>
           </tbody>
         </table>
         <HorizontalDivider />
         <div className="flex justify-between font-medium text-sm">
           <div>Tổng thanh toán</div>
-          <div>{formatPrice(totalAmount)}</div>
+          <div>
+            {feeLoading && isShipping ? (
+              <span className="inline-block w-24 h-4 rounded bg-gray-200 animate-pulse" />
+            ) : (
+              formatPrice(finalTotal)
+            )}
+          </div>
         </div>
       </div>
     </Section>

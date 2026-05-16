@@ -11,6 +11,7 @@ import {
   userInfoState,
   productsState,
   shippingAddressState,
+  selectedShippingServiceState,
   selectedStationState,
   deliveryModeState,
   noteState,
@@ -403,6 +404,7 @@ export function useCheckout() {
   const navigate = useNavigate();
   const refreshNewOrders = useSetAtom(ordersState("pending"));
   const shippingAddress = useAtomValue(shippingAddressState);
+  const selectedShippingService = useAtomValue(selectedShippingServiceState);
   const selectedStation = useAtomValue(selectedStationState);
   const deliveryMode = useAtomValue(deliveryModeState);
   const note = useAtomValue(noteState);
@@ -481,13 +483,32 @@ export function useCheckout() {
         });
       });
 
+      // Tính finalTotal = subtotal + shipping_fee trước khi build payload
+      const subtotal = totalAmount;
+      const shippingFee = deliveryMode === "shipping"
+        ? (selectedShippingService?.total_fee ?? 0)
+        : 0;
+      const finalTotal = subtotal + shippingFee;
+
+      // Validate: nếu mode shipping mà chưa chọn dịch vụ ship → báo lỗi
+      if (deliveryMode === "shipping" && !selectedShippingService) {
+        toast.error("Vui lòng chọn dịch vụ vận chuyển trước khi thanh toán.");
+        return;
+      }
+
       // Prepare order data for API
-      const deliveryData = deliveryMode === "shipping" 
+      const deliveryData = deliveryMode === "shipping"
         ? {
             type: "shipping" as const,
             address: shippingAddress?.address || "",
             name: shippingAddress?.name || userInfo?.name || "",
             phone: phone || shippingAddress?.phone || userInfo?.phone || "",
+            province_id: shippingAddress?.province_id,
+            district_id: shippingAddress?.district_id,
+            ward_id: shippingAddress?.ward_id,
+            province_name: shippingAddress?.province_name,
+            district_name: shippingAddress?.district_name,
+            ward_name: shippingAddress?.ward_name,
           }
         : {
             type: "pickup" as const,
@@ -508,7 +529,11 @@ export function useCheckout() {
           customer_id: userInfo?.id || "",
           items: mappedItems,
           delivery: deliveryData,
-          total: totalAmount.toString(),
+          subtotal: subtotal.toString(),
+          shipping_fee: shippingFee.toString(),
+          shipping_service_code: selectedShippingService?.service_code ?? undefined,
+          shipping_service_name: selectedShippingService?.service_name ?? undefined,
+          total: finalTotal.toString(),
           note: note,
           created_at: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).replace(' ', 'T') + '+07:00',
       };
@@ -557,42 +582,39 @@ export function useCheckout() {
       const { orderId: myOrderId } = await finalOrderResponse.json();
       console.log("My order created by id:", myOrderId);
 
-      // 2. Chuẩn bị params để tạo MAC (với JWT auth)
-      const amount = totalAmount;
+      // 2. Chuẩn bị params để tạo MAC ngay trước khi mở SDK
+      // amount PHẢI là finalTotal (subtotal + shipping_fee) — nếu đổi dịch vụ ship thì MAC cũ vô hiệu
+      const amount = finalTotal;
       const desc = `Thanh toán cho đơn hàng ${myOrderId}`;
       const item = cart.map<{ id: number; amount: number }>((cartItem) => ({
         id: cartItem.product.id,
         amount: cartItem.product.price * cartItem.quantity,
       }));
-      const extradata = JSON.stringify({
-        myOrderId,
-      });
+      const extradata = JSON.stringify({ myOrderId });
       const method = selectedMethod.isCustom
         ? { id: selectedMethod.method, isCustom: true as const }
         : selectedMethod.method;
 
+      // prepare-order gọi ngay trước SDK Checkout (không gọi sớm hơn)
       const payload = { amount, desc, item, extradata, method };
-      console.log("[ZaloCheckout] callback/overallMac - payload gửi đi:", payload);
-      const prepareResponse = await fetch(
-        `${apiBase}/prepare-order`,
-        {
-          method: "POST",
-          headers: authHeaders,
-          body: JSON.stringify(payload),
-        }
-      );
+      console.log("[ZaloCheckout] prepare-order payload:", payload);
+      const prepareResponse = await fetch(`${apiBase}/prepare-order`, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify(payload),
+      });
       if (!prepareResponse.ok) {
         throw new Error("Tạo MAC thất bại");
       }
       const { mac } = await prepareResponse.json();
-      console.log("[ZaloCheckout] callback/overallMac - mac nhận về:", mac);
+      console.log("[ZaloCheckout] mac:", mac);
 
-      // 3. Kích hoạt giao dịch thanh toán
-      console.log("[ZaloCheckout] createOrder - params gửi đi:", { desc, item, amount: totalAmount, extradata, method, mac });
+      // 3. Kích hoạt giao dịch thanh toán (amount = finalTotal, không phải subtotal)
+      console.log("[ZaloCheckout] createOrder:", { desc, item, amount, extradata, method, mac });
       const { orderId: checkoutSdkOrderId } = await createOrder({
         desc,
         item,
-        amount: totalAmount,
+        amount,
         extradata,
         method,
         mac,

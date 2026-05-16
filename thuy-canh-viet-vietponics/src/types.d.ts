@@ -26,6 +26,7 @@ export interface Product {
   sizes?: Size[];
   colors?: Color[];
   unit?: ProductUnit;
+  weight?: number;   // gam — dùng để tính phí ship
 }
 
 export interface Category {
@@ -48,9 +49,32 @@ export interface Location {
 
 export interface ShippingAddress {
   alias: string;
-  address: string;
+  address: string;       // chi tiết: số nhà, tên đường
   name: string;
   phone: string;
+  // VTP administrative IDs — bắt buộc khi type === 'shipping'
+  province_id?: number;
+  district_id?: number;
+  ward_id?: number;
+  province_name?: string;
+  district_name?: string;
+  ward_name?: string;
+}
+
+export interface VtpLocation {
+  id: number;
+  code?: string | null;
+  name: string;
+}
+
+export interface ShippingService {
+  service_code: string;
+  service_name: string;
+  fee: number;
+  vat: number;
+  total_fee: number;
+  kpi_ht: string | null;   // thời gian giao cam kết từ VTP
+  exchange_weight: number | null;
 }
 
 export interface Station {
@@ -164,6 +188,12 @@ export interface ApiDelivery {
   station_image?: string;
   lat?: string;
   lng?: string;
+  province_id?: number | null;
+  district_id?: number | null;
+  ward_id?: number | null;
+  province_name?: string | null;
+  district_name?: string | null;
+  ward_name?: string | null;
 }
 interface CreateOrderItem {
   product_id: string;
@@ -180,6 +210,12 @@ interface CreateOrderDelivery {
   name: string;
   phone: string;
   station_id?: string;
+  province_id?: number;
+  district_id?: number;
+  ward_id?: number;
+  province_name?: string;
+  district_name?: string;
+  ward_name?: string;
 }
 
 interface CreateOrderRequest {
@@ -187,6 +223,10 @@ interface CreateOrderRequest {
   items: CreateOrderItem[];
   delivery: CreateOrderDelivery;
   total: string;
+  subtotal: string;
+  shipping_fee: string;
+  shipping_service_code?: string;
+  shipping_service_name?: string;
   note: string;
   created_at: string;
 }
