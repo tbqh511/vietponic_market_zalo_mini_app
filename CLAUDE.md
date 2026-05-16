@@ -56,21 +56,31 @@ Sandbox channels currently used: `COD_SANDBOX`, `BANK_SANDBOX` (in `useCheckout`
 
 ### Order status mapping
 
-Backend stores six statuses (`pending | confirmed | preparing | delivering | delivered | cancelled` — `BackendOrderStatus` in [src/types.d.ts](thuy-canh-viet-vietponics/src/types.d.ts)). The frontend collapses these into three tab keys (`pending | shipping | completed` — `OrderStatus`) via `ORDER_STATUS_MAP` in [src/state.ts](thuy-canh-viet-vietponics/src/state.ts). When changing status logic, update **both** the controller's allowed-status list and `ORDER_STATUS_MAP`, otherwise orders disappear from tabs.
+Backend stores six statuses (`pending | confirmed | preparing | delivering | delivered | cancelled` — `BackendOrderStatus` in [src/types.d.ts](thuy-canh-viet-vietponics/src/types.d.ts)). The frontend collapses these into four tab keys (`pending | shipping | completed | cancelled` — `OrderStatus`) via `ORDER_STATUS_MAP` in [src/state.ts](thuy-canh-viet-vietponics/src/state.ts). When changing status logic, update **both** the controller's allowed-status list and `ORDER_STATUS_MAP`, otherwise orders disappear from tabs.
 
 ### Backend (Laravel 9 / PHP 8 / JWT)
 
-- All Mini App endpoints are in [routes/api.php](../vietponic_market_zalo_backend/routes/api.php), all served from `ZaloApiController`. Three groupings:
-  - **Public**: `categories`, `products`, `banners`, `stations`, `authenticate`, `infouser`, `get-location`, `notify` (Zalo webhook — MAC-protected, not JWT-protected).
-  - **Customer JWT** (`zalo.jwt` middleware → [ZaloJwtMiddleware](../vietponic_market_zalo_backend/app/Http/Middleware/ZaloJwtMiddleware.php), reads `customer_id` claim, checks `Customer.isActive`): `prepare-order`, `orders`, `orders/{id}`, `checkout` / `create-order` / `orders` (POST), `link`.
-  - **Admin** (`zalo.admin` middleware, header `X-Admin-Secret: $ADMIN_API_SECRET`): `PATCH orders/{id}/status`.
+- All Mini App endpoints are in [routes/api.php](../vietponic_market_zalo_backend/routes/api.php). Four groupings:
+  - **Public**: `categories`, `products`, `banners`, `stations`, `authenticate`, `infouser`, `get-location`, `notify` (Zalo webhook — MAC-protected, not JWT-protected). Also `locations/provinces|districts|wards` (VTP address lookup).
+  - **Customer JWT** (`zalo.jwt` middleware → [ZaloJwtMiddleware](../vietponic_market_zalo_backend/app/Http/Middleware/ZaloJwtMiddleware.php), reads `customer_id` claim, checks `Customer.isActive`): `prepare-order`, `orders`, `orders/{id}`, `checkout` / `create-order` / `orders` (POST), `orders/{id}/cancel`, `link`, `shipping/estimate` (rate-limited 60/min), and all `affiliate/*` routes.
+  - **Farm Partner** (`zalo.farm` middleware — JWT + `is_farm_partner` flag): `farm/inventory`, `farm/inventory/{id}/movements`, `farm/inventory/{id}/import`, `farm/inventory/{id}/export`. Served by [FarmStockController](../vietponic_market_zalo_backend/app/Http/Controllers/Farm/FarmStockController.php).
+  - **Admin** (`zalo.admin` middleware, header `X-Admin-Secret: $ADMIN_API_SECRET`): `PATCH orders/{id}/status`, `orders/{id}/refund/confirm-manual`, and `admin/inventory/*` routes via [StockApiController](../vietponic_market_zalo_backend/app/Http/Controllers/Admin/StockApiController.php).
 - The legacy real-estate (BDS) parts of this Laravel app share the same codebase — admin web routes (`zalo-categories`, `zalo-products`, `zalo-orders`, `zalo-stations`, `zalo-order-items`) live in [routes/web.php](../vietponic_market_zalo_backend/routes/web.php) under `auth + checklogin + language` middleware. The `Customer` model is shared with the older BDS app, which is why customer columns were progressively made nullable (see migrations dated 2026_05_08_*). Don't add NOT NULL columns to `customers` without checking BDS usage first.
-- Background job: [`App\Jobs\CheckPaymentStatus`](../vietponic_market_zalo_backend/app/Jobs/CheckPaymentStatus.php) — dispatched from `link()` with delay; queue connection is `database` (set `QUEUE_CONNECTION=sync` for `.env.testing` so the job runs inline during tests).
+- Background jobs: [`CheckPaymentStatus`](../vietponic_market_zalo_backend/app/Jobs/CheckPaymentStatus.php) (dispatched from `link()`, ~20min delay) and [`CheckRefundStatus`](../vietponic_market_zalo_backend/app/Jobs/CheckRefundStatus.php). Queue connection is `database` (set `QUEUE_CONNECTION=sync` for `.env.testing` so jobs run inline during tests).
+- Services: [`StockService`](../vietponic_market_zalo_backend/app/Services/StockService.php) (stock check/reserve/release), [`RefundService`](../vietponic_market_zalo_backend/app/Services/RefundService.php), [`ViettelPostService`](../vietponic_market_zalo_backend/app/Services/ViettelPostService.php) (VTP shipping estimate — caches token 20h, provinces 30d, districts 7d). VTP credentials live in `config/viettelpost.php`.
 - Tests use sqlite `:memory:` and the env vars in [phpunit.xml](../vietponic_market_zalo_backend/phpunit.xml) — note that `ZALO_CHECK_OUT_SECRET`, `ZALO_APP_SECRET`, `ADMIN_API_SECRET`, `JWT_SECRET` are overridden there with test values. If a Zalo test fails with MAC mismatch, check that the test isn't accidentally reading the real `.env`.
+
+### Additional feature areas
+
+- **Affiliate/CTV** — [src/pages/profile/affiliate/](thuy-canh-viet-vietponics/src/pages/profile/affiliate/) + [AffiliateController.php](../vietponic_market_zalo_backend/app/Http/Controllers/AffiliateController.php). Referral codes are applied via `applyPendingReferral()` in [src/utils/affiliate.ts](thuy-canh-viet-vietponics/src/utils/affiliate.ts) after auth. Commission events fire via `OrderPaymentSucceeded` → `RecordAffiliateCommission` listener.
+- **Farm partner portal** — [src/pages/farm/](thuy-canh-viet-vietponics/src/pages/farm/). Guarded by `useFarmGuard()` in hooks.ts (redirects non-farm-partners to `/`). Inventory pagination and filter state live in `farmInventoryFiltersState` / `useFarmInventory()`.
+- **Shipping fee estimate** — [src/hooks/useShippingFee.ts](thuy-canh-viet-vietponics/src/hooks/useShippingFee.ts) (note: separate file, not inside hooks.ts). Calls `POST /shipping/estimate` with VTP address IDs; auto-selects the first returned service. Falls back to a static flat fee when `apiUrl` is empty (offline/mock mode).
+- **VTP address lookup** — Provinces/districts/wards are served from `GET /locations/provinces|districts|wards`. Data is synced from VTP via `php artisan vtp:sync-locations`.
 
 ## Conventions
 
 - All frontend user-facing strings are Vietnamese — keep that when adding UI.
 - Money is stored as `string` over the wire (`price`, `total`, `quantity`) and parsed into numbers in `convertApiOrderToOrder` / `convertApiOrderItemToCartItem`. New API contracts should follow the same string-on-wire pattern to avoid float precision drift.
+- Protected API calls (JWT routes) must include `Authorization: Bearer <token>` from `localStorage.getItem("jwt_token")`. Use `useEnsureJwt()` to obtain/refresh the token before making protected calls.
 - Tailwind theme tokens come from CSS variables in `src/css/tailwind.scss` — change colors there, not in component classes.
 - `app-config.json.template.apiUrl` is the single source of truth for the API host. Don't hardcode `https://vietponics.vn/api` in fetches; read it via `getConfig`.
