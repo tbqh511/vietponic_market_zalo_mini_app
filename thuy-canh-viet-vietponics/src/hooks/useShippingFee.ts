@@ -28,7 +28,7 @@ export function useShippingFee() {
       setServices([]);
       return;
     }
-    if (!address?.ward_id || !address?.district_id || !address?.province_id) {
+    if (!address?.ward_id || !address?.province_id) {
       setServices([]);
       return;
     }
@@ -110,7 +110,6 @@ export function useShippingFee() {
   }, [
     deliveryMode,
     address?.ward_id,
-    address?.district_id,
     address?.province_id,
     cart.length,
     totalAmount,

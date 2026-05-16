@@ -65,6 +65,7 @@ export interface VtpLocation {
   id: number;
   code?: string | null;
   name: string;
+  district_id?: number | null; // có trong ward response v3 — dùng cho shipping estimate
 }
 
 export interface ShippingService {

@@ -2,7 +2,6 @@ import {
   shippingAddressState,
   loadableUserInfoState,
   vtpProvincesState,
-  vtpDistrictsState,
   vtpWardsState,
   selectedShippingServiceState,
 } from "@/state";
@@ -22,9 +21,8 @@ function ShippingAddressPage() {
   const userInfoLoadable = useAtomValue(loadableUserInfoState);
   const setSelectedService = useSetAtom(selectedShippingServiceState);
 
-  // ── Location cascading state ─────────────────────────────────────────────
+  // ── Location cascading state (v3: 2 cấp Tỉnh/TP → Phường/Xã) ────────────
   const [provinces, setProvinces] = useAtom(vtpProvincesState);
-  const [districts, setDistricts] = useAtom(vtpDistrictsState);
   const [wards, setWards] = useAtom(vtpWardsState);
 
   const [selectedProvince, setSelectedProvince] = useState<VtpLocation | null>(
@@ -32,12 +30,6 @@ function ShippingAddressPage() {
       ? { id: address.province_id, name: address.province_name ?? "" }
       : null
   );
-  const [selectedDistrict, setSelectedDistrict] =
-    useState<VtpLocation | null>(
-      address?.district_id
-        ? { id: address.district_id, name: address.district_name ?? "" }
-        : null
-    );
   const [selectedWard, setSelectedWard] = useState<VtpLocation | null>(
     address?.ward_id
       ? { id: address.ward_id, name: address.ward_name ?? "" }
@@ -45,7 +37,6 @@ function ShippingAddressPage() {
   );
 
   const [loadingProvinces, setLoadingProvinces] = useState(false);
-  const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [loadingWards, setLoadingWards] = useState(false);
 
   // Fetch provinces một lần khi mount (cache ở atom)
@@ -61,47 +52,28 @@ function ShippingAddressPage() {
       .finally(() => setLoadingProvinces(false));
   }, []);
 
-  // Fetch districts khi province thay đổi
+  // Fetch wards khi province thay đổi (v3: query theo province_id)
   useEffect(() => {
     if (!selectedProvince) {
-      setDistricts([]);
-      setWards([]);
-      return;
-    }
-    setLoadingDistricts(true);
-    setDistricts([]);
-    setWards([]);
-    request<any>(`/locations/districts?province_id=${selectedProvince.id}`)
-      .then((res) => {
-        const data: VtpLocation[] = res?.data ?? res ?? [];
-        setDistricts(data);
-      })
-      .catch(() => toast.error("Không tải được danh sách quận/huyện"))
-      .finally(() => setLoadingDistricts(false));
-  }, [selectedProvince?.id]);
-
-  // Fetch wards khi district thay đổi
-  useEffect(() => {
-    if (!selectedDistrict) {
       setWards([]);
       return;
     }
     setLoadingWards(true);
     setWards([]);
-    request<any>(`/locations/wards?district_id=${selectedDistrict.id}`)
+    request<any>(`/locations/wards?province_id=${selectedProvince.id}`)
       .then((res) => {
         const data: VtpLocation[] = res?.data ?? res ?? [];
         setWards(data);
       })
       .catch(() => toast.error("Không tải được danh sách phường/xã"))
       .finally(() => setLoadingWards(false));
-  }, [selectedDistrict?.id]);
+  }, [selectedProvince?.id]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!selectedProvince || !selectedDistrict || !selectedWard) {
-      toast.error("Vui lòng chọn đủ Tỉnh / Huyện / Xã");
+    if (!selectedProvince || !selectedWard) {
+      toast.error("Vui lòng chọn Tỉnh/Thành và Phường/Xã");
       return;
     }
 
@@ -112,10 +84,10 @@ function ShippingAddressPage() {
       name: (data.get("name") as string) ?? "",
       phone: (data.get("phone") as string) ?? "",
       province_id: selectedProvince.id,
-      district_id: selectedDistrict.id,
+      district_id: selectedWard.district_id ?? undefined,
       ward_id: selectedWard.id,
       province_name: selectedProvince.name,
-      district_name: selectedDistrict.name,
+      district_name: undefined,
       ward_name: selectedWard.name,
     };
 
@@ -151,7 +123,7 @@ function ShippingAddressPage() {
           />
         </div>
 
-        {/* ── Địa chỉ giao hàng (3 cấp + chi tiết) ── */}
+        {/* ── Địa chỉ giao hàng (2 cấp + chi tiết) ── */}
         <div className="bg-section p-4 grid gap-4">
           <div>
             <label className="text-sm font-medium text-gray-700 mb-1 block">
@@ -165,7 +137,6 @@ function ShippingAddressPage() {
               onChange={(val) => {
                 const prov = provinces.find((p) => p.id === Number(val)) ?? null;
                 setSelectedProvince(prov);
-                setSelectedDistrict(null);
                 setSelectedWard(null);
               }}
             >
@@ -177,38 +148,12 @@ function ShippingAddressPage() {
 
           <div>
             <label className="text-sm font-medium text-gray-700 mb-1 block">
-              Quận / Huyện <span className="text-danger">*</span>
+              Phường / Xã <span className="text-danger">*</span>
             </label>
             <Select
               placeholder={
                 !selectedProvince
                   ? "Chọn tỉnh/thành trước"
-                  : loadingDistricts
-                  ? "Đang tải..."
-                  : "Chọn quận/huyện"
-              }
-              value={selectedDistrict?.id?.toString() ?? ""}
-              onChange={(val) => {
-                const dist = districts.find((d) => d.id === Number(val)) ?? null;
-                setSelectedDistrict(dist);
-                setSelectedWard(null);
-              }}
-              disabled={!selectedProvince || loadingDistricts}
-            >
-              {districts.map((d) => (
-                <Select.Option key={d.id} value={d.id.toString()} title={d.name} />
-              ))}
-            </Select>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">
-              Phường / Xã <span className="text-danger">*</span>
-            </label>
-            <Select
-              placeholder={
-                !selectedDistrict
-                  ? "Chọn quận/huyện trước"
                   : loadingWards
                   ? "Đang tải..."
                   : "Chọn phường/xã"
@@ -218,7 +163,7 @@ function ShippingAddressPage() {
                 const ward = wards.find((w) => w.id === Number(val)) ?? null;
                 setSelectedWard(ward);
               }}
-              disabled={!selectedDistrict || loadingWards}
+              disabled={!selectedProvince || loadingWards}
             >
               {wards.map((w) => (
                 <Select.Option key={w.id} value={w.id.toString()} title={w.name} />

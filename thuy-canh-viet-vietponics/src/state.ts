@@ -428,7 +428,6 @@ export const farmInventoryRefreshTokenState = atom(0);
 // Dịch vụ vận chuyển user đã chọn (sau khi estimate trả về danh sách)
 export const selectedShippingServiceState = atom<ShippingService | null>(null);
 
-// Cache tạm danh sách tỉnh/huyện/xã để tránh fetch lại mỗi lần render
+// Cache tạm danh sách tỉnh/xã (v3 bỏ cấp quận/huyện)
 export const vtpProvincesState = atom<VtpLocation[]>([]);
-export const vtpDistrictsState = atom<VtpLocation[]>([]);
 export const vtpWardsState = atom<VtpLocation[]>([]);
