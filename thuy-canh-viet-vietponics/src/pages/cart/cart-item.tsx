@@ -3,8 +3,8 @@ import { CartItem as CartItemProps } from "@/types";
 import { formatPrice, formatQuantityWithUnit } from "@/utils/format";
 import { animated, useSpring } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
-import { useAtom } from "jotai";
-import { selectedCartItemIdsState } from "@/state";
+import { useAtom, useAtomValue } from "jotai";
+import { isOutOfStock, productState, selectedCartItemIdsState } from "@/state";
 import { useEffect, useState } from "react";
 import { Icon } from "zmp-ui";
 
@@ -13,6 +13,10 @@ const SWIPE_TO_DELTE_OFFSET = 80;
 export default function CartItem(props: CartItemProps) {
   const [quantity, setQuantity] = useState(props.quantity);
   const { addToCart } = useAddToCart(props.product);
+
+  // Đọc fresh stockAvailable từ productsState (snapshot trong cart có thể cũ).
+  const freshProduct = useAtomValue(productState(props.product.id));
+  const outOfStock = freshProduct ? isOutOfStock(freshProduct) : false;
 
   const [selectedItemIds, setSelectedItemIds] = useAtom(
     selectedCartItemIdsState
@@ -61,13 +65,27 @@ export default function CartItem(props: CartItemProps) {
       <animated.div
         {...bind()}
         style={{ x }}
-        className="bg-white p-4 flex items-center space-x-4 relative"
+        className={`bg-white p-4 flex items-center space-x-4 relative ${
+          outOfStock ? "border-l-4 border-danger" : ""
+        }`}
       >
-        <img src={props.product.image} className="w-14 h-14 rounded-lg" />
+        <img
+          src={props.product.image}
+          className={`w-14 h-14 rounded-lg ${outOfStock ? "opacity-50 grayscale" : ""}`}
+        />
         <div className="flex-1 space-y-1">
-          <div className="text-sm">{props.product.name}</div>
+          <div className="text-sm flex items-center gap-2">
+            <span className={outOfStock ? "text-subtitle" : ""}>
+              {props.product.name}
+            </span>
+            {outOfStock && (
+              <span className="bg-danger text-white text-3xs font-bold px-1.5 py-0.5 rounded shrink-0">
+                HẾT HÀNG
+              </span>
+            )}
+          </div>
           <div className="flex flex-col">
-            <div className="text-sm font-bold">
+            <div className={`text-sm font-bold ${outOfStock ? "text-subtitle" : ""}`}>
               {formatPrice(props.product.price)}
             </div>
             {props.product.originalPrice && (

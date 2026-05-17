@@ -7,6 +7,7 @@ import {
   cartTotalState,
   customerProfileState,
   ordersState,
+  payableCartState,
   userInfoKeyState,
   userInfoState,
   productsState,
@@ -400,6 +401,7 @@ export function useFarmInventory() {
 export function useCheckout() {
   const { totalAmount } = useAtomValue(cartTotalState);
   const [cart, setCart] = useAtom(cartState);
+  const payableCart = useAtomValue(payableCartState);
   const requestInfo = useRequestInformation();
   const navigate = useNavigate();
   const refreshNewOrders = useSetAtom(ordersState("pending"));
@@ -414,6 +416,10 @@ export function useCheckout() {
 
   return async () => {
     try {
+      if (payableCart.length === 0) {
+        toast.error("Tất cả sản phẩm trong giỏ đã hết hàng. Vui lòng xoá hoặc chọn sản phẩm khác.");
+        return;
+      }
       const userInfo = await requestInfo();
 
       // Lấy JWT token (authenticate nếu chưa có hoặc đã hết hạn)
@@ -517,7 +523,7 @@ export function useCheckout() {
             phone: phone || userInfo?.phone || "",
             station_id: selectedStation?.id.toString(),
           };
-      const mappedItems = cart.map((item) => ({
+      const mappedItems = payableCart.map((item) => ({
           product_id: item.product.id.toString(),
           name: item.product.name,
           price: item.product.price.toString(),
@@ -577,6 +583,35 @@ export function useCheckout() {
           headers: respHeaders,
           bodyPreview: errBody.slice(0, 500),
         });
+
+        let parsed: any = null;
+        try {
+          parsed = JSON.parse(errBody);
+        } catch {
+          /* keep parsed = null */
+        }
+
+        // 422 với danh sách shortages → hiện đúng tên sản phẩm hết hàng
+        if (finalOrderResponse.status === 422 && Array.isArray(parsed?.shortages) && parsed.shortages.length > 0) {
+          const lines = parsed.shortages.map((s: any) => {
+            const name = s?.product_name ?? `Sản phẩm #${s?.product_id ?? "?"}`;
+            const available = Number(s?.available ?? 0);
+            const requested = Number(s?.requested ?? 0);
+            if (available <= 0) return `• ${name}: đã hết hàng`;
+            return `• ${name}: chỉ còn ${available} (bạn đặt ${requested})`;
+          });
+          const err = new Error(`Một số sản phẩm không đủ tồn kho:\n${lines.join("\n")}`);
+          (err as any).status = 422;
+          throw err;
+        }
+
+        // Các lỗi 4xx khác có message từ backend → dùng luôn
+        if (finalOrderResponse.status >= 400 && finalOrderResponse.status < 500 && parsed?.message) {
+          const err = new Error(parsed.message);
+          (err as any).status = finalOrderResponse.status;
+          throw err;
+        }
+
         throw new Error(`Tạo đơn hàng thất bại (${finalOrderResponse.status} từ ${finalOrderResponse.url}): ${errBody.slice(0, 200)}`);
       }
       const { orderId: myOrderId } = await finalOrderResponse.json();
@@ -586,7 +621,7 @@ export function useCheckout() {
       // amount PHẢI là finalTotal (subtotal + shipping_fee) — nếu đổi dịch vụ ship thì MAC cũ vô hiệu
       const amount = finalTotal;
       const desc = `Thanh toán cho đơn hàng ${myOrderId}`;
-      const item = cart.map<{ id: number; amount: number }>((cartItem) => ({
+      const item = payableCart.map<{ id: number; amount: number }>((cartItem) => ({
         id: cartItem.product.id,
         amount: cartItem.product.price * cartItem.quantity,
       }));
@@ -694,7 +729,11 @@ export function useCheckout() {
         stack: error?.stack,
       });
       const msg = error?.message || (typeof error === "string" ? error : null);
-      toast.error(msg || "Thanh toán thất bại. Vui lòng thử lại.");
+      const isStockError = error?.status === 422 && typeof msg === "string" && msg.includes("tồn kho");
+      toast.error(msg || "Thanh toán thất bại. Vui lòng thử lại.", {
+        duration: isStockError ? 6000 : 4000,
+        style: isStockError ? { whiteSpace: "pre-line", maxWidth: "90vw" } : undefined,
+      });
     }
   };
 }

@@ -42,6 +42,12 @@ import { calculateDistance } from "./utils/location";
 import { formatDistant } from "./utils/format";
 import CONFIG from "./config";
 
+// undefined stockAvailable = không biết (mock / offline / response thiếu field) → coi như còn hàng,
+// để app fallback an toàn về behaviour cũ. Chỉ disable khi backend khẳng định = 0.
+export function isOutOfStock(p: Pick<Product, "stockAvailable">): boolean {
+  return typeof p.stockAvailable === "number" && p.stockAvailable <= 0;
+}
+
 function normalizeUnit(raw: any): ProductUnit | undefined {
   if (!raw) return undefined;
   const label = raw.unit_label ?? raw.unitLabel ?? null;
@@ -211,12 +217,16 @@ export const productsState = atom(async (get) => {
       p.categoryId ?? p.category_id ?? p.catId ?? p.cat_id ?? p.category;
     const id = Number(rawId);
     const categoryId = Number(rawCategory);
+    const rawStock =
+      p.stockAvailable ?? p.stock_available ?? p.available ?? p.stock;
+    const stockNum = rawStock === undefined || rawStock === null ? undefined : Number(rawStock);
     return {
       // keep original fields but normalize id/categoryId
       ...p,
       id: Number.isFinite(id) ? id : NaN,
       categoryId: Number.isFinite(categoryId) ? categoryId : NaN,
       unit: normalizeUnit(p),
+      stockAvailable: typeof stockNum === "number" && Number.isFinite(stockNum) ? stockNum : undefined,
     } as Product & { categoryId: number };
   });
 
@@ -255,8 +265,20 @@ export const cartState = atom<Cart>([]);
 
 export const selectedCartItemIdsState = atom<number[]>([]);
 
-export const cartTotalState = atom((get) => {
-  const items = get(cartState);
+// Cart items lưu snapshot product cũ → đọc fresh stockAvailable từ productsState
+// để biết item nào đã hết hàng (giữ nguyên trong cart, chỉ bỏ ra khỏi total + checkout).
+export const payableCartState = atom(async (get) => {
+  const cart = get(cartState);
+  const products = await get(productsState);
+  const productMap = new Map(products.map((p) => [p.id, p]));
+  return cart.filter((item) => {
+    const fresh = productMap.get(item.product.id) ?? item.product;
+    return !isOutOfStock(fresh);
+  });
+});
+
+export const cartTotalState = atom(async (get) => {
+  const items = await get(payableCartState);
   return {
     totalItems: items.length,
     totalAmount: items.reduce(

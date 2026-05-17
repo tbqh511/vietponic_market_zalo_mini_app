@@ -27,6 +27,7 @@ export interface Product {
   colors?: Color[];
   unit?: ProductUnit;
   weight?: number;   // gam — dùng để tính phí ship
+  stockAvailable?: number;   // undefined = không biết (mock/offline) → coi như còn hàng
 }
 
 export interface Category {
