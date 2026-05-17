@@ -27,7 +27,9 @@ export default function Layout() {
           top: "calc(50% - 24px)",
         }}
       />
-      <FloatingCartPreview />
+      <Suspense fallback={null}>
+        <FloatingCartPreview />
+      </Suspense>
       <PhoneRequiredGate />
       <ScrollRestoration />
     </div>

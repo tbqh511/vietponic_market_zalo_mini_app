@@ -205,7 +205,10 @@ export const categoriesStateUpwrapped = unwrap(
   (prev) => prev ?? []
 );
 
-export const productsState = atom(async (get) => {
+// Tất cả sản phẩm (kể cả hết hàng) — chỉ dùng cho cart lookup fresh stock của item
+// đã add từ trước, hoặc khi truy cập product detail trực tiếp qua URL/share.
+// Mọi list UI phải dùng `productsState` (đã filter).
+export const allProductsState = atom(async (get) => {
   const categories = await get(categoriesState);
   const res = await requestWithFallback<any>("/products", []);
   // Extract and normalize product fields (coerce ids to numbers) to avoid type mismatch
@@ -250,13 +253,22 @@ export const productsState = atom(async (get) => {
   }));
 });
 
+// Sản phẩm hiển thị cho khách: ẩn item đã hết hàng (stockAvailable === 0).
+// Item có stockAvailable === undefined (mock/offline) coi như còn hàng → vẫn hiển thị.
+export const productsState = atom(async (get) => {
+  const all = await get(allProductsState);
+  return all.filter((p) => !isOutOfStock(p));
+});
+
 export const flashSaleProductsState = atom((get) => get(productsState));
 
 export const recommendedProductsState = atom((get) => get(productsState));
 
+// Lookup theo id phải fall back qua `allProductsState` vì cart có thể giữ
+// item nay đã hết hàng — UI cart-item cần đọc được stock fresh để show badge.
 export const productState = atomFamily((id: number) =>
   atom(async (get) => {
-    const products = await get(productsState);
+    const products = await get(allProductsState);
     return products.find((product) => product.id === id);
   })
 );
@@ -265,11 +277,11 @@ export const cartState = atom<Cart>([]);
 
 export const selectedCartItemIdsState = atom<number[]>([]);
 
-// Cart items lưu snapshot product cũ → đọc fresh stockAvailable từ productsState
-// để biết item nào đã hết hàng (giữ nguyên trong cart, chỉ bỏ ra khỏi total + checkout).
+// Cart items lưu snapshot product cũ → đọc fresh stockAvailable từ allProductsState
+// (productsState đã filter mất item hết hàng, không lookup được).
 export const payableCartState = atom(async (get) => {
   const cart = get(cartState);
-  const products = await get(productsState);
+  const products = await get(allProductsState);
   const productMap = new Map(products.map((p) => [p.id, p]));
   return cart.filter((item) => {
     const fresh = productMap.get(item.product.id) ?? item.product;

@@ -4,7 +4,6 @@ import TransitionLink from "./transition-link";
 import { useState } from "react";
 import { Button } from "zmp-ui";
 import { useAddToCart } from "@/hooks";
-import { isOutOfStock } from "@/state";
 import QuantityInput from "./quantity-input";
 
 export interface ProductItemProps {
@@ -19,7 +18,6 @@ export interface ProductItemProps {
 export default function ProductItem(props: ProductItemProps) {
   const [selected, setSelected] = useState(false);
   const { addToCart, cartQuantity } = useAddToCart(props.product);
-  const outOfStock = isOutOfStock(props.product);
 
   return (
     <div
@@ -33,28 +31,17 @@ export default function ProductItem(props: ProductItemProps) {
       >
         {({ isTransitioning }) => (
           <>
-            <div className="relative">
-              <img
-                src={props.product.image}
-                className={`w-full aspect-square object-cover rounded-lg ${
-                  outOfStock ? "opacity-50 grayscale" : ""
-                }`}
-                style={{
-                  viewTransitionName:
-                    isTransitioning && selected // only animate the "clicked" product item in related products list
-                      ? `product-image-${props.product.id}`
-                      : undefined,
-                }}
-                alt={props.product.name}
-              />
-              {outOfStock && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="bg-danger text-white text-2xs font-bold px-2 py-1 rounded">
-                    HẾT HÀNG
-                  </span>
-                </div>
-              )}
-            </div>
+            <img
+              src={props.product.image}
+              className="w-full aspect-square object-cover rounded-lg"
+              style={{
+                viewTransitionName:
+                  isTransitioning && selected // only animate the "clicked" product item in related products list
+                    ? `product-image-${props.product.id}`
+                    : undefined,
+              }}
+              alt={props.product.name}
+            />
             <div className="pt-2 pb-1.5">
               <div className="pt-1 pb-0.5">
                 <div className="text-xs h-9 line-clamp-2">
@@ -85,11 +72,7 @@ export default function ProductItem(props: ProductItemProps) {
         )}
       </TransitionLink>
       <div className="p-2">
-        {outOfStock ? (
-          <Button variant="secondary" size="small" fullWidth disabled>
-            Hết hàng
-          </Button>
-        ) : cartQuantity === 0 ? (
+        {cartQuantity === 0 ? (
           <Button
             variant="secondary"
             size="small"
