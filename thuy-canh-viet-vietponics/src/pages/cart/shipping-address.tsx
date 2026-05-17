@@ -41,31 +41,48 @@ function ShippingAddressPage() {
 
   // Fetch provinces một lần khi mount (cache ở atom)
   useEffect(() => {
-    if (provinces.length > 0) return;
+    if (provinces.length > 0) {
+      console.log('[ADDR] provinces already cached, count=', provinces.length);
+      return;
+    }
     setLoadingProvinces(true);
+    console.log('[ADDR] fetching provinces...');
     request<any>("/locations/provinces")
       .then((res) => {
+        console.log('[ADDR] provinces raw response:', JSON.stringify(res)?.slice(0, 300));
         const data: VtpLocation[] = res?.data ?? res ?? [];
+        console.log('[ADDR] provinces parsed count=', data.length, 'first=', data[0]);
         setProvinces(data);
       })
-      .catch(() => toast.error("Không tải được danh sách tỉnh/thành"))
+      .catch((err) => {
+        console.error('[ADDR] provinces fetch error:', err);
+        toast.error("Không tải được danh sách tỉnh/thành");
+      })
       .finally(() => setLoadingProvinces(false));
   }, []);
 
   // Fetch wards khi province thay đổi (v3: query theo province_id)
   useEffect(() => {
+    console.log('[ADDR] selectedProvince changed:', selectedProvince);
     if (!selectedProvince) {
       setWards([]);
       return;
     }
     setLoadingWards(true);
     setWards([]);
-    request<any>(`/locations/wards?province_id=${selectedProvince.id}`)
+    const url = `/locations/wards?province_id=${selectedProvince.id}`;
+    console.log('[ADDR] fetching wards from:', url);
+    request<any>(url)
       .then((res) => {
+        console.log('[ADDR] wards raw response:', JSON.stringify(res)?.slice(0, 500));
         const data: VtpLocation[] = res?.data ?? res ?? [];
+        console.log('[ADDR] wards parsed count=', data.length, 'first=', data[0]);
         setWards(data);
       })
-      .catch(() => toast.error("Không tải được danh sách phường/xã"))
+      .catch((err) => {
+        console.error('[ADDR] wards fetch error:', err);
+        toast.error("Không tải được danh sách phường/xã");
+      })
       .finally(() => setLoadingWards(false));
   }, [selectedProvince?.id]);
 
@@ -135,7 +152,9 @@ function ShippingAddressPage() {
               }
               value={selectedProvince?.id?.toString() ?? ""}
               onChange={(val) => {
+                console.log('[ADDR] province Select onChange val=', val, 'type=', typeof val);
                 const prov = provinces.find((p) => p.id === Number(val)) ?? null;
+                console.log('[ADDR] found province:', prov);
                 setSelectedProvince(prov);
                 setSelectedWard(null);
               }}
