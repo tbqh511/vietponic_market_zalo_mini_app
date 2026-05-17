@@ -57,9 +57,16 @@ export function useShippingFee() {
     const timer = setTimeout(async () => {
       setLoading(true);
       setError(null);
+      console.log("[ShippingFee] Bắt đầu tính phí vận chuyển", {
+        province_id: address.province_id,
+        district_id: address.district_id,
+        ward_id: address.ward_id,
+        cartItems: cart.length,
+        totalAmount,
+      });
       try {
         const token = localStorage.getItem("jwt_token") ?? "";
-        const body = JSON.stringify({
+        const payload = {
           items: cart.map((i) => ({
             product_id: i.product.id,
             quantity: i.quantity,
@@ -69,7 +76,9 @@ export function useShippingFee() {
           receiver_ward_id: address.ward_id,
           product_price: totalAmount,
           is_cod: false,
-        });
+        };
+
+        console.log("[ShippingFee] Payload gửi lên:", payload);
 
         const res = await fetch(`${API_URL}/shipping/estimate`, {
           method: "POST",
@@ -79,14 +88,17 @@ export function useShippingFee() {
             Accept: "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body,
+          body: JSON.stringify(payload),
         });
 
         if (!res.ok) {
+          const errText = await res.text().catch(() => "");
+          console.error("[ShippingFee] API lỗi", res.status, errText);
           throw new Error(`HTTP ${res.status}`);
         }
 
         const json = await res.json();
+        console.log("[ShippingFee] API response:", json);
         const data: ShippingService[] = json?.data ?? json ?? [];
         setServices(data);
 
@@ -96,6 +108,7 @@ export function useShippingFee() {
         }
       } catch (err: any) {
         if (err?.name === "AbortError") return;
+        console.error("[ShippingFee] Lỗi:", err);
         setError("Không thể tải phí vận chuyển");
         setServices([]);
       } finally {
