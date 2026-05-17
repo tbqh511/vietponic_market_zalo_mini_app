@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Button } from "zmp-ui";
-import { Order } from "@/types";
+import { ApiOrder, Order } from "@/types";
+import { convertApiOrderToOrder } from "@/state";
+import { request } from "@/utils/request";
 import OrderSummary from "./order-summary";
 import OrderInfo from "./order-info";
+import OrderTracking from "./order-tracking";
 import CancelOrderModal from "./cancel-modal";
 
 const CANCELLABLE_STATUSES: Order["status"][] = ["pending", "confirmed", "preparing"];
@@ -22,12 +25,34 @@ function OrderDetailPage() {
   const [order, setOrder] = useState<Order>(initialOrder);
   const [cancelTarget, setCancelTarget] = useState<Order | null>(null);
 
+  // Refresh từ server để lấy tracking events mới nhất — state.location chỉ là snapshot
+  // tại thời điểm click vào order list, chưa có tracking_events.
+  useEffect(() => {
+    const token = localStorage.getItem("jwt_token");
+    if (!token || !initialOrder?.id) return;
+    let cancelled = false;
+    request<{ error: boolean; data: ApiOrder }>(`/orders/${initialOrder.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (cancelled || !res?.data) return;
+        setOrder(convertApiOrderToOrder(res.data));
+      })
+      .catch(() => {
+        /* giữ snapshot ban đầu nếu refresh fail */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialOrder?.id]);
+
   const canCancel = CANCELLABLE_STATUSES.includes(order.status);
   const refundInfo = order.refundStatus ? REFUND_STATUS_LABEL[order.refundStatus] : null;
 
   return (
     <div className="w-full p-4 space-y-2 pb-24">
       <OrderInfo order={order} />
+      <OrderTracking order={order} />
       <OrderSummary full order={order} />
 
       {order.status === "cancelled" && (

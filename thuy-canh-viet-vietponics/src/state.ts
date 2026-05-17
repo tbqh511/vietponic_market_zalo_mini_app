@@ -95,16 +95,29 @@ function convertApiOrderItemToCartItem(item: ApiOrderItem): CartItem {
 }
 
 // Convert ApiOrder to Order format for UI compatibility
-function convertApiOrderToOrder(apiOrder: ApiOrder): Order {
+export function convertApiOrderToOrder(apiOrder: ApiOrder): Order {
   let delivery: Delivery;
 
   if (apiOrder.delivery.type === 'shipping') {
+    const d = apiOrder.delivery;
     delivery = {
       type: 'shipping',
-      alias: apiOrder.delivery.alias || '',
-      address: apiOrder.delivery.address,
-      name: apiOrder.delivery.name,
-      phone: apiOrder.delivery.phone || ''
+      alias: d.alias || '',
+      address: d.address,
+      name: d.name,
+      phone: d.phone || '',
+      province_id: d.province_id ?? undefined,
+      district_id: d.district_id ?? undefined,
+      ward_id: d.ward_id ?? undefined,
+      province_name: d.province_name ?? undefined,
+      district_name: d.district_name ?? undefined,
+      ward_name: d.ward_name ?? undefined,
+      vtpOrderNumber: d.vtp_order_number ?? undefined,
+      vtpStatusCode: d.vtp_status_code ?? undefined,
+      vtpStatusName: d.vtp_status_name ?? undefined,
+      vtpLocation: d.vtp_location ?? undefined,
+      vtpStatusAt: d.vtp_status_at ? new Date(d.vtp_status_at) : undefined,
+      vtpIsReturning: !!d.vtp_is_returning,
     };
   } else {
     delivery = {
@@ -130,6 +143,7 @@ function convertApiOrderToOrder(apiOrder: ApiOrder): Order {
     refundStatus: (apiOrder.refund_status as Order["refundStatus"]) ?? undefined,
     refundAmount: apiOrder.refund_amount ? parseFloat(apiOrder.refund_amount) : undefined,
     refundedAt: apiOrder.refunded_at ? new Date(apiOrder.refunded_at) : undefined,
+    trackingEvents: apiOrder.tracking_events ?? undefined,
   };
 }
 export const userInfoKeyState = atom(0);

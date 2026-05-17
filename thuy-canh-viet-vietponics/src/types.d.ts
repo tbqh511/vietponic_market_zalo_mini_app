@@ -90,11 +90,29 @@ export interface Station {
 export type Delivery =
   | ({
       type: "shipping";
+      vtpOrderNumber?: string;
+      vtpStatusCode?: string;
+      vtpStatusName?: string;
+      vtpLocation?: string;
+      vtpStatusAt?: Date;
+      vtpIsReturning?: boolean;
     } & ShippingAddress)
   | {
       type: "pickup";
       stationId: number;
     };
+
+export interface VtpTrackingEvent {
+  status_code: number;
+  status_name: string;
+  location: string | null;
+  note: string | null;
+  employee_name: string | null;
+  employee_phone: string | null;
+  reason_code: string | null;
+  is_returning: boolean;
+  status_at: string; // ISO datetime
+}
 
 // Statuses trả về từ backend (chính xác như trong DB)
 export type BackendOrderStatus =
@@ -135,6 +153,7 @@ export interface Order {
   refundStatus?: RefundStatus;
   refundAmount?: number;
   refundedAt?: Date;
+  trackingEvents?: VtpTrackingEvent[];
 }
 
 // Order interface từ API response
@@ -160,6 +179,7 @@ export interface ApiOrder {
   refund_provider_id?: string | null;
   refunded_at?: string | null;
   refund_note?: string | null;
+  tracking_events?: VtpTrackingEvent[];
 }
 
 export interface ApiOrderItem {
@@ -196,6 +216,13 @@ export interface ApiDelivery {
   province_name?: string | null;
   district_name?: string | null;
   ward_name?: string | null;
+  vtp_order_number?: string | null;
+  vtp_order_reference?: string | null;
+  vtp_status_code?: string | null;
+  vtp_status_name?: string | null;
+  vtp_location?: string | null;
+  vtp_status_at?: string | null;
+  vtp_is_returning?: boolean | number | null;
 }
 interface CreateOrderItem {
   product_id: string;
