@@ -82,12 +82,16 @@ function SelectedStationSummary() {
 
 
 function ShippingServiceSection() {
-  const { services, loading } = useShippingFee();
-  if (!loading && services.length === 0) return null;
+  const { services, loading, error } = useShippingFee();
+  if (!loading && services.length === 0 && !error) return null;
   return (
     <Section title="Dịch vụ vận chuyển" className="rounded-lg">
       <div className="px-4 py-3">
-        <ShippingMethodPicker services={services} loading={loading} />
+        {error ? (
+          <div className="text-sm text-red-600">{error}</div>
+        ) : (
+          <ShippingMethodPicker services={services} loading={loading} />
+        )}
       </div>
     </Section>
   );

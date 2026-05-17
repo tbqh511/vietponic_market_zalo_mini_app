@@ -26,14 +26,17 @@ export function useShippingFee() {
   useEffect(() => {
     if (deliveryMode !== "shipping") {
       setServices([]);
+      setError(null);
       return;
     }
     if (!address?.ward_id || !address?.province_id) {
       setServices([]);
+      setError(null);
       return;
     }
     if (cart.length === 0) {
       setServices([]);
+      setError(null);
       return;
     }
     if (!API_URL) {
@@ -91,6 +94,20 @@ export function useShippingFee() {
           body: JSON.stringify(payload),
         });
 
+        if (res.status === 422) {
+          const j = await res.json().catch(() => ({} as any));
+          if (j?.code === "NO_PICKUP_STATION") {
+            console.warn("[ShippingFee] Không có trạm cấu hình VTP", j);
+            setError(
+              j.message ??
+                "Hiện chưa có trạm lấy hàng phù hợp, vui lòng liên hệ shop"
+            );
+            setServices([]);
+            setSelectedService(undefined);
+            return;
+          }
+        }
+
         if (!res.ok) {
           const errText = await res.text().catch(() => "");
           console.error("[ShippingFee] API lỗi", res.status, errText);
@@ -128,5 +145,14 @@ export function useShippingFee() {
     totalAmount,
   ]);
 
-  return { services, loading, error };
+  // Disable checkout khi cần thiết: shipping mode, có địa chỉ đầy đủ,
+  // không loading, và (có lỗi hoặc không có dịch vụ nào khả dụng).
+  const disableCheckout =
+    deliveryMode === "shipping" &&
+    !!address?.ward_id &&
+    !!address?.province_id &&
+    !loading &&
+    (!!error || services.length === 0);
+
+  return { services, loading, error, disableCheckout };
 }
