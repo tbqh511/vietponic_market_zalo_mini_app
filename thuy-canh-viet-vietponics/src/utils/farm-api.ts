@@ -140,7 +140,7 @@ export function useFarmIncomingOrders(enabled: boolean = true) {
  * Không poll (ít đổi — chỉ thay đổi khi cron snapshot daily chạy 23:30).
  */
 export function useFarmPayouts(enabled: boolean = true) {
-  return usePolling<FarmPayout[]>("/farm/payouts?limit=20", enabled, 5 * 60 * 1000);
+  return usePolling<FarmPayout[]>("/farm/payouts?limit=20", enabled, 0);
 }
 
 /**

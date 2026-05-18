@@ -1,12 +1,12 @@
-import { CartIcon, CategoryIcon, HomeIcon, PackageIcon } from "./vectors";
+import { CartIcon, CategoryIcon, FarmIcon, HomeIcon, PackageIcon } from "./vectors";
 import HorizontalDivider from "./horizontal-divider";
 import { useAtomValue } from "jotai";
-import { cartState } from "@/state";
+import { cartState, customerProfileState } from "@/state";
 import TransitionLink from "./transition-link";
 import { useRouteHandle } from "@/hooks";
 import Badge from "./badge";
 
-const NAV_ITEMS = [
+const BASE_NAV_ITEMS = [
   {
     name: "Trang chủ",
     path: "/",
@@ -37,8 +37,20 @@ const NAV_ITEMS = [
   },
 ];
 
+const FARM_NAV_ITEM = {
+  name: "Farm Hub",
+  path: "/farm",
+  icon: FarmIcon,
+};
+
 export default function Footer() {
   const [handle] = useRouteHandle();
+  const profile = useAtomValue(customerProfileState);
+
+  // Farm partner thấy thêm tab Farm Hub — grid chuyển từ 4 sang 5 cột.
+  const navItems = profile?.is_farm_partner
+    ? [...BASE_NAV_ITEMS, FARM_NAV_ITEM]
+    : BASE_NAV_ITEMS;
 
   if (!handle?.noFooter) {
     return (
@@ -47,10 +59,10 @@ export default function Footer() {
         <div
           className="w-full px-4 pt-2 grid pb-sb"
           style={{
-            gridTemplateColumns: `repeat(${NAV_ITEMS.length}, 1fr)`,
+            gridTemplateColumns: `repeat(${navItems.length}, 1fr)`,
           }}
         >
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             return (
               <TransitionLink
                 to={item.path}
