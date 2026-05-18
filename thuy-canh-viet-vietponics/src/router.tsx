@@ -15,7 +15,9 @@ import OrderDetailPage from "./pages/orders/detail";
 import ProfileEditorPage from "./pages/profile/editor";
 import AffiliatePage from "./pages/profile/affiliate";
 import FarmDashboardPage from "./pages/farm";
+import FarmInventoryPage from "./pages/farm/inventory";
 import FarmMovementsPage from "./pages/farm/movements";
+import FarmRegisterPage from "./pages/farm/register";
 
 const router = createBrowserRouter(
   [
@@ -133,6 +135,14 @@ const router = createBrowserRouter(
           path: "/farm",
           element: <FarmDashboardPage />,
           handle: {
+            title: "Farm Hub",
+            noFloatingCart: true,
+          },
+        },
+        {
+          path: "/farm/inventory",
+          element: <FarmInventoryPage />,
+          handle: {
             title: "Quản lý kho",
             noFloatingCart: true,
           },
@@ -143,6 +153,15 @@ const router = createBrowserRouter(
           handle: {
             title: "Lịch sử biến động",
             noFloatingCart: true,
+          },
+        },
+        {
+          path: "/farm/register",
+          element: <FarmRegisterPage />,
+          handle: {
+            title: "Đăng ký Farm Partner",
+            noFloatingCart: true,
+            noFooter: true,
           },
         },
       ],

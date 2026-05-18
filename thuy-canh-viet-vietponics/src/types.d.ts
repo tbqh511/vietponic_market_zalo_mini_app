@@ -331,3 +331,90 @@ export interface StockMovement {
   note: string | null;
   created_at: string;
 }
+
+// ─── Farm Partner Hub (dashboard) ───────────────────────────────────────────
+
+export interface FarmProfile {
+  id: number;
+  code: string;
+  name: string;
+  logo: string | null;
+  cover_image: string | null;
+  description: string | null;
+  address: string | null;
+  payment_cycle: "weekly" | "biweekly" | "monthly";
+  approved_at: string | null;
+}
+
+export type FarmDashboardRange = "today" | "7d" | "30d";
+
+export interface FarmOverview {
+  range: { from: string; to: string; key: string };
+  revenue: number;
+  cost: number;
+  profit: number;
+  orders_count: number;
+  items_sold: number;
+  avg_order_value: number;
+  top_product:
+    | {
+        product_id: number;
+        name: string;
+        qty: number;
+        revenue: number;
+      }
+    | null;
+}
+
+// Mỗi row "Sản phẩm hôm nay" trên dashboard. Backend tính status (good/warning/danger)
+// dựa trên sellthrough + remaining; FE chỉ render màu theo status.
+export interface FarmProductToday {
+  product_id: number;
+  name: string;
+  stocked: number;
+  sold: number;
+  remaining: number;
+  revenue: number;
+  sellthrough_pct: number;
+  status: "good" | "warning" | "danger";
+}
+
+export interface FarmAiHint {
+  type: "restock" | "flash_sale";
+  product: string;
+  message: string;
+}
+
+export interface FarmProductsTodayResponse {
+  products: FarmProductToday[];
+  hint: FarmAiHint | null;
+}
+
+export interface FarmIncomingOrder {
+  item_id: number;
+  order_id: number;
+  product_id: number;
+  product_name: string;
+  quantity: number;
+  price: number;
+  order_status: "pending" | "confirmed" | "preparing" | "delivering";
+  order_created_at: string;
+  order_total: number;
+  customer_name: string | null;
+  delivery_address: string | null;
+}
+
+export interface FarmPayout {
+  id: number;
+  period_start: string | null;
+  period_end: string | null;
+  total_sold: number;
+  gross_revenue: number;
+  adjustment: number;
+  net_payout: number;
+  status: "draft" | "pending" | "paid" | "cancelled";
+  paid_at: string | null;
+  payment_method: string | null;
+  transaction_ref: string | null;
+  note: string | null;
+}

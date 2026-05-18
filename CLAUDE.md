@@ -22,6 +22,8 @@ Backend (`cd ../vietponic_market_zalo_backend`):
 - `composer test` — run full PHPUnit suite (uses `.env.testing`, sqlite `:memory:`)
 - `composer test:unit` / `composer test:feature` — single suite
 - `composer test:zalo` — runs only the Zalo Checkout flow tests defined in [phpunit.xml](../vietponic_market_zalo_backend/phpunit.xml) (MAC, prepare-order, notify webhook, payment-status job, order list, status update)
+- `composer test:affiliate` / `composer test:shipping` — feature-specific suites (CTV commissions, VTP shipping estimate)
+- `composer test:coverage` — full suite with coverage, fails under 80%
 - Run a single test file: `php artisan test --env=testing tests/Feature/PrepareOrderTest.php`
 - `bash test_api.sh` — black-box smoke against `https://vietponics.vn/api` (fill in JWT/secrets first)
 
@@ -75,7 +77,11 @@ Backend stores six statuses (`pending | confirmed | preparing | delivering | del
 - **Affiliate/CTV** — [src/pages/profile/affiliate/](thuy-canh-viet-vietponics/src/pages/profile/affiliate/) + [AffiliateController.php](../vietponic_market_zalo_backend/app/Http/Controllers/AffiliateController.php). Referral codes are applied via `applyPendingReferral()` in [src/utils/affiliate.ts](thuy-canh-viet-vietponics/src/utils/affiliate.ts) after auth. Commission events fire via `OrderPaymentSucceeded` → `RecordAffiliateCommission` listener.
 - **Farm partner portal** — [src/pages/farm/](thuy-canh-viet-vietponics/src/pages/farm/). Guarded by `useFarmGuard()` in hooks.ts (redirects non-farm-partners to `/`). Inventory pagination and filter state live in `farmInventoryFiltersState` / `useFarmInventory()`.
 - **Shipping fee estimate** — [src/hooks/useShippingFee.ts](thuy-canh-viet-vietponics/src/hooks/useShippingFee.ts) (note: separate file, not inside hooks.ts). Calls `POST /shipping/estimate` with VTP address IDs; auto-selects the first returned service. Falls back to a static flat fee when `apiUrl` is empty (offline/mock mode).
-- **VTP address lookup** — Provinces/districts/wards are served from `GET /locations/provinces|districts|wards`. Data is synced from VTP via `php artisan vtp:sync-locations`.
+- **VTP address lookup** — Provinces/districts/wards are served from `GET /locations/provinces|districts|wards`. Data is synced from VTP via `php artisan vtp:sync-locations` (run after credential changes or if the dropdowns look stale).
+
+## Notes on existing docs
+
+- [thuy-canh-viet-vietponics/README.md](thuy-canh-viet-vietponics/README.md) is the upstream ZaUI Market template README, kept as-is. Its "Load data from your server" recipe is generic and superseded by the `request.ts` / `extractArray` notes above — prefer this file when they conflict.
 
 ## Conventions
 

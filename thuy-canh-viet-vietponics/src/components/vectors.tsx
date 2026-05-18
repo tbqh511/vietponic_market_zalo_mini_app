@@ -189,6 +189,39 @@ export function PackageIcon(props: { active?: boolean }) {
   );
 }
 
+// Icon plant/leaf cho tab Farm Hub. Style đồng bộ với các icon nav khác:
+// active = fill var(--primary), inactive = stroke #6F7071.
+export function FarmIcon(props: { active?: boolean }) {
+  if (props.active) {
+    return (
+      <svg width="25" height="25" viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M12.5 21.5C12.5 21.5 11.2 17.5 7.5 15.5C3.8 13.5 3.5 9.5 3.5 7.5C3.5 6.4 4.4 5.5 5.5 5.5C7.5 5.5 11.5 5.8 13.5 9.5C15.5 13.2 12.5 21.5 12.5 21.5Z"
+          fill="var(--primary)" opacity="0.3"
+        />
+        <path
+          d="M12.5 21.5C12.5 21.5 13.8 16 17.5 14C20.5 12.5 21.5 10 21.5 8C21.5 6.9 20.6 6 19.5 6C17.5 6 14 6.5 12 9.5C10.5 11.8 11 17 12.5 21.5Z"
+          fill="var(--primary)"
+        />
+        <path d="M12.5 21.5V12.5" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="25" height="25" viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M12.5 21.5C12.5 21.5 11.2 17.5 7.5 15.5C3.8 13.5 3.5 9.5 3.5 7.5C3.5 6.4 4.4 5.5 5.5 5.5C7.5 5.5 11.5 5.8 13.5 9.5"
+        stroke="#6F7071" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"
+      />
+      <path
+        d="M12.5 21.5C12.5 21.5 13.8 16 17.5 14C20.5 12.5 21.5 10 21.5 8C21.5 6.9 20.6 6 19.5 6C17.5 6 14 6.5 12 9.5"
+        stroke="#6F7071" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"
+      />
+      <path d="M12.5 21.5V12.5" stroke="#6F7071" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function ShareDecor(props: HTMLProps<SVGSVGElement>) {
   return (
     <svg
