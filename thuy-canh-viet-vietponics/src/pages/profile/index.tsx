@@ -4,6 +4,7 @@ import FarmEntryCard from "./farm-entry-card";
 import FollowOA from "./follow-oa";
 import Points from "./points";
 import UserInfo from "./user-info";
+import ZaloShortcuts from "./zalo-shortcuts";
 
 export default function ProfilePage() {
   return (
@@ -14,6 +15,7 @@ export default function ProfilePage() {
       <AffiliateEntryCard />
       <FarmEntryCard />
       <ProfileActions />
+      <ZaloShortcuts />
       <FollowOA />
     </div>
   );

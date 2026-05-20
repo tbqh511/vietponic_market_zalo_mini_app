@@ -442,6 +442,16 @@ export const shippingAddressState = atomWithStorage<
   ShippingAddress | undefined
 >(CONFIG.STORAGE_KEYS.SHIPPING_ADDRESS, undefined);
 
+export const shortcutPromptedAtom = atomWithStorage<boolean>(
+  CONFIG.STORAGE_KEYS.SHORTCUT_PROMPTED,
+  false
+);
+
+export const oaFollowPromptedAtom = atomWithStorage<boolean>(
+  CONFIG.STORAGE_KEYS.OA_FOLLOW_PROMPTED,
+  false
+);
+
 
 
 // Maps frontend tab key to the set of backend statuses it represents

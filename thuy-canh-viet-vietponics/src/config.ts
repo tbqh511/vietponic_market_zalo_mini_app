@@ -4,6 +4,8 @@ const CONFIG = {
     DELIVERY: "delivery",
     SHIPPING_ADDRESS: "shippingAddress",
     TOKEN: "token",
+    SHORTCUT_PROMPTED: "shortcutPrompted",
+    OA_FOLLOW_PROMPTED: "oaFollowPrompted",
   },
 };
 

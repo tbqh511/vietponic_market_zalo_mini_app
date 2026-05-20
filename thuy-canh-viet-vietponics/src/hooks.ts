@@ -20,7 +20,10 @@ import {
   farmInventoryFiltersState,
   farmInventoryStatsState,
   farmInventoryRefreshTokenState,
+  shortcutPromptedAtom,
+  oaFollowPromptedAtom,
 } from "@/state";
+import { promptCreateShortcut, promptFollowOA } from "@/utils/zalo-prompts";
 import {
   Product,
   CreateOrderRequest,
@@ -412,6 +415,11 @@ export function useCheckout() {
   const note = useAtomValue(noteState);
   const setNote = useSetAtom(noteState);
   const phone = useAtomValue(phoneState);
+  const shortcutPrompted = useAtomValue(shortcutPromptedAtom);
+  const setShortcutPrompted = useSetAtom(shortcutPromptedAtom);
+  const oaFollowPrompted = useAtomValue(oaFollowPromptedAtom);
+  const setOaFollowPrompted = useSetAtom(oaFollowPromptedAtom);
+  const oaId = getConfig((c) => c.template.oaIDtoOpenChat);
 
 
   return async () => {
@@ -694,6 +702,18 @@ export function useCheckout() {
           // Poll thêm để bắt update payment_status từ webhook /notify hoặc job fallback.
           setTimeout(() => refreshNewOrders(), 2500);
           setTimeout(() => refreshNewOrders(), 7000);
+          // Pop một lần các dialog Zalo native sau khi user đã thấy success.
+          // Set flag true bất kể accept/cancel để không spam đơn sau.
+          setTimeout(async () => {
+            if (!shortcutPrompted) {
+              await promptCreateShortcut();
+              setShortcutPrompted(true);
+            }
+            if (!oaFollowPrompted && oaId) {
+              await promptFollowOA(oaId);
+              setOaFollowPrompted(true);
+            }
+          }, 1800);
         }
         switch (result.resultCode) {
           case 1:
