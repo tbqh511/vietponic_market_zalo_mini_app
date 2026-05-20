@@ -8,7 +8,13 @@ export default function FlashSales() {
 
   return (
     <Section title="Giá tốt hôm nay">
-      <ProductGrid products={products} />
+      {products.length === 0 ? (
+        <div className="px-4 pt-2 pb-8 text-center text-sm text-subtitle">
+          Hiện chưa có sản phẩm nào. Vui lòng quay lại sau.
+        </div>
+      ) : (
+        <ProductGrid products={products} />
+      )}
     </Section>
   );
 }

@@ -135,7 +135,7 @@ const router = createBrowserRouter(
           path: "/farm",
           element: <FarmDashboardPage />,
           handle: {
-            title: "Farm Hub",
+            title: "Farm dashboard",
             noFloatingCart: true,
           },
         },

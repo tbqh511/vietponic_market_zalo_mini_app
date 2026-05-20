@@ -10,22 +10,25 @@ export default function Banners() {
   //   console.debug("banners raw:", banners);
   // }
 
-  // Normalize banners: accept array of strings or array of objects with common image fields
+  // Normalize banners: accept array of strings or array of objects with common image fields.
+  // Bỏ qua item không có src để tránh render <img src=""> (gây icon broken-image).
   const slides: string[] = [];
   if (Array.isArray(banners)) {
     for (const item of banners as any[]) {
-      if (typeof item === "string") {
+      if (typeof item === "string" && item) {
         slides.push(item);
       } else if (item && typeof item === "object") {
         const src = (item as any).image || (item as any).url || (item as any).src || (item as any).path;
-        if (typeof src === "string") slides.push(src);
-        else {
-          // fallback: push empty string so UI doesn't crash; developer can enable DEBUG to inspect
-          slides.push("");
-        }
+        if (typeof src === "string" && src) slides.push(src);
       }
     }
   }
 
-  return <Carousel slides={slides.map((s) => <img className="w-full rounded" src={s} />)} />;
+  if (slides.length === 0) return null;
+
+  return (
+    <div className="bg-section">
+      <Carousel slides={slides.map((s) => <img className="w-full rounded" src={s} />)} />
+    </div>
+  );
 }

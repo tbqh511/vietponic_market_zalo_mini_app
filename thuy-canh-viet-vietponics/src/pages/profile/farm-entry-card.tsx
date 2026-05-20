@@ -15,9 +15,9 @@ export default function FarmEntryCard() {
           <Icon icon="zi-inbox" />
         </div>
         <div className="flex-1">
-          <div className="text-sm font-medium">Quản lý kho</div>
+          <div className="text-sm font-medium">Farm dashboard</div>
           <div className="text-2xs text-subtitle">
-            Nhập kho, xuất kho và theo dõi tồn kho
+            Theo dõi doanh thu, tồn kho và hoạt động farm
           </div>
         </div>
         <Icon icon="zi-chevron-right" />
