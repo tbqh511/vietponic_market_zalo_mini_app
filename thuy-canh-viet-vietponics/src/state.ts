@@ -200,9 +200,48 @@ export const phoneState = atom(async () => {
   return phone;
 });
 
-export const bannersState = atom(async () => {
+const BANNERS_CACHE_KEY = "cache:banners.v2";
+
+export type BannerItem = {
+  image: string;
+  intrinsic_width?: number;
+  intrinsic_height?: number;
+};
+
+function readCachedBanners(): BannerItem[] {
+  try {
+    const raw = localStorage.getItem(BANNERS_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+const bannersBaseAtom = atom<BannerItem[]>(readCachedBanners());
+
+// SWR-style: returns cached value synchronously, refresh fires in effect.
+export const bannersState = atom<BannerItem[]>((get) => get(bannersBaseAtom));
+
+export const bannersRefresh = atom(null, async (_get, set) => {
   const res = await requestWithFallback<any>("/banners", []);
-  return extractArray<string>(res);
+  const arr: BannerItem[] = extractArray<any>(res)
+    .map((b: any): BannerItem => ({
+      image:
+        typeof b === "string"
+          ? b
+          : b?.image ?? b?.url ?? b?.src ?? b?.path ?? "",
+      intrinsic_width: b?.intrinsic_width,
+      intrinsic_height: b?.intrinsic_height,
+    }))
+    .filter((b) => typeof b.image === "string" && b.image.length > 0);
+  set(bannersBaseAtom, arr);
+  try {
+    localStorage.setItem(BANNERS_CACHE_KEY, JSON.stringify(arr));
+  } catch {
+    // localStorage quota or disabled — silent
+  }
 });
 
 export const tabsState = atom(["Tất cả", "Nam", "Nữ", "Trẻ em"]);

@@ -1,34 +1,57 @@
 import Carousel from "@/components/carousel";
-import { useAtomValue } from "jotai";
-import { bannersState } from "@/state";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect } from "react";
+import { bannersState, bannersRefresh } from "@/state";
+
+const FALLBACK_ASPECT = "1312 / 708";
 
 export default function Banners() {
   const banners = useAtomValue(bannersState);
+  const refresh = useSetAtom(bannersRefresh);
 
-  // // Debug: log the raw banners value (set localStorage.DEBUG_API = '1' to enable request logging)
-  // if (typeof window !== "undefined" && (localStorage.getItem("DEBUG_API") === "1" || /localhost|127\.0\.0\.1/.test(window.location.hostname))) {
-  //   console.debug("banners raw:", banners);
-  // }
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
-  // Normalize banners: accept array of strings or array of objects with common image fields.
-  // Bỏ qua item không có src để tránh render <img src=""> (gây icon broken-image).
-  const slides: string[] = [];
-  if (Array.isArray(banners)) {
-    for (const item of banners as any[]) {
-      if (typeof item === "string" && item) {
-        slides.push(item);
-      } else if (item && typeof item === "object") {
-        const src = (item as any).image || (item as any).url || (item as any).src || (item as any).path;
-        if (typeof src === "string" && src) slides.push(src);
-      }
-    }
+  if (banners.length === 0) {
+    return (
+      <div className="bg-section">
+        <div
+          className="mt-2 mx-4 rounded bg-skeleton animate-pulse"
+          style={{ aspectRatio: FALLBACK_ASPECT }}
+        />
+      </div>
+    );
   }
-
-  if (slides.length === 0) return null;
 
   return (
     <div className="bg-section">
-      <Carousel slides={slides.map((s) => <img className="w-full rounded" src={s} />)} />
+      <Carousel
+        slides={banners.map((b, i) => {
+          const ratio =
+            b.intrinsic_width && b.intrinsic_height
+              ? `${b.intrinsic_width} / ${b.intrinsic_height}`
+              : FALLBACK_ASPECT;
+          return (
+            <div
+              key={i}
+              className="w-full rounded overflow-hidden bg-skeleton"
+              style={{ aspectRatio: ratio }}
+            >
+              <img
+                src={b.image}
+                alt=""
+                className="w-full h-full object-cover"
+                width={b.intrinsic_width}
+                height={b.intrinsic_height}
+                loading={i === 0 ? "eager" : "lazy"}
+                {...({ fetchpriority: i === 0 ? "high" : "low" } as any)}
+                decoding="async"
+              />
+            </div>
+          );
+        })}
+      />
     </div>
   );
 }

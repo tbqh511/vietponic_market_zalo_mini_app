@@ -14,6 +14,26 @@
     <meta name="theme-color" content="#007aff" />
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
+
+    <link rel="preconnect" href="https://vietponics.vn" crossorigin />
+    <link rel="dns-prefetch" href="https://vietponics.vn" />
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem("cache:banners.v2");
+          if (!raw) return;
+          var arr = JSON.parse(raw);
+          if (!Array.isArray(arr) || !arr[0] || !arr[0].image) return;
+          var l = document.createElement("link");
+          l.rel = "preload";
+          l.as = "image";
+          l.href = arr[0].image;
+          l.setAttribute("fetchpriority", "high");
+          document.head.appendChild(l);
+        } catch (e) {}
+      })();
+    </script>
+
     <title>Zalo Mini App</title>
   </head>
   <body>
