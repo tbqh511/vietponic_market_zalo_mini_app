@@ -7,6 +7,7 @@ import {
   unwrap,
 } from "jotai/utils";
 import {
+  AppliedVoucher,
   BackendOrderStatus,
   Cart,
   CartItem,
@@ -528,3 +529,23 @@ export const selectedShippingServiceState = atom<ShippingService | null>(null);
 // Cache tạm danh sách tỉnh/xã (v3 bỏ cấp quận/huyện)
 export const vtpProvincesState = atom<VtpLocation[]>([]);
 export const vtpWardsState = atom<VtpLocation[]>([]);
+
+// ── Voucher ──────────────────────────────────────────────────────────────────
+
+// Voucher đang được áp dụng cho giỏ hàng hiện tại. null = chưa chọn.
+// Reset về null sau khi checkout thành công (xem useCheckout).
+export const appliedVoucherState = atom<AppliedVoucher | null>(null);
+
+// Grand total đã trừ giảm: dùng chung cho cart-summary và pay để tránh
+// tính nhầm ở 2 chỗ. = totalAmount + shipping - discount, clamp >= 0.
+export const cartGrandTotalState = atom(async (get) => {
+  const { totalAmount } = await get(cartTotalState);
+  const mode = get(deliveryModeState);
+  const svc = get(selectedShippingServiceState);
+  const voucher = get(appliedVoucherState);
+
+  const shippingFee = mode === "shipping" ? svc?.total_fee ?? 0 : 0;
+  const discount =
+    (voucher?.discount_subtotal ?? 0) + (voucher?.discount_shipping ?? 0);
+  return Math.max(0, totalAmount + shippingFee - discount);
+});

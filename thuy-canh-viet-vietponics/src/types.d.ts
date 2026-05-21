@@ -265,6 +265,36 @@ interface CreateOrderResponse {
   orderId: number;
 }
 
+// ─── Voucher / mã giảm giá ────────────────────────────────────────────────
+export type VoucherDiscountType = "percent" | "fixed" | "free_shipping";
+
+export interface Voucher {
+  id: number;
+  code: string;
+  name: string;
+  description?: string | null;
+  discount_type: VoucherDiscountType;
+  discount_value: number;
+  max_discount_amount?: number | null;
+  min_order_amount: number;
+  valid_from?: string | null;
+  valid_to?: string | null;
+  is_public?: boolean;
+  // Computed bởi backend khi GET /vouchers/available:
+  usable?: boolean;
+  unusable_reason?: string | null;
+  preview_subtotal?: number;
+  preview_shipping?: number;
+  preview_total?: number;
+}
+
+// Voucher đang được áp dụng vào giỏ — số tiền đã được backend tính sẵn.
+export interface AppliedVoucher {
+  voucher: Voucher;
+  discount_subtotal: number;  // giảm trên subtotal
+  discount_shipping: number;  // giảm trên shipping (free_shipping)
+}
+
 // Customer profile trả về từ /authenticate (bao gồm is_farm_partner)
 export interface CustomerProfile {
   id: number;

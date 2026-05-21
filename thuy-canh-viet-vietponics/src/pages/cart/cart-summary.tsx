@@ -1,5 +1,7 @@
 import { useAtomValue } from "jotai";
 import {
+  appliedVoucherState,
+  cartGrandTotalState,
   cartTotalState,
   deliveryModeState,
   selectedShippingServiceState,
@@ -8,17 +10,29 @@ import { formatPrice } from "@/utils/format";
 import Section from "@/components/section";
 import HorizontalDivider from "@/components/horizontal-divider";
 import { useShippingFee } from "@/hooks/useShippingFee";
+import { loadable } from "jotai/utils";
+
+const grandTotalLoadable = loadable(cartGrandTotalState);
 
 export default function CartSummary() {
   const { totalAmount } = useAtomValue(cartTotalState);
   const deliveryMode = useAtomValue(deliveryModeState);
   const selectedService = useAtomValue(selectedShippingServiceState);
+  const applied = useAtomValue(appliedVoucherState);
   const { loading: feeLoading } = useShippingFee();
+  const grandTotalState = useAtomValue(grandTotalLoadable);
 
   const isShipping = deliveryMode === "shipping";
-  const shippingFee = isShipping ? (selectedService?.total_fee ?? null) : 0;
+  const shippingFeeRaw = isShipping ? (selectedService?.total_fee ?? null) : 0;
+  const shippingDiscount = applied?.discount_shipping ?? 0;
+  const subtotalDiscount = applied?.discount_subtotal ?? 0;
+  const totalDiscount = subtotalDiscount + shippingDiscount;
   const finalTotal =
-    shippingFee !== null ? totalAmount + shippingFee : totalAmount;
+    grandTotalState.state === "hasData"
+      ? grandTotalState.data
+      : shippingFeeRaw !== null
+        ? totalAmount + shippingFeeRaw - totalDiscount
+        : totalAmount - totalDiscount;
 
   return (
     <Section title="Thanh toán" className="rounded-lg">
@@ -36,13 +50,31 @@ export default function CartSummary() {
                   "—"
                 ) : feeLoading ? (
                   <span className="inline-block w-16 h-3 rounded bg-gray-200 animate-pulse" />
-                ) : shippingFee !== null ? (
-                  formatPrice(shippingFee)
+                ) : shippingFeeRaw !== null ? (
+                  shippingDiscount > 0 ? (
+                    <span>
+                      <s className="text-inactive mr-1">
+                        {formatPrice(shippingFeeRaw)}
+                      </s>
+                      {formatPrice(Math.max(0, shippingFeeRaw - shippingDiscount))}
+                    </span>
+                  ) : (
+                    formatPrice(shippingFeeRaw)
+                  )
                 ) : (
                   <span className="text-inactive text-xs">Chọn địa chỉ giao</span>
                 )}
               </td>
             </tr>
+            {applied && totalDiscount > 0 && (
+              <tr>
+                <th>
+                  Giảm giá{" "}
+                  <code className="text-primary">{applied.voucher.code}</code>
+                </th>
+                <td className="text-primary">-{formatPrice(totalDiscount)}</td>
+              </tr>
+            )}
           </tbody>
         </table>
         <HorizontalDivider />
@@ -52,7 +84,7 @@ export default function CartSummary() {
             {feeLoading && isShipping ? (
               <span className="inline-block w-24 h-4 rounded bg-gray-200 animate-pulse" />
             ) : (
-              formatPrice(finalTotal)
+              formatPrice(Math.max(0, finalTotal))
             )}
           </div>
         </div>

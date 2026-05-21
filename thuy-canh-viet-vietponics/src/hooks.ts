@@ -3,6 +3,7 @@ import { MutableRefObject, useCallback, useEffect, useLayoutEffect, useMemo, use
 import toast from "react-hot-toast";
 import { UIMatch, useMatches, useNavigate } from "react-router-dom";
 import {
+  appliedVoucherState,
   cartState,
   cartTotalState,
   customerProfileState,
@@ -36,7 +37,7 @@ import {
   Order,
 } from "@/types";
 import { getConfig } from "@/utils/template";
-import { requestWithPost, request, authenticate } from "@/utils/request";
+import { requestWithPost, request, requestWithFallback, authenticate } from "@/utils/request";
 import { getAccessToken } from "@/utils/zma";
 import { applyPendingReferral } from "@/utils/affiliate";
 import { authorize,createOrder,events,EventName, openChat,CheckoutSDK, Payment } from "zmp-sdk/apis";
@@ -419,6 +420,8 @@ export function useCheckout() {
   const setShortcutPrompted = useSetAtom(shortcutPromptedAtom);
   const oaFollowPrompted = useAtomValue(oaFollowPromptedAtom);
   const setOaFollowPrompted = useSetAtom(oaFollowPromptedAtom);
+  const appliedVoucher = useAtomValue(appliedVoucherState);
+  const setAppliedVoucher = useSetAtom(appliedVoucherState);
   const oaId = getConfig((c) => c.template.oaIDtoOpenChat);
 
 
@@ -497,12 +500,15 @@ export function useCheckout() {
         });
       });
 
-      // Tính finalTotal = subtotal + shipping_fee trước khi build payload
+      // Tính finalTotal = subtotal + shipping_fee - voucher discount trước khi build payload
       const subtotal = totalAmount;
       const shippingFee = deliveryMode === "shipping"
         ? (selectedShippingService?.total_fee ?? 0)
         : 0;
-      const finalTotal = subtotal + shippingFee;
+      const voucherDiscountSubtotal = appliedVoucher?.discount_subtotal ?? 0;
+      const voucherDiscountShipping = appliedVoucher?.discount_shipping ?? 0;
+      const voucherDiscountTotal = voucherDiscountSubtotal + voucherDiscountShipping;
+      const finalTotal = Math.max(0, subtotal + shippingFee - voucherDiscountTotal);
 
       // Validate: nếu mode shipping mà chưa chọn dịch vụ ship → báo lỗi
       if (deliveryMode === "shipping" && !selectedShippingService) {
@@ -547,6 +553,8 @@ export function useCheckout() {
           shipping_fee: shippingFee.toString(),
           shipping_service_code: selectedShippingService?.service_code ?? undefined,
           shipping_service_name: selectedShippingService?.service_name ?? undefined,
+          voucher_code: appliedVoucher?.voucher.code,
+          discount_amount: voucherDiscountTotal,
           total: finalTotal.toString(),
           note: note,
           created_at: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).replace(' ', 'T') + '+07:00',
@@ -597,6 +605,14 @@ export function useCheckout() {
           parsed = JSON.parse(errBody);
         } catch {
           /* keep parsed = null */
+        }
+
+        // 422 voucher invalid → clear applied voucher để khách chọn lại
+        if (finalOrderResponse.status === 422 && parsed?.reason === "voucher_invalid") {
+          setAppliedVoucher(null);
+          const err = new Error(parsed?.message || "Mã giảm giá không hợp lệ");
+          (err as any).status = 422;
+          throw err;
         }
 
         // 422 với danh sách shortages → hiện đúng tên sản phẩm hết hàng
@@ -692,6 +708,7 @@ export function useCheckout() {
         if (result.resultCode >= 0) {
           setCart([]);
           setNote("");
+          setAppliedVoucher(null);
           refreshNewOrders();
           // Bỏ viewTransition cho navigate sau thanh toán: trên Zalo WebView (device thật),
           // document.visibilityState chưa kịp restore khi sheet native đóng → startViewTransition
@@ -867,5 +884,181 @@ export function useCancelOrder() {
       };
     },
     [refreshPending, refreshCancelled]
+  );
+}
+
+// ─── Voucher hooks ──────────────────────────────────────────────────────────
+
+import type { Voucher, AppliedVoucher } from "@/types";
+
+async function ensureJwtToken(): Promise<string | null> {
+  let jwt = localStorage.getItem("jwt_token");
+  if (jwt && !isJwtExpired(jwt)) return jwt;
+  try {
+    const accessToken = await getAccessToken();
+    if (!accessToken) return null;
+    const authResult = await authenticate(accessToken);
+    jwt = authResult.data?.token ?? null;
+    if (jwt) {
+      localStorage.setItem("jwt_token", jwt);
+      applyPendingReferral(jwt);
+    }
+    return jwt;
+  } catch (e) {
+    console.warn("[voucher] auth failed", e);
+    return null;
+  }
+}
+
+/**
+ * Lấy danh sách voucher khả dụng cho giỏ hàng hiện tại. Auto refetch khi
+ * subtotal hoặc shippingFee thay đổi. Trả về `vouchers` đã include cờ
+ * `usable` + `unusable_reason` từ backend.
+ */
+export function useAvailableVouchers() {
+  const { totalAmount } = useAtomValue(cartTotalState);
+  const selectedShippingService = useAtomValue(selectedShippingServiceState);
+  const deliveryMode = useAtomValue(deliveryModeState);
+  const shippingFee =
+    deliveryMode === "shipping" ? selectedShippingService?.total_fee ?? 0 : 0;
+
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchVouchers = useCallback(async () => {
+    const apiBase = getConfig((c) => c.template.apiUrl).replace(/\/+$/, "");
+    if (!apiBase) {
+      // Mock mode: trả về danh sách từ vouchers.json (xử lý qua requestWithFallback)
+      try {
+        const mock = await requestWithFallback<any>("/vouchers", { data: [] });
+        const arr = Array.isArray(mock?.data) ? mock.data : Array.isArray(mock) ? mock : [];
+        // Trong mock, tự tính usable đơn giản: subtotal >= min_order_amount.
+        const enriched = arr.map((v: any) => ({
+          ...v,
+          usable: totalAmount >= (Number(v.min_order_amount) || 0),
+          unusable_reason: totalAmount < (Number(v.min_order_amount) || 0)
+            ? `Đơn tối thiểu ${(Number(v.min_order_amount) || 0).toLocaleString("vi-VN")}đ`
+            : null,
+        }));
+        setVouchers(enriched);
+        return;
+      } catch (e: any) {
+        setError(e?.message ?? "Lỗi tải voucher");
+        return;
+      }
+    }
+
+    const token = await ensureJwtToken();
+    if (!token) {
+      setError("Chưa xác thực");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const url = new URL(`${apiBase}/vouchers/available`);
+      url.searchParams.set("subtotal", String(totalAmount));
+      url.searchParams.set("shipping_fee", String(shippingFee));
+      const res = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+      if (!res.ok) {
+        setError(`Lỗi ${res.status}`);
+        setVouchers([]);
+        return;
+      }
+      const json = await res.json();
+      const arr: Voucher[] = Array.isArray(json?.data) ? json.data : [];
+      setVouchers(arr);
+    } catch (e: any) {
+      setError(e?.message ?? "Lỗi mạng");
+      setVouchers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [totalAmount, shippingFee]);
+
+  useEffect(() => {
+    // Debounce nhẹ để tránh fetch liên tục khi user đang gõ số lượng.
+    const t = setTimeout(fetchVouchers, 250);
+    return () => clearTimeout(t);
+  }, [fetchVouchers]);
+
+  return { vouchers, loading, error, refresh: fetchVouchers };
+}
+
+/**
+ * Validate 1 voucher code cho giỏ hiện tại. Dùng khi khách nhập mã thủ công.
+ * Không tự apply — caller quyết định set vào appliedVoucherState.
+ */
+export function useValidateVoucher() {
+  const { totalAmount } = useAtomValue(cartTotalState);
+  const selectedShippingService = useAtomValue(selectedShippingServiceState);
+  const deliveryMode = useAtomValue(deliveryModeState);
+  const shippingFee =
+    deliveryMode === "shipping" ? selectedShippingService?.total_fee ?? 0 : 0;
+
+  return useCallback(
+    async (code: string): Promise<AppliedVoucher | { error: string }> => {
+      const trimmed = code.trim();
+      if (!trimmed) return { error: "Vui lòng nhập mã" };
+
+      const apiBase = getConfig((c) => c.template.apiUrl).replace(/\/+$/, "");
+      if (!apiBase) {
+        // Mock fallback: match code trong vouchers.json
+        try {
+          const mock = await requestWithFallback<any>("/vouchers", { data: [] });
+          const arr: any[] = Array.isArray(mock?.data) ? mock.data : Array.isArray(mock) ? mock : [];
+          const found = arr.find(
+            (v: any) => String(v.code).toUpperCase() === trimmed.toUpperCase()
+          );
+          if (!found) return { error: "Mã giảm giá không tồn tại" };
+          if ((Number(found.min_order_amount) || 0) > totalAmount) {
+            return { error: `Đơn tối thiểu ${(Number(found.min_order_amount) || 0).toLocaleString("vi-VN")}đ` };
+          }
+          const previewSubtotal = Number(found.preview_subtotal ?? 0);
+          const previewShipping = Number(found.preview_shipping ?? 0);
+          return {
+            voucher: found,
+            discount_subtotal: previewSubtotal,
+            discount_shipping: previewShipping,
+          };
+        } catch (e: any) {
+          return { error: e?.message ?? "Lỗi tải voucher" };
+        }
+      }
+
+      const token = await ensureJwtToken();
+      if (!token) return { error: "Chưa xác thực — vui lòng thử lại" };
+
+      try {
+        const res = await fetch(`${apiBase}/vouchers/validate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            code: trimmed,
+            subtotal: totalAmount,
+            shipping_fee: shippingFee,
+          }),
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok) {
+          return { error: json?.message ?? `Lỗi ${res.status}` };
+        }
+        return {
+          voucher: json.data.voucher,
+          discount_subtotal: Number(json.data.discount_subtotal ?? 0),
+          discount_shipping: Number(json.data.discount_shipping ?? 0),
+        };
+      } catch (e: any) {
+        return { error: e?.message ?? "Lỗi mạng" };
+      }
+    },
+    [totalAmount, shippingFee]
   );
 }

@@ -1,18 +1,29 @@
 import { useCheckout } from "@/hooks";
 import { useShippingFee } from "@/hooks/useShippingFee";
 import { useAtomValue } from "jotai";
-import { cartTotalState, payableCartState } from "@/state";
+import { loadable } from "jotai/utils";
+import {
+  cartGrandTotalState,
+  cartTotalState,
+  payableCartState,
+} from "@/state";
 import { formatPrice } from "@/utils/format";
 import { Button } from "zmp-ui";
 import { useState } from "react";
+
+const grandTotalLoadable = loadable(cartGrandTotalState);
 
 export default function Pay() {
   const { totalAmount } = useAtomValue(cartTotalState);
   const payableCart = useAtomValue(payableCartState);
   const checkout = useCheckout();
   const { disableCheckout, error } = useShippingFee();
+  const grandTotal = useAtomValue(grandTotalLoadable);
   const [paying, setPaying] = useState(false);
   const noPayable = payableCart.length === 0;
+
+  const displayTotal =
+    grandTotal.state === "hasData" ? grandTotal.data : totalAmount;
 
   return (
     <div className="flex-none py-3 px-4 bg-section space-y-2">
@@ -28,7 +39,7 @@ export default function Pay() {
         <div className="space-y-1 flex-1">
           <div className="text-xs text-subtitle">Tổng thanh toán</div>
           <div className="text-sm font-medium text-primary">
-            {formatPrice(totalAmount)}
+            {formatPrice(Math.max(0, displayTotal))}
           </div>
         </div>
         <Button
