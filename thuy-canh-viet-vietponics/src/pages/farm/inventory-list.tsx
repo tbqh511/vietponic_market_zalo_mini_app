@@ -396,7 +396,10 @@ function InventoryItem({
           }}
         />
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm text-gray-800 leading-snug line-clamp-2">
+          <p className="text-[10px] text-gray-400 font-mono leading-none">
+            #{product.id}
+          </p>
+          <p className="font-medium text-sm text-gray-800 leading-snug line-clamp-2 mt-0.5">
             {product.name}
           </p>
           {product.category && (
