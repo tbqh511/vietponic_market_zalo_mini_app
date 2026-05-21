@@ -555,6 +555,11 @@ export function useCheckout() {
           shipping_service_name: selectedShippingService?.service_name ?? undefined,
           voucher_code: appliedVoucher?.voucher.code,
           discount_amount: voucherDiscountTotal,
+          // Backend dùng payment_method để: (1) quyết định gửi VTP với ORDER_PAYMENT=4
+          // (COD thu hộ) hay 1 (đã trả online); (2) xác định luồng refund khi cancel.
+          // Bỏ qua isCustom (gateway tự chọn) — chỉ gửi method khi là 1 trong các
+          // mã chuẩn backend whitelist.
+          payment_method: selectedMethod.isCustom ? undefined : selectedMethod.method,
           total: finalTotal.toString(),
           note: note,
           created_at: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).replace(' ', 'T') + '+07:00',
