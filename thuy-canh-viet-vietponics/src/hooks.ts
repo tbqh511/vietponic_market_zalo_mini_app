@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { MutableRefObject, useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { MutableRefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { UIMatch, useMatches, useNavigate } from "react-router-dom";
 import {
@@ -423,9 +423,18 @@ export function useCheckout() {
   const appliedVoucher = useAtomValue(appliedVoucherState);
   const setAppliedVoucher = useSetAtom(appliedVoucherState);
   const oaId = getConfig((c) => c.template.oaIDtoOpenChat);
+  const inFlightRef = useRef(false);
 
 
   return async () => {
+    // Chặn double-click: nếu luồng checkout đang chạy thì bỏ qua click mới.
+    // Tránh tạo đơn trùng khi UI không phản hồi (PaymentDone event không fire
+    // ngay với COD/sandbox channels).
+    if (inFlightRef.current) {
+      console.warn("[ZaloCheckout] Bỏ qua click — luồng checkout đang chạy");
+      return;
+    }
+    inFlightRef.current = true;
     try {
       if (payableCart.length === 0) {
         toast.error("Tất cả sản phẩm trong giỏ đã hết hàng. Vui lòng xoá hoặc chọn sản phẩm khác.");
@@ -703,65 +712,109 @@ export function useCheckout() {
         console.warn("[ZaloCheckout] getOrderStatus/link - lỗi:", linkError);
       }
 
-      // 5. Thông báo kết quả giao dịch (verify real-time)
-      events.once(EventName.PaymentDone, async (data) => {
-        console.log("[ZaloCheckout] notify/PaymentDone - data nhận được:", data);
-        console.log("[ZaloCheckout] notify - checkTransaction params:", { data });
-        const result = await CheckoutSDK.checkTransaction({ data });
-        console.log("[ZaloCheckout] notify - checkTransaction result:", result);
+      // Cleanup UI sau khi đơn đã được tạo thành công ở backend + link xong.
+      // Dùng chung cho cả luồng COD (cleanup ngay) và luồng online (cleanup khi
+      // PaymentDone fire hoặc timeout fallback).
+      const finalizeCheckoutUI = () => {
+        setCart([]);
+        setNote("");
+        setAppliedVoucher(null);
+        refreshNewOrders();
+        // Bỏ viewTransition cho navigate sau thanh toán: trên Zalo WebView (device thật),
+        // document.visibilityState chưa kịp restore khi sheet native đóng → startViewTransition
+        // ném InvalidStateError. Đây là route push thường, không cần shared-element animation.
+        requestAnimationFrame(() => {
+          navigate("/orders");
+        });
+        // Poll thêm để bắt update payment_status từ webhook /notify hoặc job fallback.
+        setTimeout(() => refreshNewOrders(), 2500);
+        setTimeout(() => refreshNewOrders(), 7000);
+        // Pop một lần các dialog Zalo native sau khi user đã thấy success.
+        // Set flag true bất kể accept/cancel để không spam đơn sau.
+        setTimeout(async () => {
+          if (!shortcutPrompted) {
+            await promptCreateShortcut();
+            setShortcutPrompted(true);
+          }
+          if (!oaFollowPrompted && oaId) {
+            await promptFollowOA(oaId);
+            setOaFollowPrompted(true);
+          }
+        }, 1800);
+      };
 
-        if (result.resultCode >= 0) {
-          setCart([]);
-          setNote("");
-          setAppliedVoucher(null);
-          refreshNewOrders();
-          // Bỏ viewTransition cho navigate sau thanh toán: trên Zalo WebView (device thật),
-          // document.visibilityState chưa kịp restore khi sheet native đóng → startViewTransition
-          // ném InvalidStateError. Đây là route push thường, không cần shared-element animation.
-          requestAnimationFrame(() => {
-            navigate("/orders");
-          });
-          // Poll thêm để bắt update payment_status từ webhook /notify hoặc job fallback.
-          setTimeout(() => refreshNewOrders(), 2500);
-          setTimeout(() => refreshNewOrders(), 7000);
-          // Pop một lần các dialog Zalo native sau khi user đã thấy success.
-          // Set flag true bất kể accept/cancel để không spam đơn sau.
-          setTimeout(async () => {
-            if (!shortcutPrompted) {
-              await promptCreateShortcut();
-              setShortcutPrompted(true);
-            }
-            if (!oaFollowPrompted && oaId) {
-              await promptFollowOA(oaId);
-              setOaFollowPrompted(true);
-            }
-          }, 1800);
-        }
-        switch (result.resultCode) {
-          case 1:
-            toast.success("Thanh toán thành công. Cảm ơn bạn đã mua hàng!", {
-              icon: "🎉",
-              duration: 5000,
-            });
-            break;
-          case 0:
-            toast("Giao dịch đang xử lý. Cảm ơn bạn đã mua hàng!", {
-              icon: "⏳",
-              duration: 5000,
-            });
-            break;
-          case -1:
-            toast.error("Giao dịch không thành công. Vui lòng thử lại sau.");
-            break;
-          case -2:
-            toast.error("Vui lòng chọn phương thức thanh toán!");
-            break;
-          default:
-            console.error(result);
-            toast.error(result.msg);
-        }
+      // COD/BANK sandbox không thực hiện giao dịch tiền thật → SDK không fire
+      // EventName.PaymentDone đồng bộ. Cleanup + navigate ngay sau khi link xong,
+      // không chờ event. Backend sẽ update payment_status qua webhook /notify
+      // hoặc job CheckPaymentStatus (poll lại bằng setTimeout refreshNewOrders).
+      const codePrefix = selectedMethod.method?.toUpperCase() ?? "";
+      const isOfflineFlow = codePrefix.startsWith("COD") || codePrefix.startsWith("BANK");
+      if (isOfflineFlow) {
+        toast.success("Đặt hàng thành công. Cảm ơn bạn đã mua hàng!", {
+          icon: "🎉",
+          duration: 5000,
+        });
+        finalizeCheckoutUI();
+        return;
+      }
+
+      // 5. Thông báo kết quả giao dịch (verify real-time) — luồng online gateway
+      // Race với timeout 10s: nếu PaymentDone không về trong 10s, vẫn finalize UI
+      // (đơn đã có ở backend, webhook /notify sẽ update payment_status sau).
+      let paymentDoneFired = false;
+      const paymentDonePromise = new Promise<void>((resolve) => {
+        events.once(EventName.PaymentDone, async (data) => {
+          paymentDoneFired = true;
+          console.log("[ZaloCheckout] notify/PaymentDone - data nhận được:", data);
+          console.log("[ZaloCheckout] notify - checkTransaction params:", { data });
+          const result = await CheckoutSDK.checkTransaction({ data });
+          console.log("[ZaloCheckout] notify - checkTransaction result:", result);
+
+          if (result.resultCode >= 0) {
+            finalizeCheckoutUI();
+          }
+          switch (result.resultCode) {
+            case 1:
+              toast.success("Thanh toán thành công. Cảm ơn bạn đã mua hàng!", {
+                icon: "🎉",
+                duration: 5000,
+              });
+              break;
+            case 0:
+              toast("Giao dịch đang xử lý. Cảm ơn bạn đã mua hàng!", {
+                icon: "⏳",
+                duration: 5000,
+              });
+              break;
+            case -1:
+              toast.error("Giao dịch không thành công. Vui lòng thử lại sau.");
+              break;
+            case -2:
+              toast.error("Vui lòng chọn phương thức thanh toán!");
+              break;
+            default:
+              console.error(result);
+              toast.error(result.msg);
+          }
+          resolve();
+        });
       });
 
+      // Timeout fallback: 10s không có PaymentDone → finalize UI (đơn đã có ở
+      // backend, webhook /notify sẽ update payment_status). Tránh việc khách
+      // mắc kẹt ở giỏ hàng + click lại tạo đơn trùng.
+      await Promise.race([
+        paymentDonePromise,
+        new Promise<void>((resolve) => setTimeout(resolve, 10000)),
+      ]);
+      if (!paymentDoneFired) {
+        console.warn("[ZaloCheckout] PaymentDone không fire trong 10s — fallback finalize");
+        toast("Giao dịch đang xử lý. Vui lòng kiểm tra trong mục Đơn hàng.", {
+          icon: "⏳",
+          duration: 5000,
+        });
+        finalizeCheckoutUI();
+      }
     } catch (error: any) {
       console.error("[ZaloCheckout] Lỗi thanh toán:", {
         error,
@@ -776,6 +829,8 @@ export function useCheckout() {
         duration: isStockError ? 6000 : 4000,
         style: isStockError ? { whiteSpace: "pre-line", maxWidth: "90vw" } : undefined,
       });
+    } finally {
+      inFlightRef.current = false;
     }
   };
 }
