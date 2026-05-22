@@ -9,6 +9,7 @@ import { ShippingService } from "@/types";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { getConfig } from "@/utils/template";
+import { useEnsureJwt } from "@/hooks";
 
 const API_URL = getConfig((c) => c.template.apiUrl).replace(/\/+$/, "");
 
@@ -18,6 +19,7 @@ export function useShippingFee() {
   const deliveryMode = useAtomValue(deliveryModeState);
   const { totalAmount } = useAtomValue(cartTotalState);
   const setSelectedService = useSetAtom(selectedShippingServiceState);
+  const ensureJwt = useEnsureJwt();
 
   const [services, setServices] = useState<ShippingService[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,14 +70,28 @@ export function useShippingFee() {
         totalAmount,
       });
       try {
-        const token = localStorage.getItem("jwt_token") ?? "";
+        // Đảm bảo có JWT hợp lệ (auto refresh nếu expired) trước khi gọi
+        // protected endpoint, tránh 401 do token cũ.
+        const token = await ensureJwt();
+        if (!token) {
+          console.warn("[ShippingFee] Không lấy được JWT token");
+          setError("Vui lòng đăng nhập lại để tính phí vận chuyển");
+          setServices([]);
+          setSelectedService(null);
+          return;
+        }
+
         const payload = {
           items: cart.map((i) => ({
             product_id: i.product.id,
             quantity: i.quantity,
           })),
           receiver_province_id: address.province_id,
-          receiver_district_id: address.district_id,
+          // VTP API v3 đã bỏ cấp huyện → district_id thường là null/undefined,
+          // backend tự lookup từ ward và set = 0. Chỉ gửi khi thực sự có giá trị.
+          ...(address.district_id
+            ? { receiver_district_id: address.district_id }
+            : {}),
           receiver_ward_id: address.ward_id,
           product_price: totalAmount,
           is_cod: false,
@@ -94,33 +110,63 @@ export function useShippingFee() {
           body: JSON.stringify(payload),
         });
 
+        // Đọc body 1 lần duy nhất để tránh "body already consumed"
+        const bodyText = await res.text();
+        let bodyJson: any = null;
+        try {
+          bodyJson = bodyText ? JSON.parse(bodyText) : null;
+        } catch {
+          // backend trả non-JSON (HTML error page, proxy timeout, …)
+        }
+
         if (res.status === 422) {
-          const j = await res.json().catch(() => ({} as any));
-          if (j?.code === "NO_PICKUP_STATION") {
-            console.warn("[ShippingFee] Không có trạm cấu hình VTP", j);
+          if (bodyJson?.code === "NO_PICKUP_STATION") {
+            console.warn("[ShippingFee] Không có trạm cấu hình VTP", bodyJson);
             setError(
-              j.message ??
+              bodyJson.message ??
                 "Hiện chưa có trạm lấy hàng phù hợp, vui lòng liên hệ shop"
             );
             setServices([]);
-            setSelectedService(undefined);
+            setSelectedService(null);
             return;
           }
+          // Validation error khác — hiển thị message cụ thể từ backend
+          const msg = bodyJson?.message ?? "Địa chỉ không hợp lệ";
+          console.error("[ShippingFee] Validation lỗi 422", bodyJson);
+          setError(msg);
+          setServices([]);
+          setSelectedService(null);
+          return;
         }
 
         if (!res.ok) {
-          const errText = await res.text().catch(() => "");
-          console.error("[ShippingFee] API lỗi", res.status, errText);
-          throw new Error(`HTTP ${res.status}`);
+          console.error(
+            "[ShippingFee] API lỗi HTTP",
+            res.status,
+            bodyJson ?? bodyText?.slice(0, 500)
+          );
+          if (res.status === 401) {
+            setError("Phiên đăng nhập đã hết hạn, vui lòng thử lại");
+          } else {
+            setError(
+              bodyJson?.message ??
+                `Không thể tải phí vận chuyển (lỗi ${res.status})`
+            );
+          }
+          setServices([]);
+          setSelectedService(null);
+          return;
         }
 
-        const json = await res.json();
-        console.log("[ShippingFee] API response:", json);
-        const data: ShippingService[] = json?.data ?? json ?? [];
+        console.log("[ShippingFee] API response:", bodyJson);
+        const data: ShippingService[] = bodyJson?.data ?? bodyJson ?? [];
         setServices(data);
 
-        // Auto-select dịch vụ đầu tiên nếu chưa chọn
-        if (data.length > 0) {
+        if (data.length === 0) {
+          setError("Không có dịch vụ vận chuyển khả dụng cho địa chỉ này");
+          setSelectedService(null);
+        } else {
+          // Auto-select dịch vụ đầu tiên nếu chưa chọn
           setSelectedService((prev) => prev ?? data[0]);
         }
       } catch (err: any) {
