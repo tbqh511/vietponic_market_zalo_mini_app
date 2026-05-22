@@ -319,7 +319,13 @@ function ShippingAddressPage() {
             name="name"
             label="Tên người nhận"
             placeholder="Nhập tên người nhận"
-            defaultValue={address?.name}
+            defaultValue={
+              address?.name ||
+              (userInfoLoadable.state === "hasData"
+                ? userInfoLoadable.data?.name
+                : "") ||
+              ""
+            }
           />
           <Input
             name="phone"
