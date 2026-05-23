@@ -495,7 +495,7 @@ export function useCheckout() {
           channels: [
             { method: "COD_SANDBOX" },
             { method: "BANK_SANDBOX" },
-            { method: "ZALOPAY_SANDBOX" },
+            // { method: "ZALOPAY_SANDBOX" }, // Tạm tắt — chưa cấu hình MAC/secret production. Bật lại khi có nhu cầu dùng ZaloPay.
             { method: "MOMO_SANDBOX" },
           ],
           success: (data) => {
