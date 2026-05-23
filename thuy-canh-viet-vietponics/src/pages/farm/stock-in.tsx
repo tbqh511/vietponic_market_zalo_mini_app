@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useStockInSuggestions } from "@/hooks";
 import { request } from "@/utils/request";
@@ -35,7 +34,6 @@ function formatExpiry(iso: string, todayIso: string): string {
 const fmtVnd = (n: number) => n.toLocaleString("vi-VN");
 
 export default function StockInDeclaration() {
-  const navigate = useNavigate();
   const { items, meta, loading, error, refresh } = useStockInSuggestions();
 
   // Số lượng nhập theo product_id. Mặc định chỉ thêm dòng khi user chạm vào.
@@ -118,33 +116,29 @@ export default function StockInDeclaration() {
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-white border-b border-gray-100">
-        <button onClick={() => navigate(-1)} aria-label="Quay lại" className="text-gray-600">
-          ←
-        </button>
-        <h1 className="font-medium text-[15px] flex-1">Khai báo nhập kho</h1>
-      </div>
-
       <div className="flex-1 overflow-y-auto px-4 pt-3 pb-32">
         {/* Suggestion banner */}
         {meta && meta.suggested_total > 0 && (
-          <div className="flex items-start gap-2 p-2.5 bg-blue-50 rounded-lg mb-3">
-            <span className="text-blue-500 text-sm leading-none mt-0.5">💡</span>
-            <p className="text-[11px] text-blue-700 leading-relaxed">
+          <div className="flex items-start gap-2.5 p-3 bg-primary/10 border border-primary/20 rounded-xl mb-3">
+            <span className="text-primary text-base leading-none mt-0.5">💡</span>
+            <p className="text-[12px] text-gray-700 leading-relaxed">
               Dựa trên {meta.window_days} ngày qua, hôm nay nên nhập khoảng{" "}
-              <span className="font-medium">{fmtVnd(meta.suggested_total)}kg</span>
+              <span className="font-semibold text-primary">
+                {fmtVnd(meta.suggested_total)}kg
+              </span>
             </p>
           </div>
         )}
 
         {/* Date row */}
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-[13px] font-medium">Ngày nhập</span>
-          <span className="text-xs text-gray-500">{formatDate(todayIso)}</span>
+        <div className="flex justify-between items-center mb-3 px-0.5">
+          <span className="text-[13px] font-medium text-gray-700">Ngày nhập</span>
+          <span className="text-xs font-medium text-gray-500">{formatDate(todayIso)}</span>
         </div>
 
-        <p className="text-[13px] font-medium mb-2">Sản phẩm nhập hôm nay</p>
+        <p className="text-[13px] font-semibold text-gray-800 mb-2">
+          Sản phẩm nhập hôm nay
+        </p>
 
         {loading && items.length === 0 ? (
           <div className="py-16 text-center text-gray-400 text-sm">
@@ -213,16 +207,19 @@ export default function StockInDeclaration() {
             )}
 
             {/* Totals */}
-            <div className="mt-3.5 p-3 bg-gray-100 rounded-lg">
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-500">Tổng nhập</span>
-                <span className="font-medium">
-                  {fmtVnd(totalKg)}kg · {payloadLines.length} sản phẩm
+            <div className="mt-3.5 p-3.5 bg-white border border-gray-200 rounded-xl">
+              <div className="flex justify-between items-center">
+                <span className="text-[13px] text-gray-500">Tổng nhập</span>
+                <span className="text-[15px] font-semibold text-gray-900">
+                  {fmtVnd(totalKg)}kg
+                  <span className="text-xs font-normal text-gray-400">
+                    {" "}· {payloadLines.length} sản phẩm
+                  </span>
                 </span>
               </div>
-              <div className="flex justify-between text-xs mt-1">
-                <span className="text-gray-500">Dự kiến doanh thu</span>
-                <span className="font-medium text-green-600">
+              <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
+                <span className="text-[13px] text-gray-500">Dự kiến doanh thu</span>
+                <span className="text-[15px] font-semibold text-primary">
                   ~{fmtVnd(Math.round(projectedRevenue))}đ
                 </span>
               </div>
@@ -232,11 +229,11 @@ export default function StockInDeclaration() {
       </div>
 
       {/* Sticky submit */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-50 border-t border-gray-100">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100">
         <button
           onClick={handleSubmit}
           disabled={submitting || payloadLines.length === 0}
-          className="w-full py-3 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-40"
+          className="w-full py-3.5 bg-primary text-white rounded-xl text-[15px] font-semibold active:opacity-90 disabled:opacity-40"
         >
           {submitting ? "Đang gửi..." : "Gửi khai báo"}
         </button>
@@ -264,42 +261,57 @@ function DeclCard({
 
   return (
     <div
-      className={`p-3 rounded-lg border ${
+      className={`p-3.5 rounded-xl border ${
         danger ? "border-red-300 bg-red-50" : "border-gray-200 bg-white"
       }`}
     >
-      <div className="flex justify-between items-center mb-1">
+      <div className="flex justify-between items-start mb-1.5">
         <span
-          className={`text-[13px] font-medium ${danger ? "text-red-800" : ""}`}
+          className={`text-[14px] font-semibold ${
+            danger ? "text-red-800" : "text-gray-900"
+          }`}
         >
           {item.name}
         </span>
         <button
           onClick={onRemove}
           aria-label="Bỏ sản phẩm"
-          className={`text-sm ${danger ? "text-red-500" : "text-gray-300"}`}
+          className={`text-sm leading-none mt-0.5 ${
+            danger ? "text-red-400" : "text-gray-300"
+          }`}
         >
           ✕
         </button>
       </div>
 
       {danger ? (
-        <p className="text-[11px] text-red-600 mb-2">
-          Hôm qua cháy hàng! Nên nhập thêm
+        <p className="inline-flex items-center gap-1 text-[11px] font-medium text-red-700 bg-red-100 rounded px-1.5 py-0.5 mb-2.5">
+          🔥 Hôm qua cháy hàng! Nên nhập thêm
         </p>
       ) : (
-        <p className="text-[11px] text-gray-500 mb-2">
-          TB {item.window_days} ngày: {item.avg_daily_sold}kg/ngày · Giá:{" "}
-          {fmtVnd(item.price)}đ/kg
-        </p>
+        <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mb-2.5">
+          <span>
+            TB {item.window_days} ngày:{" "}
+            <span className="font-medium text-gray-700">
+              {item.avg_daily_sold}kg/ngày
+            </span>
+          </span>
+          <span className="text-gray-300">·</span>
+          <span>
+            Giá:{" "}
+            <span className="font-medium text-gray-700">
+              {fmtVnd(item.price)}đ/kg
+            </span>
+          </span>
+        </div>
       )}
 
       {/* Stepper */}
       <div className="flex gap-2 items-center">
-        <div className="flex-1 flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <div className="flex-1 flex items-center rounded-lg overflow-hidden border border-gray-200 bg-white">
           <button
             onClick={() => onChange(quantity - 1)}
-            className="px-3 py-2 bg-gray-50 text-gray-500 text-sm active:bg-gray-100"
+            className="w-10 py-2.5 bg-primary text-white text-lg leading-none font-medium active:opacity-90"
             aria-label="Giảm"
           >
             −
@@ -312,11 +324,11 @@ function DeclCard({
               const v = parseFloat(e.target.value);
               onChange(isNaN(v) ? 0 : v);
             }}
-            className="flex-1 min-w-0 text-center text-sm font-medium py-2 outline-none"
+            className="flex-1 min-w-0 text-center text-[15px] font-semibold text-gray-900 py-2 outline-none"
           />
           <button
             onClick={() => onChange(quantity + 1)}
-            className="px-3 py-2 bg-gray-50 text-gray-500 text-sm active:bg-gray-100"
+            className="w-10 py-2.5 bg-primary text-white text-lg leading-none font-medium active:opacity-90"
             aria-label="Tăng"
           >
             +
@@ -325,14 +337,16 @@ function DeclCard({
         <span className="text-xs text-gray-500 w-6">kg</span>
       </div>
 
-      {!danger && (
-        <div className="mt-2 flex justify-between text-[11px] text-gray-500">
-          <span>Hạn sử dụng (tươi)</span>
-          <span className="font-medium">
-            {formatExpiry(item.suggested_expire_date, todayIso)}
-          </span>
-        </div>
-      )}
+      <div
+        className={`mt-2.5 flex justify-between text-[11px] ${
+          danger ? "text-red-600" : "text-gray-500"
+        }`}
+      >
+        <span>Hạn sử dụng (tươi)</span>
+        <span className="font-medium">
+          {formatExpiry(item.suggested_expire_date, todayIso)}
+        </span>
+      </div>
     </div>
   );
 }

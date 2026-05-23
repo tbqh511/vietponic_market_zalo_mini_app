@@ -15,6 +15,10 @@ import OrderDetailPage from "./pages/orders/detail";
 import ProfileEditorPage from "./pages/profile/editor";
 import AffiliatePage from "./pages/profile/affiliate";
 import FarmDashboardPage from "./pages/farm";
+import FarmAnalyticsPage from "./pages/farm/analytics";
+import FarmOrdersPage from "./pages/farm/orders";
+import FarmPayoutsPage from "./pages/farm/payouts";
+import FarmPayoutDetailPage from "./pages/farm/payout-detail";
 import FarmInventoryPage from "./pages/farm/inventory";
 import FarmMovementsPage from "./pages/farm/movements";
 import FarmRegisterPage from "./pages/farm/register";
@@ -140,11 +144,28 @@ const router = createBrowserRouter(
           },
         },
         {
+          path: "/farm/orders",
+          element: <FarmOrdersPage />,
+          handle: {
+            title: "Đơn đang đến",
+            noFloatingCart: true,
+          },
+        },
+        {
+          path: "/farm/analytics",
+          element: <FarmAnalyticsPage />,
+          handle: {
+            title: "Phân tích",
+            noFloatingCart: true,
+          },
+        },
+        {
           path: "/farm/inventory",
           element: <FarmInventoryPage />,
           handle: {
-            title: "Quản lý kho",
+            title: "Khai báo nhập kho",
             noFloatingCart: true,
+            noFooter: true,
           },
         },
         {

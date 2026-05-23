@@ -149,6 +149,50 @@ export default function FarmDashboardPage() {
           </div>
         )}
 
+        {/* Điều hướng tới trang "Đơn đang đến" — màn farm xem buổi sáng để biết
+            cần chuẩn bị bao nhiêu rau giao cho Vietponics hôm nay. Dùng nền
+            primary đậm cho nổi bật hơn các nút phụ. */}
+        <Link
+          to="/farm/orders"
+          className="mt-4 w-full flex items-center justify-between gap-2 p-3 bg-primary rounded-xl active:bg-primary/90"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white text-base leading-none">
+              📦
+            </span>
+            <div>
+              <div className="text-[13px] font-medium text-white">
+                Đơn đang đến
+              </div>
+              <div className="text-[11px] text-white/80">
+                Xem cần chuẩn bị & giao gì hôm nay
+              </div>
+            </div>
+          </div>
+          <span className="text-white text-lg leading-none">›</span>
+        </Link>
+
+        {/* Điều hướng tới trang phân tích chi tiết */}
+        <Link
+          to="/farm/analytics"
+          className="mt-4 w-full flex items-center justify-between gap-2 p-3 bg-primary/5 border border-primary/15 rounded-xl active:bg-primary/10"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-base leading-none">
+              📈
+            </span>
+            <div>
+              <div className="text-[13px] font-medium text-gray-900">
+                Phân tích & xu hướng
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Doanh thu 7/30/90 ngày · top sản phẩm
+              </div>
+            </div>
+          </div>
+          <span className="text-primary text-lg leading-none">›</span>
+        </Link>
+
         {/* Errors */}
         {(profile.error || overview.error || productsToday.error) && (
           <div className="mt-3 p-2 bg-red-50 rounded text-[11px] text-red-700">

@@ -403,6 +403,8 @@ export interface FarmProfile {
   description: string | null;
   address: string | null;
   payment_cycle: "weekly" | "biweekly" | "monthly";
+  // Phần farm GIỮ LẠI (vd 0.85 = farm nhận 85%). Phí Vietponics = 1 - commission_rate.
+  commission_rate: number;
   approved_at: string | null;
 }
 
@@ -450,6 +452,36 @@ export interface FarmProductsTodayResponse {
   hint: FarmAiHint | null;
 }
 
+// Một điểm trên biểu đồ doanh thu. bucket = 'YYYY-MM-DD' (day) hoặc 'YYYY-Www' (week).
+export interface FarmRevenuePoint {
+  bucket: string;
+  revenue: number;
+  orders: number;
+  items: number;
+}
+
+// Top sản phẩm trong range (GET /farm/analytics → top_products[]).
+export interface FarmTopProduct {
+  product_id: number;
+  name: string;
+  qty: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  orders_count: number;
+}
+
+// GET /farm/analytics?range=7d|30d|custom&bucket=day|week
+export interface FarmAnalyticsResponse {
+  overview: FarmOverview;
+  revenue: {
+    bucket: "day" | "week";
+    range: string;
+    series: FarmRevenuePoint[];
+  };
+  top_products: FarmTopProduct[];
+}
+
 export interface FarmIncomingOrder {
   item_id: number;
   order_id: number;
@@ -464,17 +496,37 @@ export interface FarmIncomingOrder {
   delivery_address: string | null;
 }
 
+export type FarmPayoutStatus = "draft" | "pending" | "paid" | "cancelled";
+
 export interface FarmPayout {
   id: number;
-  period_start: string | null;
-  period_end: string | null;
-  total_sold: number;
-  gross_revenue: number;
-  adjustment: number;
-  net_payout: number;
-  status: "draft" | "pending" | "paid" | "cancelled";
+  period_start: string | null; // YYYY-MM-DD
+  period_end: string | null; // YYYY-MM-DD
+  total_sold: number; // tổng kg đã bán trong kỳ
+  gross_revenue: number; // doanh thu gộp (giá vốn farm)
+  commission_rate: number; // phần farm giữ (0..1)
+  commission_amount: number; // phí Vietponics = gross * (1 - commission_rate)
+  adjustment: number; // điều chỉnh (+/-) do admin
+  net_payout: number; // số chốt trên DB
+  net_estimated: number; // gross * commission_rate + adjustment (FE hiển thị)
+  status: FarmPayoutStatus;
+  expected_pay_date: string | null; // YYYY-MM-DD; null nếu đã trả/huỷ
   paid_at: string | null;
   payment_method: string | null;
   transaction_ref: string | null;
   note: string | null;
+}
+
+// Một đơn đóng góp vào payout (GET /farm/payouts/{id} → orders[]).
+export interface FarmPayoutOrder {
+  order_id: number;
+  order_created_at: string;
+  order_status: "delivering" | "delivered";
+  qty: number; // kg của farm trong đơn này
+  gross: number; // doanh thu gộp của farm trong đơn này
+}
+
+export interface FarmPayoutDetail {
+  payout: FarmPayout;
+  orders: FarmPayoutOrder[];
 }

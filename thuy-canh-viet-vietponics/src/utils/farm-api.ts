@@ -7,6 +7,8 @@ import {
   FarmProductsTodayResponse,
   FarmIncomingOrder,
   FarmPayout,
+  FarmPayoutDetail,
+  FarmAnalyticsResponse,
 } from "@/types";
 
 // Polling mặc định 30s cho mọi hook real-time (overview/productsToday/incoming).
@@ -128,6 +130,53 @@ export function useFarmProductsToday(enabled: boolean = true) {
   return usePolling<FarmProductsTodayResponse>("/farm/products/today", enabled);
 }
 
+// Khoảng thời gian cho trang Analytics. 90 ngày không có range cố định ở
+// backend (chỉ today|7d|30d|custom) → map sang custom + from/to.
+export type FarmAnalyticsPeriod = "7d" | "30d" | "90d";
+
+// Số ngày tương ứng mỗi period — dùng cho cả tính from/to lẫn so sánh kỳ trước.
+export const ANALYTICS_PERIOD_DAYS: Record<FarmAnalyticsPeriod, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
+
+// YYYY-MM-DD theo giờ VN (UTC+7) — backend resolve custom range ở tz này.
+function vnDateString(offsetDays: number): string {
+  const now = new Date();
+  const vn = new Date(now.getTime() + 7 * 3600_000);
+  vn.setUTCDate(vn.getUTCDate() + offsetDays);
+  return vn.toISOString().slice(0, 10);
+}
+
+// Dựng query string cho GET /farm/analytics theo period. Bucket = day cho
+// 7/30 ngày (sparkline mượt), week cho 90 ngày (tránh 90 điểm li ti).
+// offsetWeeks: 0 = kỳ hiện tại, -1 = lùi một kỳ (để so sánh "vs kỳ trước").
+function analyticsQuery(period: FarmAnalyticsPeriod, periodBack = 0): string {
+  const days = ANALYTICS_PERIOD_DAYS[period];
+  const bucket = period === "90d" ? "week" : "day";
+  // to = hôm nay - periodBack kỳ; from = to - (days-1).
+  const toOffset = -periodBack * days;
+  const fromOffset = toOffset - (days - 1);
+  const from = vnDateString(fromOffset);
+  const to = vnDateString(toOffset);
+  return `range=custom&bucket=${bucket}&from=${from}&to=${to}&limit=10`;
+}
+
+/**
+ * GET /farm/analytics — overview + revenue series + top products cho 1 kỳ.
+ * periodBack=1 lấy kỳ liền trước (dùng để tính delta "vs kỳ trước").
+ */
+export function useFarmAnalytics(
+  period: FarmAnalyticsPeriod,
+  enabled: boolean = true,
+  periodBack: number = 0
+) {
+  const path = `/farm/analytics?${analyticsQuery(period, periodBack)}`;
+  // Analytics tổng hợp theo ngày → không cần poll 30s; refresh thủ công.
+  return usePolling<FarmAnalyticsResponse>(path, enabled, 0);
+}
+
 /**
  * GET /farm/orders/incoming — đơn đang chờ giao.
  */
@@ -135,12 +184,27 @@ export function useFarmIncomingOrders(enabled: boolean = true) {
   return usePolling<FarmIncomingOrder[]>("/farm/orders/incoming", enabled);
 }
 
+// Payouts poll chậm 60s — đợt draft "đang tích lũy" cập nhật theo cron daily,
+// nhưng vẫn poll để farm thấy số mới mà không cần thoát/vào lại trang.
+const PAYOUT_POLL_MS = 60_000;
+
 /**
- * GET /farm/payouts?limit=20 — danh sách đợt thanh toán.
- * Không poll (ít đổi — chỉ thay đổi khi cron snapshot daily chạy 23:30).
+ * GET /farm/payouts?limit=20 — danh sách đợt thanh toán (mọi status).
  */
 export function useFarmPayouts(enabled: boolean = true) {
-  return usePolling<FarmPayout[]>("/farm/payouts?limit=20", enabled, 0);
+  return usePolling<FarmPayout[]>("/farm/payouts?limit=20", enabled, PAYOUT_POLL_MS);
+}
+
+/**
+ * GET /farm/payouts/{id} — chi tiết một đợt + danh sách đơn đóng góp.
+ * Poll 60s để đợt draft phản ánh đơn mới (đang tích lũy).
+ */
+export function useFarmPayoutDetail(id: number | null, enabled: boolean = true) {
+  return usePolling<FarmPayoutDetail>(
+    `/farm/payouts/${id}`,
+    enabled && id != null,
+    PAYOUT_POLL_MS
+  );
 }
 
 /**
