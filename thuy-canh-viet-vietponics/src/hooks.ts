@@ -193,41 +193,24 @@ export function useEnsureJwt() {
 }
 
 // Gọi trong Layout để đảm bảo customerProfile luôn được load khi app khởi động.
-// Mỗi lần mở mini app, nếu cột `mobile` của customer chưa có giá trị (DB NULL),
-// sẽ tự động sync số điện thoại bằng cách gửi phone_token (nếu user đã cấp quyền)
-// đến /authenticate để backend decode và update DB.
+// Mỗi lần mở mini app sẽ gọi /authenticate để refresh profile mới nhất —
+// quan trọng cho các flag thay đổi từ phía admin (is_farm_partner, mobile sync).
+// Profile cached trong localStorage chỉ dùng để render ngay trên cold start;
+// re-auth chạy nền sẽ ghi đè bằng giá trị fresh từ backend.
 export function useInitAuth() {
-  const ensureJwt = useEnsureJwt();
   const setProfile = useSetAtom(customerProfileState);
-  const getProfile = useAtomCallback(
-    useCallback((get) => get(customerProfileState), [])
-  );
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      // 1. Đảm bảo có JWT (re-auth nếu cần — nhánh này có thể đã set profile)
-      const token = await ensureJwt();
-      if (cancelled || !token) return;
-
-      // 2. Đọc profile mới nhất sau khi ensureJwt chạy xong
-      const profile = getProfile();
-
-      // 3. Nếu profile chưa có HOẶC mobile rỗng → re-auth (silent) với phone_token
-      //    để backend update mobile vào DB. Không show prompt nếu chưa cấp quyền —
-      //    PhoneRequiredGate sẽ xử lý trường hợp đó.
-      if (profile && profile.mobile) return;
-
+      // Luôn gọi /authenticate khi app khởi động để refresh profile mới nhất
+      // (bao gồm is_farm_partner — flag này có thể bị admin thay đổi mà JWT
+      // hiện tại không biết). Bỏ qua nhánh ensureJwt vì sẽ là request trùng.
       try {
         const { getSetting, getPhoneNumber } = await import("zmp-sdk/apis");
         const { authSetting } = await getSetting({});
         const phoneGranted = !!authSetting["scope.userPhonenumber"];
-
-        // Nếu profile null (cần load) HOẶC mobile null + đã cấp quyền (cần sync)
-        // thì mới gọi authenticate. Nếu profile đã có nhưng mobile null + chưa cấp quyền
-        // → để PhoneRequiredGate xử lý, không làm gì thêm.
-        if (profile && !phoneGranted) return;
 
         let phoneToken: string | undefined;
         if (phoneGranted) {
@@ -248,6 +231,7 @@ export function useInitAuth() {
           setProfile(result.data.user);
           if (result.data.token) {
             localStorage.setItem("jwt_token", result.data.token);
+            applyPendingReferral(result.data.token);
           }
         }
       } catch {
