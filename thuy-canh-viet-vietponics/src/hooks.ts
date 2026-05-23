@@ -670,29 +670,117 @@ export function useCheckout() {
 
       // prepare-order gọi ngay trước SDK Checkout (không gọi sớm hơn)
       const payload = { amount, desc, item, extradata, method };
+      const payloadJson = JSON.stringify(payload);
       console.log("[ZaloCheckout] prepare-order payload:", payload);
+      console.log("[ZaloCheckout] prepare-order payload (raw JSON sent):", payloadJson);
       const prepareResponse = await fetch(`${apiBase}/prepare-order`, {
         method: "POST",
         headers: authHeaders,
-        body: JSON.stringify(payload),
+        body: payloadJson,
+      });
+      const prepareBodyText = await prepareResponse.text();
+      console.log("[ZaloCheckout] prepare-order response:", {
+        status: prepareResponse.status,
+        ok: prepareResponse.ok,
+        body: prepareBodyText.slice(0, 1000),
       });
       if (!prepareResponse.ok) {
-        throw new Error("Tạo MAC thất bại");
+        throw new Error(`Tạo MAC thất bại (${prepareResponse.status}): ${prepareBodyText.slice(0, 200)}`);
       }
-      const { mac } = await prepareResponse.json();
+      let prepareJson: any;
+      try {
+        prepareJson = JSON.parse(prepareBodyText);
+      } catch (parseErr) {
+        throw new Error(`prepare-order trả về JSON không hợp lệ: ${prepareBodyText.slice(0, 200)}`);
+      }
+      const { mac } = prepareJson;
       console.log("[ZaloCheckout] mac:", mac);
+      console.log("[ZaloCheckout] prepare-order orderData echo:", prepareJson?.orderData);
 
       // 3. Kích hoạt giao dịch thanh toán (amount = finalTotal, không phải subtotal)
-      console.log("[ZaloCheckout] createOrder:", { desc, item, amount, extradata, method, mac });
-      const { orderId: checkoutSdkOrderId } = await createOrder({
-        desc,
-        item,
-        amount,
-        extradata,
-        method,
-        mac,
-      });
-      console.log("[ZaloCheckout] createOrder - orderId trả về:", checkoutSdkOrderId);
+      const sdkArgs = { desc, item, amount, extradata, method, mac };
+      console.log("[ZaloCheckout] createOrder - SDK args:", sdkArgs);
+      console.log("[ZaloCheckout] createOrder - SDK args (raw JSON):", JSON.stringify(sdkArgs));
+      // Debug panel: khi bật localStorage.DEBUG_ZALO_PAY='1' sẽ hiện alert ngay trước
+      // khi gọi SDK để dump payload trên thiết bị thật (không có DevTools).
+      if (typeof localStorage !== "undefined" && localStorage.getItem("DEBUG_ZALO_PAY") === "1") {
+        try {
+          // eslint-disable-next-line no-alert
+          window.alert(
+            "[ZaloCheckout] Sắp gọi createOrder SDK:\n" +
+              JSON.stringify(sdkArgs, null, 2)
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+      let checkoutSdkOrderId: string | undefined;
+      try {
+        const sdkResp = await createOrder({
+          desc,
+          item,
+          amount,
+          extradata,
+          method,
+          mac,
+        });
+        checkoutSdkOrderId = sdkResp?.orderId;
+        console.log("[ZaloCheckout] createOrder - SDK response:", sdkResp);
+        console.log("[ZaloCheckout] createOrder - orderId trả về:", checkoutSdkOrderId);
+      } catch (sdkError: any) {
+        // SDK Zalo Pay reject (popup "Đã có lỗi xảy ra"). Dump TẤT CẢ các field
+        // có thể có của error object — Zalo SDK trả về shape không nhất quán
+        // ({code, message}, {errorCode, errorMessage}, hoặc plain Error).
+        const errorDump = {
+          raw: sdkError,
+          message: sdkError?.message,
+          code: sdkError?.code,
+          errorCode: sdkError?.errorCode,
+          errorMessage: sdkError?.errorMessage,
+          name: sdkError?.name,
+          stack: sdkError?.stack,
+          stringified: (() => {
+            try {
+              return JSON.stringify(sdkError, Object.getOwnPropertyNames(sdkError ?? {}));
+            } catch {
+              return String(sdkError);
+            }
+          })(),
+          sdkArgs,
+          macSent: mac,
+        };
+        console.error("[ZaloCheckout] createOrder SDK lỗi - dump đầy đủ:", errorDump);
+        if (typeof localStorage !== "undefined" && localStorage.getItem("DEBUG_ZALO_PAY") === "1") {
+          try {
+            // eslint-disable-next-line no-alert
+            window.alert(
+              "[ZaloCheckout] createOrder SDK lỗi:\n" +
+                JSON.stringify(
+                  {
+                    message: errorDump.message,
+                    code: errorDump.code,
+                    errorCode: errorDump.errorCode,
+                    errorMessage: errorDump.errorMessage,
+                    stringified: errorDump.stringified,
+                  },
+                  null,
+                  2
+                )
+            );
+          } catch {
+            /* ignore */
+          }
+        }
+        const reason =
+          sdkError?.errorMessage ||
+          sdkError?.message ||
+          sdkError?.errorCode ||
+          sdkError?.code ||
+          "Lỗi không xác định";
+        const wrapped = new Error(`Zalo Pay SDK từ chối: ${reason}`);
+        (wrapped as any).sdkError = sdkError;
+        throw wrapped;
+      }
 
       // 4. Liên kết đơn hàng với giao dịch Zalo (với JWT auth)
       const linkPayload = { orderId: myOrderId, checkoutSdkOrderId, miniAppId: window.APP_ID };
