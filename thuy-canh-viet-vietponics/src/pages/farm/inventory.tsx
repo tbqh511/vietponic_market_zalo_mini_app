@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { useFarmGuard, useEnsureJwt } from "@/hooks";
-import InventoryList from "./inventory-list";
+import StockInDeclaration from "./stock-in";
 
 // Trang quản lý kho cho farm partner. Tách khỏi dashboard chính (/farm) — kho
-// là chức năng write (nhập/xuất batch), dashboard là read-only metrics.
+// là chức năng write (khai báo nhập kho buổi sáng), dashboard là read-only metrics.
 export default function FarmInventoryPage() {
   const isFarm = useFarmGuard();
   const ensureJwt = useEnsureJwt();
@@ -20,9 +20,5 @@ export default function FarmInventoryPage() {
     );
   }
 
-  return (
-    <div className="flex flex-col h-full bg-gray-50">
-      <InventoryList />
-    </div>
-  );
+  return <StockInDeclaration />;
 }

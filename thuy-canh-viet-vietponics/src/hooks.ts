@@ -33,6 +33,8 @@ import {
   InventoryProduct,
   InventoryStats,
   InventoryMeta,
+  StockInSuggestion,
+  StockInMeta,
   ApiOrder,
   Order,
 } from "@/types";
@@ -384,6 +386,52 @@ export function useFarmInventory() {
     loadMore,
     refresh,
   };
+}
+
+// Dữ liệu cho màn "Khai báo nhập kho buổi sáng" — gợi ý nhập theo TB 7 ngày,
+// giá, cảnh báo cháy hàng. Read-only fetch (không paginate).
+export function useStockInSuggestions() {
+  const [items, setItems] = useState<StockInSuggestion[]>([]);
+  const [meta, setMeta] = useState<StockInMeta | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const token = localStorage.getItem("jwt_token");
+    if (!token) {
+      setItems([]);
+      setMeta(null);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    request<{ error: boolean; data: StockInSuggestion[]; meta: StockInMeta }>(
+      "/farm/stock-in/suggestions",
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+      }
+    )
+      .then((res) => {
+        if (controller.signal.aborted) return;
+        setItems(res.data ?? []);
+        setMeta(res.meta ?? null);
+      })
+      .catch((err: any) => {
+        if (err?.name === "AbortError") return;
+        setError("Không thể tải gợi ý nhập kho.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [refreshToken]);
+
+  const refresh = useCallback(() => setRefreshToken((n) => n + 1), []);
+
+  return { items, meta, loading, error, refresh };
 }
 
 export function useCheckout() {

@@ -351,6 +351,36 @@ export interface InventoryResponse {
   stats: InventoryStats;
 }
 
+// Gợi ý khai báo nhập kho buổi sáng (Stock-In)
+export interface StockInSuggestion {
+  product_id: number;
+  name: string;
+  category: string | null;
+  image_url: string;
+  price: number;
+  cost_price: number;
+  stock: number;
+  avg_daily_sold: number;
+  window_days: number;
+  suggested_qty: number;
+  sold_out_yesterday: boolean;
+  shelf_life_days: number;
+  suggested_expire_date: string;
+}
+
+export interface StockInMeta {
+  date: string;
+  window_days: number;
+  suggested_total: number;
+  shelf_life_days: number;
+}
+
+export interface StockInResponse {
+  error: boolean;
+  data: StockInSuggestion[];
+  meta: StockInMeta;
+}
+
 // Biến động tồn kho
 export interface StockMovement {
   id: number;
