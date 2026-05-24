@@ -7,6 +7,7 @@ import { Toaster } from "react-hot-toast";
 import { ScrollRestoration } from "./scroll-restoration";
 import FloatingCartPreview from "./floating-cart-preview";
 import StockInFab from "./farm/stock-in-fab";
+import FarmHubFab from "./farm/farm-hub-fab";
 import PhoneRequiredGate from "./phone-required-gate";
 import { useInitAuth, useRouteHandle } from "@/hooks";
 import { useAtom, useAtomValue } from "jotai";
@@ -67,6 +68,11 @@ export default function Layout() {
       />
       <Suspense fallback={null}>
         <FloatingCartPreview />
+      </Suspense>
+      {/* FAB Farm Hub — lối tắt 1 chạm vào Farm space, chỉ hiện cho farm
+          partner ở Customer space. Tự ẩn ở các trang noFooter/noFloatingCart. */}
+      <Suspense fallback={null}>
+        <FarmHubFab />
       </Suspense>
       {/* FAB Khai báo nhập kho — chỉ ở 4 tab Farm chính (farmTab), không ở
           stock-in/detail/register. Đặt trong Layout để fixed ổn định trên WebView. */}

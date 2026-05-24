@@ -222,6 +222,27 @@ export function FarmIcon(props: { active?: boolean }) {
   );
 }
 
+// Icon cây dùng cho FAB Farm Hub. Khác FarmIcon (tab bar) ở chỗ dùng
+// currentColor + nhận className để thừa kế màu trắng (text-primaryForeground)
+// và đổi kích thước qua class thay vì hardcode.
+export function PlantIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 22v-8" />
+      <path d="M12 14c0-3 2-5 5-5 0 3-2 5-5 5z" />
+      <path d="M12 14c0-3-2-5-5-5 0 3 2 5 5 5z" />
+    </svg>
+  );
+}
+
 // ─── Farm tab bar icons ──────────────────────────────────────────────────────
 // Style đồng bộ icon nav Customer: active = fill var(--primary),
 // inactive = stroke var(--inactive). viewBox 24x24, strokeWidth 1.6.
