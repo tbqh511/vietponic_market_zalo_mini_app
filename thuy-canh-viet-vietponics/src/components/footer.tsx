@@ -1,12 +1,22 @@
-import { CartIcon, CategoryIcon, HomeIcon, PackageIcon } from "./vectors";
+import {
+  CartIcon,
+  CategoryIcon,
+  HomeIcon,
+  PackageIcon,
+  FarmDashboardIcon,
+  FarmOrdersIcon,
+  FarmAnalyticsIcon,
+  FarmPayoutsIcon,
+} from "./vectors";
 import HorizontalDivider from "./horizontal-divider";
 import { useAtomValue } from "jotai";
-import { cartState } from "@/state";
+import { appSpaceState, cartState, farmPendingOrdersCountState } from "@/state";
 import TransitionLink from "./transition-link";
 import { useRouteHandle } from "@/hooks";
 import Badge from "./badge";
 
-const NAV_ITEMS = [
+// Tab bar Customer — GIỮ NGUYÊN 4 tab gốc, không đổi.
+const CUSTOMER_NAV = [
   {
     name: "Trang chủ",
     path: "/",
@@ -25,7 +35,7 @@ const NAV_ITEMS = [
   {
     name: "Giỏ hàng",
     path: "/cart",
-    icon: (props) => {
+    icon: (props: { active?: boolean }) => {
       const cart = useAtomValue(cartState);
 
       return (
@@ -37,10 +47,45 @@ const NAV_ITEMS = [
   },
 ];
 
+// Tab bar Farm — 4 tab bán hàng. Tab "Đơn đến" có badge số đơn pending.
+const FARM_NAV = [
+  {
+    name: "Tổng quan",
+    path: "/farm",
+    // end: chỉ active khi path đúng "/farm" — tránh sáng cả khi ở /farm/orders...
+    end: true,
+    icon: FarmDashboardIcon,
+  },
+  {
+    name: "Đơn đến",
+    path: "/farm/orders",
+    icon: (props: { active?: boolean }) => {
+      const count = useAtomValue(farmPendingOrdersCountState);
+
+      return (
+        <Badge value={count}>
+          <FarmOrdersIcon {...props} />
+        </Badge>
+      );
+    },
+  },
+  {
+    name: "Phân tích",
+    path: "/farm/analytics",
+    icon: FarmAnalyticsIcon,
+  },
+  {
+    name: "Thu nhập",
+    path: "/farm/payouts",
+    icon: FarmPayoutsIcon,
+  },
+];
+
 export default function Footer() {
   const [handle] = useRouteHandle();
-
-  const navItems = NAV_ITEMS;
+  // Tab bar đổi theo không gian app hiện tại (customer mua / farm bán).
+  const space = useAtomValue(appSpaceState);
+  const navItems = space === "farm" ? FARM_NAV : CUSTOMER_NAV;
 
   if (!handle?.noFooter) {
     return (
@@ -57,6 +102,7 @@ export default function Footer() {
               <TransitionLink
                 to={item.path}
                 key={item.path}
+                end={(item as { end?: boolean }).end}
                 className="flex flex-col items-center space-y-0.5 p-1 pb-0.5 cursor-pointer active:scale-105"
               >
                 {({ isActive }) => (

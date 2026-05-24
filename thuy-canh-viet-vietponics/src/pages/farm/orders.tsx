@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSetAtom } from "jotai";
 import { useFarmGuard, useEnsureJwt } from "@/hooks";
 import { useFarmIncomingOrders } from "@/utils/farm-api";
+import { farmPendingOrdersCountState } from "@/state";
 import { FarmIncomingOrder } from "@/types";
 
 // Trang "Đơn đang đến" của Farm Partner (route /farm/orders).
@@ -93,6 +95,7 @@ export default function FarmOrdersPage() {
   const isFarm = useFarmGuard();
   const ensureJwt = useEnsureJwt();
   const [filter, setFilter] = useState<FilterKey>("all");
+  const setPendingCount = useSetAtom(farmPendingOrdersCountState);
 
   useEffect(() => {
     ensureJwt();
@@ -143,6 +146,13 @@ export default function FarmOrdersPage() {
     }
     return { all: orders.length, waiting, delivering };
   }, [orders]);
+
+  // Đồng bộ badge tab "Đơn đến" — đếm đơn distinct có status 'pending'.
+  // Chạy theo nhịp polling 30s của useFarmIncomingOrders (qua incoming.data).
+  useEffect(() => {
+    const pending = orders.filter((o) => o.order_status === "pending").length;
+    setPendingCount(pending);
+  }, [orders, setPendingCount]);
 
   // Highlight: tổng kg cần chuẩn bị + ship/pickup split (toàn bộ đơn đang đến).
   const summary = useMemo(() => {

@@ -222,6 +222,61 @@ export function FarmIcon(props: { active?: boolean }) {
   );
 }
 
+// ─── Farm tab bar icons ──────────────────────────────────────────────────────
+// Style đồng bộ icon nav Customer: active = fill var(--primary),
+// inactive = stroke var(--inactive). viewBox 24x24, strokeWidth 1.6.
+
+// Tổng quan — lưới 4 ô (dashboard/grid).
+export function FarmDashboardIcon(props: { active?: boolean }) {
+  const color = props.active ? "var(--primary)" : "var(--inactive)";
+  const fill = props.active ? "var(--primary)" : "none";
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.6" fill={fill} opacity={props.active ? 0.9 : 1} />
+      <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.6" fill={fill} opacity={props.active ? 0.4 : 1} />
+      <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.6" fill={fill} opacity={props.active ? 0.4 : 1} />
+      <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.6" fill={fill} opacity={props.active ? 0.9 : 1} />
+    </svg>
+  );
+}
+
+// Đơn đến — clipboard có dòng.
+export function FarmOrdersIcon(props: { active?: boolean }) {
+  const color = props.active ? "var(--primary)" : "var(--inactive)";
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="5" y="4.5" width="14" height="16" rx="2" stroke={color} strokeWidth="1.6" fill={props.active ? "var(--primary)" : "none"} opacity={props.active ? 0.15 : 1} />
+      <rect x="8.5" y="2.75" width="7" height="3.5" rx="1.25" stroke={color} strokeWidth="1.6" fill={props.active ? "var(--primary)" : "none"} />
+      <path d="M8.5 10.5H15.5" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M8.5 14H13" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// Phân tích — đường biểu đồ đi lên.
+export function FarmAnalyticsIcon(props: { active?: boolean }) {
+  const color = props.active ? "var(--primary)" : "var(--inactive)";
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 4V19C4 19.55 4.45 20 5 20H20" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7.5 14.5L11 10.5L13.5 13L17.5 8" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M17.5 8H14.8M17.5 8V10.7" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// Thu nhập — ví tiền.
+export function FarmPayoutsIcon(props: { active?: boolean }) {
+  const color = props.active ? "var(--primary)" : "var(--inactive)";
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 7.5C4 6.4 4.9 5.5 6 5.5H17C18.1 5.5 19 6.4 19 7.5V8.5H6C4.9 8.5 4 7.6 4 6.5" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill={props.active ? "var(--primary)" : "none"} opacity={props.active ? 0.15 : 1} />
+      <rect x="4" y="6.5" width="16" height="13" rx="2" stroke={color} strokeWidth="1.6" fill={props.active ? "var(--primary)" : "none"} opacity={props.active ? 0.15 : 1} />
+      <circle cx="16" cy="13" r="1.6" fill={color} />
+    </svg>
+  );
+}
+
 export function ShareDecor(props: HTMLProps<SVGSVGElement>) {
   return (
     <svg
