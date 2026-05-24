@@ -508,6 +508,29 @@ export const customerProfileState = atomWithStorage<CustomerProfile | null>(
   null
 );
 
+// ── Dual-mode space (Customer mua / Farm bán) ───────────────────────────────
+
+// Không gian app hiện tại: 'customer' (mua) hoặc 'farm' (bán).
+// KHÔNG persist sang localStorage — mỗi lần mở app luôn bắt đầu ở customer space
+// (tránh farm partner mở app thấy ngay farm hub gây bối rối khi họ muốn mua hàng).
+export const appSpaceState = atom<"customer" | "farm">("customer");
+
+// Nhớ tab Customer cuối cùng trước khi sang Farm (để quay lại đúng chỗ).
+export const lastCustomerPathState = atom<string>("/profile");
+
+// True nếu customer hiện tại đã được duyệt làm farm partner.
+// Field thật trong CustomerProfile là boolean `is_farm_partner` (xem types.d.ts).
+export const isFarmPartnerState = atom((get) => {
+  const profile = get(customerProfileState);
+  return profile?.is_farm_partner === true;
+});
+
+// Số đơn farm đang chờ xử lý — hiển thị làm badge trên tab "Đơn đến".
+// Trang /farm/orders set giá trị này từ data polling 30s của useFarmIncomingOrders
+// (đếm các đơn distinct có order_status === 'pending'). Không poll riêng ở đây
+// để tránh gọi API trùng; badge tự cập nhật theo nhịp polling của trang.
+export const farmPendingOrdersCountState = atom<number>(0);
+
 // Farm inventory filter state (persisted across navigation within session)
 export const farmInventoryFiltersState = atom<InventoryFilters>({
   q: "",

@@ -966,6 +966,10 @@ export function useRouteHandle() {
         noBack?: boolean;
         noFloatingCart?: boolean;
         scrollRestoration?: number;
+        // Dual-mode navigation: route này thuộc space nào (mặc định "customer").
+        space?: "customer" | "farm";
+        // true nếu là 1 trong 4 tab chính của Farm (Tổng quan/Đơn đến/Phân tích/Thu nhập).
+        farmTab?: boolean;
       }
     | undefined
   >[];
