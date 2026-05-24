@@ -135,20 +135,29 @@ const router = createBrowserRouter(
             noFooter: true,
           },
         },
+        // ===== FARM SPACE =====
+        // 4 tab chính (farmTab: true) + các trang con. Tất cả thuộc space "farm"
+        // để Footer đổi tab bar và Layout tự sync appSpaceState khi deep-link.
         {
           path: "/farm",
           element: <FarmDashboardPage />,
           handle: {
-            title: "Farm dashboard",
+            title: "Tổng quan",
+            space: "farm",
+            farmTab: true,
             noFloatingCart: true,
+            noBack: true,
           },
         },
         {
           path: "/farm/orders",
           element: <FarmOrdersPage />,
           handle: {
-            title: "Đơn đang đến",
+            title: "Đơn đến",
+            space: "farm",
+            farmTab: true,
             noFloatingCart: true,
+            noBack: true,
           },
         },
         {
@@ -156,15 +165,21 @@ const router = createBrowserRouter(
           element: <FarmAnalyticsPage />,
           handle: {
             title: "Phân tích",
+            space: "farm",
+            farmTab: true,
             noFloatingCart: true,
+            noBack: true,
           },
         },
         {
           path: "/farm/payouts",
           element: <FarmPayoutsPage />,
           handle: {
-            title: "Thanh toán",
+            title: "Thu nhập",
+            space: "farm",
+            farmTab: true,
             noFloatingCart: true,
+            noBack: true,
           },
         },
         {
@@ -172,7 +187,20 @@ const router = createBrowserRouter(
           element: <FarmPayoutDetailPage />,
           handle: {
             title: "Chi tiết thanh toán",
+            space: "farm",
             noFloatingCart: true,
+          },
+        },
+        // Khai báo nhập kho: là FAB modal (noFooter ẩn tab bar khi đang khai báo).
+        // Path chuẩn /farm/stock-in; giữ /farm/inventory làm alias cũ (cùng page).
+        {
+          path: "/farm/stock-in",
+          element: <FarmInventoryPage />,
+          handle: {
+            title: "Khai báo nhập kho",
+            space: "farm",
+            noFloatingCart: true,
+            noFooter: true,
           },
         },
         {
@@ -180,6 +208,7 @@ const router = createBrowserRouter(
           element: <FarmInventoryPage />,
           handle: {
             title: "Khai báo nhập kho",
+            space: "farm",
             noFloatingCart: true,
             noFooter: true,
           },
@@ -189,9 +218,12 @@ const router = createBrowserRouter(
           element: <FarmMovementsPage />,
           handle: {
             title: "Lịch sử biến động",
+            space: "farm",
             noFloatingCart: true,
           },
         },
+        // Đăng ký Farm Partner: KHÔNG thuộc farm space (customer chưa được duyệt
+        // vẫn vào được). noFooter để form chiếm full màn.
         {
           path: "/farm/register",
           element: <FarmRegisterPage />,
