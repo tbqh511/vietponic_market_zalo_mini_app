@@ -1,16 +1,54 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Header from "./header";
 import Footer from "./footer";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { PageSkeleton } from "./skeleton";
 import { Toaster } from "react-hot-toast";
 import { ScrollRestoration } from "./scroll-restoration";
 import FloatingCartPreview from "./floating-cart-preview";
+import StockInFab from "./farm/stock-in-fab";
 import PhoneRequiredGate from "./phone-required-gate";
-import { useInitAuth } from "@/hooks";
+import { useInitAuth, useRouteHandle } from "@/hooks";
+import { useAtom, useAtomValue } from "jotai";
+import {
+  appSpaceState,
+  customerProfileState,
+  isFarmPartnerState,
+} from "@/state";
 
 export default function Layout() {
   useInitAuth();
+
+  const [handle] = useRouteHandle();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [space, setSpace] = useAtom(appSpaceState);
+  const profile = useAtomValue(customerProfileState);
+  const isFarmPartner = useAtomValue(isFarmPartnerState);
+
+  // Đồng bộ space theo route — để deep link (vd Zalo OA notification mở
+  // /farm/orders) tự bật farm space, và rời farm thì về customer.
+  useEffect(() => {
+    const onFarmRoute = location.pathname.startsWith("/farm");
+    if (handle?.space === "farm" && space !== "farm") {
+      setSpace("farm");
+    } else if (space === "farm" && !onFarmRoute) {
+      // Chỉ tự chuyển về customer khi pathname rõ ràng KHÔNG thuộc /farm
+      // (tránh nhấp nháy khi đang chuyển tab nội bộ trong farm).
+      setSpace("customer");
+    }
+  }, [handle, location.pathname, space, setSpace]);
+
+  // Route guard: vào /farm* mà chưa phải farm partner → đẩy về /farm/register.
+  // /farm/register cho phép customer thường vào (để đăng ký). Chỉ redirect khi
+  // profile đã load (!== null) để tránh đá nhầm trong lúc auth chưa xong.
+  useEffect(() => {
+    const onFarmRoute = location.pathname.startsWith("/farm");
+    const isRegister = location.pathname.startsWith("/farm/register");
+    if (onFarmRoute && !isRegister && profile !== null && !isFarmPartner) {
+      navigate("/farm/register", { replace: true });
+    }
+  }, [location.pathname, profile, isFarmPartner, navigate]);
 
   return (
     <div className="w-screen h-screen flex flex-col bg-section text-foreground">
@@ -30,6 +68,9 @@ export default function Layout() {
       <Suspense fallback={null}>
         <FloatingCartPreview />
       </Suspense>
+      {/* FAB Khai báo nhập kho — chỉ ở 4 tab Farm chính (farmTab), không ở
+          stock-in/detail/register. Đặt trong Layout để fixed ổn định trên WebView. */}
+      {handle?.space === "farm" && handle?.farmTab && <StockInFab />}
       <PhoneRequiredGate />
       <ScrollRestoration />
     </div>
