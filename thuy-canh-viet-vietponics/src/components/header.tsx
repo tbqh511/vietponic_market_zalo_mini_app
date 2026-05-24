@@ -1,12 +1,15 @@
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
+  appSpaceState,
   categoriesStateUpwrapped,
+  lastCustomerPathState,
   loadableUserInfoState,
   userInfoState,
 } from "@/state";
 import { useMemo } from "react";
 import { useRouteHandle } from "@/hooks";
+import { useFarmProfile } from "@/utils/farm-api";
 import { getConfig } from "@/utils/template";
 import headerIllus from "@/static/header-illus.svg";
 import logo from "@/static/logo.png";
@@ -22,6 +25,8 @@ export default function Header() {
   const [handle, match] = useRouteHandle();
   const userInfo = useAtomValue(loadableUserInfoState);
 
+  const isFarmSpace = handle?.space === "farm";
+
   const title = useMemo(() => {
     if (handle) {
       if (typeof handle.title === "function") {
@@ -33,6 +38,11 @@ export default function Header() {
   }, [handle, categories]);
 
   const showBack = location.key !== "default" && !handle?.noBack;
+
+  // Header riêng cho Farm space: tên farm + nút quay lại mua hàng. Không search bar.
+  if (isFarmSpace) {
+    return <FarmHeader title={title} showBack={showBack} noBack={handle?.noBack} />;
+  }
 
   return (
     <div
@@ -99,6 +109,82 @@ export default function Header() {
           </TransitionLink>
         </div>
       )}
+    </div>
+  );
+}
+
+// Header Farm space: tab gốc (noBack) hiện tên farm + nút "Mua hàng" để về
+// customer space; trang con (có back) hiện mũi tên back + tiêu đề như cũ.
+function FarmHeader(props: {
+  title?: React.ReactNode;
+  showBack: boolean;
+  noBack?: boolean;
+}) {
+  const navigate = useNavigate();
+  const setSpace = useSetAtom(appSpaceState);
+  const lastCustomerPath = useAtomValue(lastCustomerPathState);
+  const farm = useFarmProfile();
+
+  // Quay lại không gian mua hàng — về đúng tab customer đã rời đi.
+  const handleBackToCustomer = () => {
+    setSpace("customer");
+    navigate(lastCustomerPath || "/profile", { viewTransition: true });
+  };
+
+  // Avatar farm = 2 ký tự đầu của tên.
+  const initials = useMemo(() => {
+    const name = farm.data?.name ?? "";
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase() || "🌱";
+  }, [farm.data?.name]);
+
+  return (
+    <div
+      className="w-full flex flex-col px-4 bg-primary text-primaryForeground pt-st overflow-hidden bg-no-repeat bg-right-top"
+      style={{ backgroundImage: `url(${headerIllus})` }}
+    >
+      <div className="w-full min-h-12 flex py-2 space-x-2 items-center">
+        {/* Tab gốc farm: avatar + tên farm. Trang con: back + tiêu đề. */}
+        {props.noBack ? (
+          <>
+            <div className="flex-none w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-[13px] font-medium">
+              {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-bold leading-tight truncate">
+                {farm.data?.name ?? "Farm Hub"}
+              </h1>
+              <p className="text-2xs opacity-80 truncate">{props.title}</p>
+            </div>
+          </>
+        ) : (
+          <>
+            {props.showBack && (
+              <div
+                className="py-1 px-2 cursor-pointer"
+                onClick={() => navigate(-1)}
+              >
+                <Icon icon="zi-arrow-left" />
+              </div>
+            )}
+            <div className="flex-1 text-xl font-medium truncate">
+              {props.title}
+            </div>
+          </>
+        )}
+
+        {/* Nút quay lại mua hàng — chỉ ở tab gốc farm (noBack). */}
+        {props.noBack && (
+          <button
+            onClick={handleBackToCustomer}
+            className="flex-none flex items-center gap-1 bg-white/15 rounded-full pl-2 pr-2.5 py-1 active:scale-95"
+          >
+            <Icon icon="zi-arrow-left" size={16} />
+            <span className="text-2xs font-medium">Mua hàng</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }
