@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useStockInSuggestions } from "@/hooks";
 import { request } from "@/utils/request";
@@ -34,6 +35,7 @@ function formatExpiry(iso: string, todayIso: string): string {
 const fmtVnd = (n: number) => n.toLocaleString("vi-VN");
 
 export default function StockInDeclaration() {
+  const navigate = useNavigate();
   const { items, meta, loading, error, refresh } = useStockInSuggestions();
 
   // Số lượng nhập theo product_id. Mặc định chỉ thêm dòng khi user chạm vào.
@@ -101,9 +103,11 @@ export default function StockInDeclaration() {
         },
         body: JSON.stringify({ items: payloadLines }),
       });
-      toast.success("Gửi khai báo nhập kho thành công!");
+      toast.success("Đã ghi nhận nhập kho");
       setLines({});
       refresh();
+      // Đóng modal khai báo, quay về Tổng quan farm.
+      navigate("/farm", { viewTransition: true });
     } catch (e: any) {
       const msg = e?.body ? JSON.parse(e.body)?.message : null;
       toast.error(msg || "Gửi khai báo thất bại. Vui lòng thử lại.");
