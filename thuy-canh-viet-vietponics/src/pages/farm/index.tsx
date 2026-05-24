@@ -193,6 +193,28 @@ export default function FarmDashboardPage() {
           <span className="text-primary text-lg leading-none">›</span>
         </Link>
 
+        {/* Điều hướng tới trang Payouts (Công nợ & Thanh toán) — màn nhạy cảm
+            về tiền nên dùng nền xanh nhạt nổi bật, tách khỏi nhóm nút phụ. */}
+        <Link
+          to="/farm/payouts"
+          className="mt-4 w-full flex items-center justify-between gap-2 p-3 bg-green-50 border border-green-200 rounded-xl active:bg-green-100"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-base leading-none">
+              💰
+            </span>
+            <div>
+              <div className="text-[13px] font-medium text-green-900">
+                Công nợ & Thanh toán
+              </div>
+              <div className="text-[11px] text-green-700/80">
+                Tiền đang tích lũy · lịch sử thanh toán
+              </div>
+            </div>
+          </div>
+          <span className="text-green-700 text-lg leading-none">›</span>
+        </Link>
+
         {/* Errors */}
         {(profile.error || overview.error || productsToday.error) && (
           <div className="mt-3 p-2 bg-red-50 rounded text-[11px] text-red-700">

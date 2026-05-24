@@ -160,6 +160,22 @@ const router = createBrowserRouter(
           },
         },
         {
+          path: "/farm/payouts",
+          element: <FarmPayoutsPage />,
+          handle: {
+            title: "Thanh toán",
+            noFloatingCart: true,
+          },
+        },
+        {
+          path: "/farm/payouts/:id",
+          element: <FarmPayoutDetailPage />,
+          handle: {
+            title: "Chi tiết thanh toán",
+            noFloatingCart: true,
+          },
+        },
+        {
           path: "/farm/inventory",
           element: <FarmInventoryPage />,
           handle: {
