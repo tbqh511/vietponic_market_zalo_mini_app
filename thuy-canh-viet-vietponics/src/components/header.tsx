@@ -57,7 +57,7 @@ export default function Header() {
             />
             <TransitionLink to="/stations" className="flex-1 overflow-hidden min-w-0">
               <div className="flex items-center space-x-1 min-w-0">
-                <h1 className="text-base font-bold leading-tight truncate min-w-0">
+                <h1 className="text-base font-bold leading-tight min-w-0">
                   {getConfig((c) => c.template.shopName)}
                 </h1>
                 <Icon icon="zi-chevron-right" className="flex-none" />
