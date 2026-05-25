@@ -8,6 +8,7 @@ import { ScrollRestoration } from "./scroll-restoration";
 import FloatingCartPreview from "./floating-cart-preview";
 import StockInFab from "./farm/stock-in-fab";
 import FarmHubFab from "./farm/farm-hub-fab";
+import BackToShopFab from "./farm/back-to-shop-fab";
 import PhoneRequiredGate from "./phone-required-gate";
 import { useInitAuth, useRouteHandle } from "@/hooks";
 import { useAtom, useAtomValue } from "jotai";
@@ -77,6 +78,9 @@ export default function Layout() {
       {/* FAB Khai báo nhập kho — chỉ ở 4 tab Farm chính (farmTab), không ở
           stock-in/detail/register. Đặt trong Layout để fixed ổn định trên WebView. */}
       {handle?.space === "farm" && handle?.farmTab && <StockInFab />}
+      {/* FAB "Mua hàng" — quay lại không gian mua hàng, góc phải phía trên.
+          Chỉ ở tab gốc Farm (farmTab), thay cho nút cũ trên header. */}
+      {handle?.space === "farm" && handle?.farmTab && <BackToShopFab />}
       <PhoneRequiredGate />
       <ScrollRestoration />
     </div>

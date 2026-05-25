@@ -4,7 +4,6 @@ import {
   isFarmPartnerState,
   appSpaceState,
   lastCustomerPathState,
-  cartTotalState,
 } from "@/state";
 import { useRouteHandle } from "@/hooks";
 import { PlantIcon } from "../vectors";
@@ -18,7 +17,6 @@ export default function FarmHubFab() {
   const space = useAtomValue(appSpaceState);
   const setSpace = useSetAtom(appSpaceState);
   const setLastCustomerPath = useSetAtom(lastCustomerPathState);
-  const { totalItems } = useAtomValue(cartTotalState);
   const [handle] = useRouteHandle();
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,22 +33,20 @@ export default function FarmHubFab() {
 
   if (!shouldShow) return null;
 
-  // Nếu giỏ hàng nổi đang hiện (có hàng) → đẩy FAB lên cao hơn để không đè.
-  // FloatingCartPreview ở bottom-16; FAB đặt cao hơn để 2 nút không chồng.
-  const cartVisible = totalItems > 0;
-  const bottomClass = cartVisible ? "bottom-[7.5rem]" : "bottom-16";
-
   const handleTap = () => {
     setLastCustomerPath(location.pathname); // nhớ chỗ đang đứng để quay lại
     setSpace("farm");
     navigate("/farm", { viewTransition: true });
   };
 
+  // Đặt DƯỚI header xanh, trôi vào vùng nội dung trắng (góc phải) — tránh hẳn
+  // cụm nút native Zalo (... / x). top = safe-area + chiều cao header
+  // (pt-st + min-h-12 + py-2 ≈ 4rem) + chút đệm.
   return (
     <button
       onClick={handleTap}
       aria-label="Vào Farm Hub"
-      className={`fixed right-4 ${bottomClass} mb-sb z-30 flex items-center gap-1.5 bg-primary text-primaryForeground pl-3 pr-4 py-2.5 rounded-full shadow-lg active:scale-95 transition-transform`}
+      className="fixed right-4 top-[calc(env(safe-area-inset-top)+4.75rem)] z-30 flex items-center gap-1.5 bg-primary text-primaryForeground pl-3 pr-4 py-2 rounded-full shadow-lg active:scale-95 transition-transform"
     >
       <PlantIcon className="w-5 h-5" />
       <span className="text-xs font-medium whitespace-nowrap">Farm Hub</span>

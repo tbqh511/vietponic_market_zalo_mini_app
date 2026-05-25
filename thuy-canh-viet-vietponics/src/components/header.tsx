@@ -1,11 +1,8 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  appSpaceState,
   categoriesStateUpwrapped,
-  lastCustomerPathState,
   loadableUserInfoState,
-  userInfoState,
 } from "@/state";
 import { useMemo } from "react";
 import { useRouteHandle } from "@/hooks";
@@ -121,15 +118,7 @@ function FarmHeader(props: {
   noBack?: boolean;
 }) {
   const navigate = useNavigate();
-  const setSpace = useSetAtom(appSpaceState);
-  const lastCustomerPath = useAtomValue(lastCustomerPathState);
   const farm = useFarmProfile();
-
-  // Quay lại không gian mua hàng — về đúng tab customer đã rời đi.
-  const handleBackToCustomer = () => {
-    setSpace("customer");
-    navigate(lastCustomerPath || "/profile", { viewTransition: true });
-  };
 
   // Avatar farm = 2 ký tự đầu của tên.
   const initials = useMemo(() => {
@@ -172,17 +161,6 @@ function FarmHeader(props: {
               {props.title}
             </div>
           </>
-        )}
-
-        {/* Nút quay lại mua hàng — chỉ ở tab gốc farm (noBack). */}
-        {props.noBack && (
-          <button
-            onClick={handleBackToCustomer}
-            className="flex-none flex items-center gap-1 bg-white/15 rounded-full pl-2 pr-2.5 py-1 active:scale-95"
-          >
-            <Icon icon="zi-arrow-left" size={16} />
-            <span className="text-2xs font-medium">Mua hàng</span>
-          </button>
         )}
       </div>
     </div>
