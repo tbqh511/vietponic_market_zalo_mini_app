@@ -243,6 +243,24 @@ export function PlantIcon({ className }: { className?: string }) {
   );
 }
 
+export function ShopIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 8h12l-1 13H7L6 8z" />
+      <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+      <path d="M9 12h6" />
+    </svg>
+  );
+}
+
 // ─── Farm tab bar icons ──────────────────────────────────────────────────────
 // Style đồng bộ icon nav Customer: active = fill var(--primary),
 // inactive = stroke var(--inactive). viewBox 24x24, strokeWidth 1.6.

@@ -39,17 +39,15 @@ export default function FarmHubFab() {
     navigate("/farm", { viewTransition: true });
   };
 
-  // Đặt DƯỚI header xanh, trôi vào vùng nội dung trắng (góc phải) — tránh hẳn
-  // cụm nút native Zalo (... / x). top = safe-area + chiều cao header
-  // (pt-st + min-h-12 + py-2 ≈ 4rem) + chút đệm.
   return (
     <button
+      type="button"
       onClick={handleTap}
       aria-label="Vào Farm Hub"
-      className="fixed right-4 top-[calc(env(safe-area-inset-top)+4.75rem)] z-30 flex items-center gap-1.5 bg-primary text-primaryForeground pl-3 pr-4 py-2 rounded-full shadow-lg active:scale-95 transition-transform"
+      className="fixed left-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primaryForeground shadow-lg active:scale-95 transition-transform"
+      style={{ bottom: "calc(var(--safe-bottom) + 64px)" }}
     >
       <PlantIcon className="w-5 h-5" />
-      <span className="text-xs font-medium whitespace-nowrap">Farm Hub</span>
     </button>
   );
 }
