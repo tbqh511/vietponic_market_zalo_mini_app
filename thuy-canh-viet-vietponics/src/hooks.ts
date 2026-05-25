@@ -78,10 +78,17 @@ export function useRequestInformation() {
 
   return async () => {
     const userInfo = await getStoredUserInfo();
-    if (!userInfo) {
-      await authorize({
-        scopes: ["scope.userInfo", "scope.userPhonenumber"],
-      }).then(refreshPermissions);
+    // userInfoState giờ luôn trả về object hợp lệ; id rỗng nghĩa là chưa
+    // lấy được thông tin Zalo (chưa cấp scope.userInfo) → xin quyền một lần.
+    if (!userInfo || !userInfo.id) {
+      try {
+        await authorize({
+          scopes: ["scope.userInfo", "scope.userPhonenumber"],
+        }).then(refreshPermissions);
+      } catch (error) {
+        // Người dùng từ chối cấp quyền — vẫn tiếp tục với fallback mặc định.
+        console.warn("User declined authorization:", error);
+      }
       return await getStoredUserInfo();
     }
     return userInfo;
@@ -167,16 +174,27 @@ export function useEnsureJwt() {
     if (token && !isJwtExpired(token)) return token;
     if (token) localStorage.removeItem("jwt_token");
     try {
-      const [accessToken, phoneTokenResult] = await Promise.allSettled([
-        getAccessToken(),
-        import("zmp-sdk/apis").then(({ getPhoneNumber }) => getPhoneNumber({})),
-      ]);
+      const [accessToken, phoneTokenResult, userInfoResult] =
+        await Promise.allSettled([
+          getAccessToken(),
+          import("zmp-sdk/apis").then(({ getPhoneNumber }) => getPhoneNumber({})),
+          import("zmp-sdk/apis").then(({ getUserInfo }) => getUserInfo({})),
+        ]);
       if (accessToken.status !== "fulfilled" || !accessToken.value) return null;
       const phoneToken =
         phoneTokenResult.status === "fulfilled"
           ? phoneTokenResult.value?.token ?? undefined
           : undefined;
-      const result = await authenticate(accessToken.value, phoneToken);
+      // Tên/ảnh thật từ SDK (nếu đã cấp scope.userInfo) — gửi lên để backend
+      // đồng bộ xuống DB ngay, không phải đợi Graph API.
+      const zaloProfile =
+        userInfoResult.status === "fulfilled"
+          ? {
+              name: userInfoResult.value?.userInfo?.name,
+              avatar: userInfoResult.value?.userInfo?.avatar,
+            }
+          : undefined;
+      const result = await authenticate(accessToken.value, phoneToken, zaloProfile);
       const newToken = result.data?.token;
       if (newToken) {
         localStorage.setItem("jwt_token", newToken);
@@ -210,9 +228,10 @@ export function useInitAuth() {
       // (bao gồm is_farm_partner — flag này có thể bị admin thay đổi mà JWT
       // hiện tại không biết). Bỏ qua nhánh ensureJwt vì sẽ là request trùng.
       try {
-        const { getSetting, getPhoneNumber } = await import("zmp-sdk/apis");
+        const { getSetting, getPhoneNumber, getUserInfo } = await import("zmp-sdk/apis");
         const { authSetting } = await getSetting({});
         const phoneGranted = !!authSetting["scope.userPhonenumber"];
+        const userInfoGranted = !!authSetting["scope.userInfo"];
 
         let phoneToken: string | undefined;
         if (phoneGranted) {
@@ -224,10 +243,23 @@ export function useInitAuth() {
           }
         }
 
+        // Lấy tên/ảnh thật từ SDK khi đã cấp scope.userInfo và gửi lên backend
+        // để đồng bộ xuống DB (Graph API phía backend không tự lấy được nếu
+        // user chưa cấp quyền). Tránh phụ thuộc vào lần auth sau.
+        let zaloProfile: { name?: string; avatar?: string } | undefined;
+        if (userInfoGranted) {
+          try {
+            const { userInfo } = await getUserInfo({});
+            zaloProfile = { name: userInfo?.name, avatar: userInfo?.avatar };
+          } catch {
+            // ignore — backend vẫn fallback Graph API / 'Zalo User'
+          }
+        }
+
         const accessToken = await getAccessToken();
         if (cancelled || !accessToken) return;
 
-        const result = await authenticate(accessToken, phoneToken);
+        const result = await authenticate(accessToken, phoneToken, zaloProfile);
         if (cancelled) return;
         if (result.data?.user) {
           setProfile(result.data.user);
@@ -557,13 +589,23 @@ export function useCheckout() {
         return;
       }
 
+      // Tên người nhận: backend validate delivery.name là required.
+      // Tài khoản test kiểm duyệt Zalo có thể không cấp quyền scope.userInfo
+      // → userInfo.name rỗng. Luôn fallback về tên không rỗng để tránh 422.
+      const recipientName =
+        shippingAddress?.name?.trim() ||
+        userInfo?.name?.trim() ||
+        "Khách Zalo";
+      const recipientPhone =
+        phone || shippingAddress?.phone || userInfo?.phone || "";
+
       // Prepare order data for API
       const deliveryData = deliveryMode === "shipping"
         ? {
             type: "shipping" as const,
             address: shippingAddress?.address || "",
-            name: shippingAddress?.name || userInfo?.name || "",
-            phone: phone || shippingAddress?.phone || userInfo?.phone || "",
+            name: recipientName,
+            phone: recipientPhone,
             province_id: shippingAddress?.province_id,
             district_id: shippingAddress?.district_id,
             ward_id: shippingAddress?.ward_id,
@@ -574,8 +616,8 @@ export function useCheckout() {
         : {
             type: "pickup" as const,
             address: selectedStation?.address || "",
-            name: userInfo?.name || "",
-            phone: phone || userInfo?.phone || "",
+            name: recipientName,
+            phone: recipientPhone,
             station_id: selectedStation?.id.toString(),
           };
       const mappedItems = payableCart.map((item) => ({

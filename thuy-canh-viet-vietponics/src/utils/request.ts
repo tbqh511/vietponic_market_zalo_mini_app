@@ -122,7 +122,11 @@ export async function requestWithGet<T>(
   return await request<T>(url);
 }
 
-export async function authenticate(accessToken: string, phoneToken?: string): Promise<{
+export async function authenticate(
+  accessToken: string,
+  phoneToken?: string,
+  profile?: { name?: string; avatar?: string }
+): Promise<{
   error: boolean;
   message: string;
   data: {
@@ -138,10 +142,23 @@ export async function authenticate(accessToken: string, phoneToken?: string): Pr
   };
 }> {
   console.log("[ZaloCheckout] /authenticate - access_token gửi:", accessToken);
-  const body: { access_token: string; phone_token?: string } = { access_token: accessToken };
+  // Gửi kèm name/avatar lấy từ SDK getUserInfo() (sau khi user đồng ý popup).
+  // Backend ưu tiên dùng tên này để ghi xuống DB ngay, không phải đợi Graph API
+  // trả tên (Graph API chỉ trả tên thật khi đã cấp scope.userInfo).
+  const body: {
+    access_token: string;
+    phone_token?: string;
+    name?: string;
+    avatar?: string;
+  } = { access_token: accessToken };
   if (phoneToken) body.phone_token = phoneToken;
+  const zaloName = profile?.name?.trim();
+  // Chỉ gửi khi là tên thật — bỏ qua fallback "Khách Zalo" để không ghi đè
+  // tên mặc định lên DB (backend tự fallback 'Zalo User' khi thiếu).
+  if (zaloName && zaloName !== "Khách Zalo") body.name = zaloName;
+  if (profile?.avatar) body.avatar = profile.avatar;
   const result = await requestWithPost<
-    { access_token: string; phone_token?: string },
+    { access_token: string; phone_token?: string; name?: string; avatar?: string },
     {
       error: boolean;
       message: string;

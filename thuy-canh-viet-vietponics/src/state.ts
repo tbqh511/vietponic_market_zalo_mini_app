@@ -167,22 +167,39 @@ export const userInfoState = atom<Promise<UserInfo>>(async (get) => {
     },
   } = await getSetting({});
   const isDev = !window.ZJSBridge;
+
+  // Số điện thoại chỉ lấy khi đã được cấp quyền (hoặc đang chạy dev).
+  const phone =
+    grantedPhoneNumber || isDev ? await get(phoneState) : "";
+
   if (grantedUserInfo || isDev) {
     // Người dùng cho phép truy cập tên và ảnh đại diện
-    const { userInfo } = await getUserInfo({});
-    const phone =
-      grantedPhoneNumber || isDev // Người dùng cho phép truy cập số điện thoại
-        ? await get(phoneState)
-        : "";
-    return {
-      id: userInfo.id,
-      name: userInfo.name,
-      avatar: userInfo.avatar,
-      phone,
-      email: "",
-      address: "",
-    };
+    try {
+      const { userInfo } = await getUserInfo({});
+      return {
+        id: userInfo.id,
+        name: userInfo.name?.trim() || "Khách Zalo",
+        avatar: userInfo.avatar || "",
+        phone,
+        email: "",
+        address: "",
+      };
+    } catch (error) {
+      console.warn("Error retrieving Zalo user info:", error);
+    }
   }
+
+  // Người dùng chưa cấp (hoặc từ chối) scope.userInfo — vẫn trả về một
+  // UserInfo hợp lệ với tên mặc định để delivery.name không bao giờ rỗng.
+  // (Tài khoản kiểm duyệt Zalo thường không cấp quyền này.)
+  return {
+    id: "",
+    name: "Khách Zalo",
+    avatar: "",
+    phone,
+    email: "",
+    address: "",
+  };
 });
 
 export const loadableUserInfoState = loadable(userInfoState);
