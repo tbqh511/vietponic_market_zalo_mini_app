@@ -100,6 +100,8 @@ export type Delivery =
   | {
       type: "pickup";
       stationId: number;
+      stationName?: string;
+      stationAddress?: string;
     };
 
 export interface VtpTrackingEvent {
@@ -125,7 +127,10 @@ export type BackendOrderStatus =
 
 // Frontend tab identifiers (dùng trong URL params và ordersState atom key)
 export type OrderStatus = "pending" | "shipping" | "completed" | "cancelled";
-export type PaymentStatus = "pending" | "success" | "failed";
+// 'cod' = đơn thu tiền khi nhận (chưa thanh toán online); backend set khi
+// payment_method bắt đầu bằng 'COD'. 'pending' chỉ dùng cho đơn online chờ
+// webhook /notify xác nhận. Xem ZaloApiController.php (initialPaymentStatus).
+export type PaymentStatus = "cod" | "pending" | "success" | "failed";
 
 export type RefundStatus =
   | "not_required"

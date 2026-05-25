@@ -10,8 +10,14 @@ function OrderInfo(props: { order: Order }) {
         <DeliverySummary
           icon={<HomeIcon />}
           title="Nhận tại điểm"
-          subtitle={`Điểm giao hàng ${props.order.delivery.stationId}`}
-          description="Vui lòng đến điểm giao hàng để nhận hàng"
+          subtitle={
+            props.order.delivery.stationName ||
+            `Điểm giao hàng ${props.order.delivery.stationId}`
+          }
+          description={
+            props.order.delivery.stationAddress ||
+            "Vui lòng đến điểm giao hàng để nhận hàng"
+          }
         />
       ) : (
         <DeliverySummary

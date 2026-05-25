@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 function OrderSummary(props: { order: Order; full?: boolean }) {
   const navigate = useNavigate();
   const isCancelled = props.order.status === "cancelled";
+  const isPickup = props.order.delivery.type === "pickup";
   const refundStatus = props.order.refundStatus;
 
   // Subtitle phụ cho refund (chỉ hiển thị khi đơn đã huỷ)
@@ -31,6 +32,8 @@ function OrderSummary(props: { order: Order; full?: boolean }) {
           <span className="text-xs truncate">
             {isCancelled
               ? `Đã huỷ: ${props.order.cancelledAt ? formatDate(props.order.cancelledAt) : ""}`
+              : isPickup
+              ? `Thời gian đặt hàng: ${formatDate(props.order.createdAt)}`
               : `Dự kiến nhận: ${formatDate(props.order.receivedAt)}`}
           </span>
           {isCancelled ? (
@@ -52,10 +55,11 @@ function OrderSummary(props: { order: Order; full?: boolean }) {
             >
               {
                 {
-                  pending: "Chờ xác nhận",
+                  cod: "Thanh toán khi nhận",
+                  pending: "Chờ thanh toán",
                   success: "Đã thanh toán",
                   failed: "Thanh toán thất bại",
-                }[props.order.paymentStatus]
+                }[props.order.paymentStatus] ?? "Chưa thanh toán"
               }
             </span>
           )}

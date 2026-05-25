@@ -123,7 +123,9 @@ export function convertApiOrderToOrder(apiOrder: ApiOrder): Order {
   } else {
     delivery = {
       type: 'pickup',
-      stationId: parseInt(apiOrder.delivery.station_id || '0')
+      stationId: parseInt(apiOrder.delivery.station_id || '0'),
+      stationName: apiOrder.delivery.station_name || undefined,
+      stationAddress: apiOrder.delivery.address || undefined,
     };
   }
 
