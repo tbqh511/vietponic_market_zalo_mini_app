@@ -27,7 +27,7 @@ export default function StockInFab() {
           strokeLinecap="round"
         />
       </svg>
-      <span className="text-xs font-medium">Khai báo nhập</span>
+      {/* <span className="text-xs font-medium">Khai báo nhập</span> */}
     </button>
   );
 }

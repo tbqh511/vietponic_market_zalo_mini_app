@@ -153,9 +153,11 @@ export async function authenticate(
   } = { access_token: accessToken };
   if (phoneToken) body.phone_token = phoneToken;
   const zaloName = profile?.name?.trim();
-  // Chỉ gửi khi là tên thật — bỏ qua fallback "Khách Zalo" để không ghi đè
-  // tên mặc định lên DB (backend tự fallback 'Zalo User' khi thiếu).
-  if (zaloName && zaloName !== "Khách Zalo") body.name = zaloName;
+  // Chỉ gửi khi là tên thật — bỏ qua các placeholder mà SDK trả khi user CHƯA
+  // cấp scope.userInfo ("Khách Zalo" của app, "Người dùng Zalo"/"Zalo User" của
+  // Zalo SDK), để không ghi đè giá trị rác lên DB (backend tự fallback khi thiếu).
+  const PLACEHOLDER_NAMES = ["Khách Zalo", "Người dùng Zalo", "Zalo User"];
+  if (zaloName && !PLACEHOLDER_NAMES.includes(zaloName)) body.name = zaloName;
   if (profile?.avatar) body.avatar = profile.avatar;
   const result = await requestWithPost<
     { access_token: string; phone_token?: string; name?: string; avatar?: string },
