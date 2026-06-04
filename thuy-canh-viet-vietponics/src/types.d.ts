@@ -411,6 +411,13 @@ export interface FarmProfile {
   // Phần farm GIỮ LẠI (vd 0.85 = farm nhận 85%). Phí Vietponics = 1 - commission_rate.
   commission_rate: number;
   approved_at: string | null;
+  // Vai trò người đang đăng nhập — bật/tắt UI chỉ-owner (vd nút "Phân công").
+  viewer?: {
+    customer_id: number;
+    name: string;
+    farm_role: "owner" | "staff" | null;
+    is_owner: boolean;
+  };
 }
 
 export type FarmDashboardRange = "today" | "7d" | "30d";
@@ -487,6 +494,9 @@ export interface FarmAnalyticsResponse {
   top_products: FarmTopProduct[];
 }
 
+// Trạng thái đóng gói của phiếu (order, farm). Khớp OrderFarmAssignment::STATUS_*.
+export type PackingStatus = "unassigned" | "assigned" | "packing" | "packed";
+
 export interface FarmIncomingOrder {
   item_id: number;
   order_id: number;
@@ -497,8 +507,43 @@ export interface FarmIncomingOrder {
   order_status: "pending" | "confirmed" | "preparing" | "delivering";
   order_created_at: string;
   order_total: number;
+  is_pickup: boolean;
+  station_name: string | null;
+  // customer_name/delivery_address đã được server che một phần (bảo mật).
   customer_name: string | null;
+  // SĐT đã che giữa (vd "0937***739"). null nếu đơn không có SĐT.
+  customer_phone: string | null;
   delivery_address: string | null;
+  // Khâu đóng gói: trạng thái phiếu + ai đang/đã đóng + có phải của mình không.
+  assignment_status: PackingStatus;
+  assigned_customer_id: number | null;
+  // Tên người được gán/đang đóng (để hiện "Đang đóng: NV. Tuấn"). null nếu chưa ai nhận.
+  assigned_customer_name: string | null;
+  // Mốc thời gian đóng gói (ISO/datetime string). null nếu chưa diễn ra.
+  packing_started_at: string | null;
+  packed_at: string | null;
+  is_mine: boolean;
+}
+
+// Thành viên farm có thể được gán đóng gói (GET /farm/staff).
+export interface FarmStaffMember {
+  id: number;
+  name: string;
+  farm_role: "owner" | "staff" | null;
+}
+
+// Kết quả thao tác đóng gói cấp phiếu (claim/assign/start-packing/confirm-packed).
+export interface PackingActionResult {
+  order_id: number;
+  assignment_status: PackingStatus;
+  assigned_customer_id: number | null;
+  is_mine: boolean;
+}
+
+// Kết quả thao tác cấp đơn của chủ farm (confirm-order/handoff-ship).
+export interface OrderActionResult {
+  order_id: number;
+  order_status: "pending" | "confirmed" | "preparing" | "delivering";
 }
 
 export type FarmPayoutStatus = "draft" | "pending" | "paid" | "cancelled";

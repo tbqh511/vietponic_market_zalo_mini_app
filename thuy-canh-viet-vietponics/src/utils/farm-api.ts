@@ -9,6 +9,9 @@ import {
   FarmPayout,
   FarmPayoutDetail,
   FarmAnalyticsResponse,
+  FarmStaffMember,
+  PackingActionResult,
+  OrderActionResult,
 } from "@/types";
 
 // Polling mặc định 30s cho mọi hook real-time (overview/productsToday/incoming).
@@ -179,9 +182,86 @@ export function useFarmAnalytics(
 
 /**
  * GET /farm/orders/incoming — đơn đang chờ giao.
+ * Backend đã lọc theo vai trò (staff chỉ thấy đơn được gán) + che thông tin KH.
  */
 export function useFarmIncomingOrders(enabled: boolean = true) {
   return usePolling<FarmIncomingOrder[]>("/farm/orders/incoming", enabled);
+}
+
+/**
+ * GET /farm/staff — thành viên farm để chủ farm chọn người đóng gói.
+ * Fetch 1 lần, không poll (danh sách ít đổi).
+ */
+export function useFarmStaff(enabled: boolean = true) {
+  return usePolling<FarmStaffMember[]>("/farm/staff", enabled, /* no poll */ 0);
+}
+
+// POST chung cho các action đóng gói — tự đính JWT, unwrap { error, data }.
+async function farmPost<T>(path: string, body?: unknown): Promise<T> {
+  const token = localStorage.getItem("jwt_token");
+  if (!token) throw new Error("Chưa đăng nhập");
+  const res = await request<{ error: boolean; data: T; message?: string }>(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (res.error) {
+    throw new Error(res.message || "Thao tác thất bại");
+  }
+  return res.data;
+}
+
+/**
+ * POST /farm/orders/{id}/assign — chủ farm gán/đổi người đóng gói cho đơn.
+ */
+export function assignPacker(
+  orderId: number,
+  packerCustomerId: number
+): Promise<PackingActionResult> {
+  return farmPost<PackingActionResult>(`/farm/orders/${orderId}/assign`, {
+    packer_customer_id: packerCustomerId,
+  });
+}
+
+/**
+ * POST /farm/orders/{id}/claim — nhân viên TỰ NHẬN đơn chưa ai nhận.
+ */
+export function claimOrder(orderId: number): Promise<PackingActionResult> {
+  return farmPost<PackingActionResult>(`/farm/orders/${orderId}/claim`);
+}
+
+/**
+ * POST /farm/orders/{id}/start-packing — nhân viên bắt đầu đóng gói.
+ */
+export function startPacking(orderId: number): Promise<PackingActionResult> {
+  return farmPost<PackingActionResult>(`/farm/orders/${orderId}/start-packing`);
+}
+
+/**
+ * POST /farm/orders/{id}/confirm-packed — xác nhận đóng gói xong phiếu này.
+ * KHÔNG tự bàn giao ship — chủ farm bấm handoffShip riêng.
+ */
+export function confirmPacked(orderId: number): Promise<PackingActionResult> {
+  return farmPost<PackingActionResult>(`/farm/orders/${orderId}/confirm-packed`);
+}
+
+/**
+ * POST /farm/orders/{id}/confirm-order — chủ farm xác nhận đơn (pending→confirmed).
+ */
+export function confirmOrder(orderId: number): Promise<OrderActionResult> {
+  return farmPost<OrderActionResult>(`/farm/orders/${orderId}/confirm-order`);
+}
+
+/**
+ * POST /farm/orders/{id}/handoff-ship — chủ farm bàn giao vận chuyển
+ * (preparing→delivering). Chỉ được khi mọi phần farm của đơn đã đóng xong.
+ */
+export function handoffShip(orderId: number): Promise<OrderActionResult> {
+  return farmPost<OrderActionResult>(`/farm/orders/${orderId}/handoff-ship`);
 }
 
 // Payouts poll chậm 60s — đợt draft "đang tích lũy" cập nhật theo cron daily,
