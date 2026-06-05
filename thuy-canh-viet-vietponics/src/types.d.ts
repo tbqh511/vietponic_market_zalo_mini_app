@@ -411,12 +411,16 @@ export interface FarmProfile {
   // Phần farm GIỮ LẠI (vd 0.85 = farm nhận 85%). Phí Vietponics = 1 - commission_rate.
   commission_rate: number;
   approved_at: string | null;
+  // Farm hiện tại là "bộ phận đóng gói" (Package Hub) — chỉ hub mới thao tác đơn.
+  is_packing_hub?: boolean;
   // Vai trò người đang đăng nhập — bật/tắt UI chỉ-owner (vd nút "Phân công").
   viewer?: {
     customer_id: number;
     name: string;
     farm_role: "owner" | "staff" | null;
     is_owner: boolean;
+    // Lặp lại ở cấp viewer để đọc gọn cùng chỗ với is_owner.
+    is_packing_hub: boolean;
   };
 }
 
@@ -523,6 +527,8 @@ export interface FarmIncomingOrder {
   packing_started_at: string | null;
   packed_at: string | null;
   is_mine: boolean;
+  // Farm thường = xem chỉ-đọc (đơn được xử lý bởi Package Hub). Hub → false/undefined.
+  read_only?: boolean;
 }
 
 // Thành viên farm có thể được gán đóng gói (GET /farm/staff).

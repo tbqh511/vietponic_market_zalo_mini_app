@@ -129,9 +129,12 @@ export default function FarmOrdersPage() {
   const incoming = useFarmIncomingOrders(isFarm);
   const viewer = profile.data?.viewer;
   const isOwner = viewer?.is_owner ?? false;
+  // Chỉ Package Hub mới thao tác đơn; farm thường = xem chỉ-đọc.
+  const isHub =
+    viewer?.is_packing_hub ?? profile.data?.is_packing_hub ?? false;
   const myId = viewer?.customer_id ?? null;
-  // Owner chỉ tải danh sách nhân viên khi cần (để dropdown phân công).
-  const staffList = useFarmStaff(isFarm && isOwner);
+  // Owner CỦA HUB mới cần danh sách nhân viên (để dropdown phân công).
+  const staffList = useFarmStaff(isFarm && isHub && isOwner);
 
   const orders = useMemo<GroupedOrder[]>(() => {
     const rows = incoming.data ?? [];
@@ -173,11 +176,14 @@ export default function FarmOrdersPage() {
     );
   }, [incoming.data]);
 
-  // Badge tab "Đơn đến" — đếm đơn distinct status 'pending'.
+  // Badge tab "Đơn đến" — đếm đơn distinct status 'pending'. Chỉ có ý nghĩa cho
+  // hub (người xử lý đơn); farm thường không thao tác nên badge = 0.
   useEffect(() => {
-    const pending = orders.filter((o) => o.order_status === "pending").length;
+    const pending = isHub
+      ? orders.filter((o) => o.order_status === "pending").length
+      : 0;
     setPendingCount(pending);
-  }, [orders, setPendingCount]);
+  }, [orders, isHub, setPendingCount]);
 
   if (!isFarm) {
     return (
@@ -202,11 +208,19 @@ export default function FarmOrdersPage() {
               {profile.data?.name ?? "Farm"}
             </div>
             <div className="text-[11px] text-white/85">
-              {isOwner ? "Đơn đến" : "Đơn cần đóng gói"}
+              {!isHub
+                ? "Đơn có hàng của bạn"
+                : isOwner
+                ? "Đơn đến"
+                : "Đơn cần đóng gói"}
             </div>
           </div>
           <div className="px-2.5 py-1 text-[11px] font-medium rounded-full bg-white/20 whitespace-nowrap">
-            {isOwner ? "Chủ farm" : staffLabel(viewer?.name ?? null)}
+            {!isHub
+              ? "Chỉ xem"
+              : isOwner
+              ? "Chủ farm"
+              : staffLabel(viewer?.name ?? null)}
           </div>
         </div>
 
@@ -225,6 +239,8 @@ export default function FarmOrdersPage() {
                 Thử lại
               </button>
             </div>
+          ) : !isHub ? (
+            <ReadOnlyView orders={orders} />
           ) : isOwner ? (
             <OwnerView
               orders={orders}
@@ -513,6 +529,92 @@ function OwnerCard({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Màn 3: Farm thường (chỉ xem) ─────────────────────────────────────────────
+// Farm KHÔNG phải Package Hub: chỉ thấy đơn có hàng của mình, KHÔNG thao tác.
+// Đơn được xử lý bởi bộ phận đóng gói Vietponics (hub).
+
+function ReadOnlyView({ orders }: { orders: GroupedOrder[] }) {
+  const summary = useMemo(() => {
+    let totalQty = 0;
+    for (const o of orders) totalQty += o.total_qty;
+    return { totalQty, count: orders.length };
+  }, [orders]);
+
+  return (
+    <>
+      {/* Card thông báo: đơn do hub xử lý */}
+      <div className="p-3 bg-blue-50 rounded-xl">
+        <div className="text-[11px] text-blue-700">
+          Hàng của bạn trong đơn đang đến
+        </div>
+        <div className="flex items-baseline gap-1.5 mt-1">
+          <div className="text-[22px] font-semibold text-blue-700 leading-none">
+            {fmtKg(summary.totalQty)}
+          </div>
+          <div className="text-xs text-blue-700">· {summary.count} đơn</div>
+        </div>
+        <div className="text-[11px] text-blue-600/80 mt-1.5">
+          Đơn được đóng gói bởi bộ phận đóng gói Vietponics.
+        </div>
+      </div>
+
+      {orders.length === 0 ? (
+        <div className="py-16 text-center text-gray-400 text-sm">
+          Chưa có đơn nào chứa hàng của bạn.
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-col gap-2">
+          {orders.map((o) => (
+            <ReadOnlyCard key={o.order_id} order={o} />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function ReadOnlyCard({ order }: { order: GroupedOrder }) {
+  const pill = statusPill(order.order_status);
+
+  return (
+    <div className="p-3 border border-gray-200 rounded-xl">
+      {/* Top: mã đơn + giờ | status pill */}
+      <div className="flex justify-between items-start mb-2 gap-2">
+        <div className="min-w-0">
+          <div className="text-[13px] font-medium">#{order.order_id}</div>
+          <div className="text-[11px] text-gray-500 mt-0.5">
+            {fmtTime(order.order_created_at)}
+          </div>
+        </div>
+        <div
+          className={`px-2 py-0.5 text-[10px] font-medium rounded-full shrink-0 ${pill.className}`}
+        >
+          {pill.label}
+        </div>
+      </div>
+
+      {/* Box xám: items của farm mình trong đơn */}
+      <div className="p-2 bg-gray-50 rounded-md text-xs">
+        {order.items.map((it, i) => (
+          <div
+            key={it.item_id}
+            className={`flex justify-between ${i > 0 ? "mt-1" : ""}`}
+          >
+            <span className="text-gray-700 truncate pr-2">
+              {it.product_name}
+            </span>
+            <span className="font-medium shrink-0">×{fmtKg(it.quantity)}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="text-[11px] text-gray-400 mt-2">
+        Đang được xử lý bởi bộ phận đóng gói Vietponics
+      </div>
     </div>
   );
 }
