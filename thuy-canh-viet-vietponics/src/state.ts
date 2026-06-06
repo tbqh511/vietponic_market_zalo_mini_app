@@ -151,16 +151,43 @@ export function convertApiOrderToOrder(apiOrder: ApiOrder): Order {
 }
 export const userInfoKeyState = atom(0);
 
+// Tên mặc định khi chưa lấy được tên thật (user chưa cấp scope.userInfo).
+// Đồng bộ với placeholderNames phía backend (ZaloApiController::authenticate).
+const PLACEHOLDER_NAMES = ["", "Khách Zalo", "Zalo User", "Người dùng Zalo"];
+
+// Các field người dùng tự nhập ở màn "Chỉnh sửa thông tin" (editor.tsx) —
+// chỉ những field này mới được phép override từ localStorage. name/avatar
+// KHÔNG nằm ở đây để tránh cache cũ (hoặc thiếu avatar) ghi đè dữ liệu thật.
+type SavedUserOverrides = Partial<Pick<UserInfo, "phone" | "email" | "address" | "name">>;
+
+function readSavedOverrides(): SavedUserOverrides {
+  try {
+    const raw = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_INFO);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Partial<UserInfo>;
+    return {
+      // name: chỉ nhận nếu user thực sự nhập (khác placeholder) — để không
+      // che tên Zalo thật bằng "Khách Zalo" còn sót trong cache.
+      name:
+        parsed.name && !PLACEHOLDER_NAMES.includes(parsed.name.trim())
+          ? parsed.name.trim()
+          : undefined,
+      phone: parsed.phone || undefined,
+      email: parsed.email || undefined,
+      address: parsed.address || undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
 export const userInfoState = atom<Promise<UserInfo>>(async (get) => {
   get(userInfoKeyState);
 
-  // Nếu người dùng đã chỉnh sửa thông tin tài khoản trước đó, sử dụng thông tin đã lưu trữ
-  const savedUserInfo = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_INFO);
-  // Phía tích hợp có thể thay đổi logic này thành fetch từ server
-  // const savedUserInfo = await fetchUserInfo({ token: await getAccessToken() });
-  if (savedUserInfo) {
-    return JSON.parse(savedUserInfo);
-  }
+  // Profile từ backend (đã đồng bộ tên/ảnh Zalo qua /authenticate). Dùng làm
+  // nguồn dự phòng cho tên/ảnh khi SDK getUserInfo() không trả được (vd cache
+  // permission chưa kịp, hoặc lỗi tạm thời) — backend đã backfill từ Graph API.
+  const profile = get(customerProfileState);
 
   const {
     authSetting: {
@@ -174,33 +201,43 @@ export const userInfoState = atom<Promise<UserInfo>>(async (get) => {
   const phone =
     grantedPhoneNumber || isDev ? await get(phoneState) : "";
 
+  // Field người dùng tự nhập (phone/email/address + name nếu đã sửa).
+  const saved = readSavedOverrides();
+
+  // Live data từ Zalo SDK khi đã cấp quyền — nguồn ưu tiên cao nhất cho tên/ảnh.
+  let sdkName = "";
+  let sdkAvatar = "";
+  let sdkId = "";
   if (grantedUserInfo || isDev) {
-    // Người dùng cho phép truy cập tên và ảnh đại diện
     try {
       const { userInfo } = await getUserInfo({});
-      return {
-        id: userInfo.id,
-        name: userInfo.name?.trim() || "Khách Zalo",
-        avatar: userInfo.avatar || "",
-        phone,
-        email: "",
-        address: "",
-      };
+      sdkName = userInfo.name?.trim() || "";
+      sdkAvatar = userInfo.avatar || "";
+      sdkId = userInfo.id || "";
     } catch (error) {
       console.warn("Error retrieving Zalo user info:", error);
     }
   }
 
-  // Người dùng chưa cấp (hoặc từ chối) scope.userInfo — vẫn trả về một
-  // UserInfo hợp lệ với tên mặc định để delivery.name không bao giờ rỗng.
-  // (Tài khoản kiểm duyệt Zalo thường không cấp quyền này.)
+  // Ưu tiên: SDK (live) → backend profile → placeholder. saved.name (do user
+  // tự sửa) override sau cùng vì đó là chủ đích rõ ràng của người dùng.
+  const resolvedName =
+    saved.name ||
+    sdkName ||
+    profile?.name?.trim() ||
+    "Khách Zalo";
+
+  // Avatar: SDK → backend profile.profile. Không lấy từ localStorage (editor
+  // không lưu avatar nên cache luôn thiếu field này → tránh ảnh vỡ).
+  const resolvedAvatar = sdkAvatar || profile?.profile?.trim() || "";
+
   return {
-    id: "",
-    name: "Khách Zalo",
-    avatar: "",
-    phone,
-    email: "",
-    address: "",
+    id: sdkId || (profile?.id != null ? String(profile.id) : ""),
+    name: resolvedName,
+    avatar: resolvedAvatar,
+    phone: saved.phone || phone || profile?.mobile?.trim() || "",
+    email: saved.email || profile?.email?.trim() || "",
+    address: saved.address || "",
   };
 });
 
