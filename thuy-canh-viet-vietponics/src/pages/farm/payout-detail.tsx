@@ -78,7 +78,7 @@ export default function FarmPayoutDetailPage() {
   const orders = detail.data?.orders ?? [];
 
   return (
-    <div className="flex flex-col h-full bg-gray-100 overflow-y-auto">
+    <div className="flex flex-col min-h-full bg-gray-100">
       <div className="m-3 bg-white rounded-2xl border border-gray-200 p-3.5">
         {isInitialLoading ? (
           <div className="py-16 text-center text-gray-400 text-sm">

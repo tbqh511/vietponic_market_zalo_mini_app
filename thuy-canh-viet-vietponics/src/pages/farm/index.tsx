@@ -70,7 +70,7 @@ export default function FarmDashboardPage() {
   const fmtMoney = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
   return (
-    <div className="flex flex-col h-full bg-gray-100 overflow-y-auto">
+    <div className="flex flex-col min-h-full bg-gray-100">
       <div className="m-3 bg-white rounded-lg border border-gray-200 p-3.5">
         {/* Header farm */}
         <div className="flex items-center gap-2.5 pb-3 border-b border-gray-100">

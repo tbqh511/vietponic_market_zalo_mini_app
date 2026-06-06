@@ -73,7 +73,7 @@ export default function FarmRegisterPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-100 overflow-y-auto">
+    <div className="flex flex-col min-h-full bg-gray-100">
       <div className="m-3 p-4 bg-white rounded-lg border border-gray-200">
         <h2 className="text-base font-semibold mb-1">Trở thành Farm Partner</h2>
         <p className="text-[12px] text-gray-500 mb-4 leading-relaxed">

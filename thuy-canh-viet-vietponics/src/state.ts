@@ -189,17 +189,31 @@ export const userInfoState = atom<Promise<UserInfo>>(async (get) => {
   // permission chưa kịp, hoặc lỗi tạm thời) — backend đã backfill từ Graph API.
   const profile = get(customerProfileState);
 
-  const {
-    authSetting: {
-      "scope.userInfo": grantedUserInfo,
-      "scope.userPhonenumber": grantedPhoneNumber,
-    },
-  } = await getSetting({});
   const isDev = !window.ZJSBridge;
 
+  // getSetting() có thể throw (SDK lỗi tạm thời / chạy ngoài Zalo). Nếu để lọt
+  // exception ra ngoài, atom sẽ reject và toàn bộ màn profile rơi về "Đăng ký
+  // thành viên" dù user đã auth. → nuốt lỗi, coi như chưa cấp quyền.
+  let grantedUserInfo = false;
+  let grantedPhoneNumber = false;
+  try {
+    const { authSetting } = await getSetting({});
+    grantedUserInfo = !!authSetting["scope.userInfo"];
+    grantedPhoneNumber = !!authSetting["scope.userPhonenumber"];
+  } catch (error) {
+    console.warn("Error retrieving Zalo auth setting:", error);
+  }
+
   // Số điện thoại chỉ lấy khi đã được cấp quyền (hoặc đang chạy dev).
-  const phone =
-    grantedPhoneNumber || isDev ? await get(phoneState) : "";
+  // phoneState tự nuốt lỗi nội bộ, nhưng vẫn bọc thêm cho chắc.
+  let phone = "";
+  if (grantedPhoneNumber || isDev) {
+    try {
+      phone = await get(phoneState);
+    } catch (error) {
+      console.warn("Error retrieving phone number:", error);
+    }
+  }
 
   // Field người dùng tự nhập (phone/email/address + name nếu đã sửa).
   const saved = readSavedOverrides();

@@ -196,7 +196,7 @@ export default function FarmOrdersPage() {
   const isInitialLoading = (incoming.loading && !incoming.data) || !profile.data;
 
   return (
-    <div className="flex flex-col h-full bg-gray-100 overflow-y-auto">
+    <div className="flex flex-col min-h-full bg-gray-100">
       <div className="m-3 bg-white rounded-2xl border border-gray-200 overflow-hidden">
         {/* Header gradient: avatar + tên farm + badge vai trò */}
         <div className="flex items-center gap-3 px-4 py-3 bg-primary text-white">
