@@ -7,6 +7,7 @@ import { EmptyCart } from "@/components/empty";
 import Delivery from "./delivery";
 import HorizontalDivider from "@/components/horizontal-divider";
 import Pay from "./pay";
+import ProfileGate from "@/components/profile-gate";
 
 export default function CartPage() {
   const cart = useAtomValue(cartState);
@@ -24,6 +25,7 @@ export default function CartPage() {
       </div>
       <HorizontalDivider />
       <Pay />
+      <ProfileGate />
     </div>
   );
 }

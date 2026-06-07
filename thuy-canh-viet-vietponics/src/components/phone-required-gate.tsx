@@ -3,6 +3,7 @@ import { useAtom } from "jotai";
 import { customerProfileState } from "@/state";
 import { authenticate } from "@/utils/request";
 import { getAccessToken } from "zmp-sdk/apis";
+import logo from "@/static/logo.png";
 
 // Tên placeholder mà SDK/backend trả khi user CHƯA cấp scope.userInfo.
 // Một profile mang tên này coi như "thiếu tên".
@@ -13,10 +14,18 @@ function isMissingName(name: string | null | undefined): boolean {
   return n === "" || PLACEHOLDER_NAMES.includes(n);
 }
 
-// Gate yêu cầu hoàn thiện hồ sơ: bật khi user đã auth nhưng còn thiếu BẤT KỲ
-// trường nào (số điện thoại / tên / avatar). Bấm nút sẽ xin đúng quyền còn
-// thiếu rồi authenticate lại để backend backfill các trường đang trống.
-export default function PhoneRequiredGate() {
+interface PhoneRequiredGateProps {
+  // Người dùng bấm "Để sau" / từ chối cấp quyền. Trang cha đóng gate và vẫn
+  // cho phép dùng tính năng (đạt chuẩn 6.1 — luôn có lối thoát).
+  onDismiss: () => void;
+}
+
+// Gate yêu cầu hoàn thiện hồ sơ: chỉ render khi trang có ngữ cảnh rõ ràng cần
+// danh tính (Cá nhân / Đơn hàng / Giỏ hàng), KHÔNG render global ở trang chủ.
+// Bật khi user đã auth nhưng còn thiếu BẤT KỲ trường nào (số điện thoại / tên /
+// avatar). Bấm "Cho phép" sẽ xin đúng quyền còn thiếu rồi authenticate lại để
+// backend backfill các trường đang trống. Bấm "Để sau" đóng gate, vẫn dùng app.
+export default function PhoneRequiredGate({ onDismiss }: PhoneRequiredGateProps) {
   const [profile, setProfile] = useAtom(customerProfileState);
   const [loading, setLoading] = useState(false);
   const [denied, setDenied] = useState(false);
@@ -95,7 +104,12 @@ export default function PhoneRequiredGate() {
         (needsPhone && !user.mobile) ||
         (needsName && isMissingName(user.name)) ||
         (needsAvatar && !user.profile);
-      if (stillMissing) setDenied(true);
+      if (stillMissing) {
+        setDenied(true);
+      } else {
+        // Đã đủ thông tin → đóng gate.
+        onDismiss();
+      }
     } catch {
       setDenied(true);
     } finally {
@@ -113,37 +127,54 @@ export default function PhoneRequiredGate() {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-end">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40" />
+      {/* Backdrop — bấm ra ngoài cũng là một cách "để sau", vẫn cho dùng app. */}
+      <div
+        className="absolute inset-0 bg-black/40"
+        onClick={loading ? undefined : onDismiss}
+      />
 
       {/* Bottom sheet */}
       <div className="relative w-full bg-white rounded-t-2xl px-6 pt-6 pb-10 flex flex-col items-center gap-4">
         <div className="w-10 h-1 bg-gray-200 rounded-full mb-2" />
 
-        <div className="text-4xl">📱</div>
+        <img
+          src={logo}
+          alt="Vietponics"
+          className="w-16 h-16 object-contain"
+        />
 
         <h2 className="text-lg font-semibold text-center text-gray-800">
-          Hoàn thiện thông tin tài khoản
+          Cá nhân hoá trải nghiệm mua sắm
         </h2>
 
         <p className="text-sm text-center text-gray-500 leading-relaxed">
-          Vui lòng cấp quyền truy cập {missingText} để hoàn thiện hồ sơ. Thông
-          tin này giúp chúng tôi liên hệ và phục vụ bạn tốt hơn.
+          Cho phép Vietponics dùng {missingText} từ Zalo để hiển thị hồ sơ và
+          theo dõi đơn hàng. Tuỳ chọn — bạn vẫn dùng đầy đủ ứng dụng nếu để sau.
         </p>
 
         {denied && (
           <p className="text-sm text-red-500 text-center">
-            Bạn chưa cấp đủ quyền truy cập. Vui lòng thử lại.
+            Chưa lấy được thông tin. Bạn có thể thử lại hoặc bổ sung sau trong
+            mục Chỉnh sửa thông tin.
           </p>
         )}
 
-        <button
-          onClick={handleComplete}
-          disabled={loading}
-          className="w-full bg-primary text-white font-medium py-3 rounded-xl disabled:opacity-60"
-        >
-          {loading ? "Đang xử lý..." : "Cho phép truy cập thông tin"}
-        </button>
+        <div className="w-full flex gap-3 pt-1">
+          <button
+            onClick={onDismiss}
+            disabled={loading}
+            className="flex-1 bg-gray-100 text-gray-700 font-medium py-3 rounded-xl disabled:opacity-60"
+          >
+            Để sau
+          </button>
+          <button
+            onClick={handleComplete}
+            disabled={loading}
+            className="flex-1 bg-primary text-white font-medium py-3 rounded-xl disabled:opacity-60"
+          >
+            {loading ? "Đang xử lý..." : "Cho phép"}
+          </button>
+        </div>
       </div>
     </div>
   );

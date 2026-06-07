@@ -9,7 +9,6 @@ import FloatingCartPreview from "./floating-cart-preview";
 import StockInFab from "./farm/stock-in-fab";
 import FarmHubFab from "./farm/farm-hub-fab";
 import BackToShopFab from "./farm/back-to-shop-fab";
-import PhoneRequiredGate from "./phone-required-gate";
 import { useInitAuth, useRouteHandle } from "@/hooks";
 import { useAtom, useAtomValue } from "jotai";
 import {
@@ -81,7 +80,6 @@ export default function Layout() {
       {/* FAB "Mua hàng" — quay lại không gian mua hàng, góc phải phía trên.
           Chỉ ở tab gốc Farm (farmTab), thay cho nút cũ trên header. */}
       {handle?.space === "farm" && handle?.farmTab && <BackToShopFab />}
-      <PhoneRequiredGate />
       <ScrollRestoration />
     </div>
   );

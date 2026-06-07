@@ -32,12 +32,7 @@ import {
 } from "@/types";
 import { requestWithFallback, request, authenticate } from "@/utils/request";
 import { getAccessToken, decodeToken, decodeLocationToken } from "@/utils/zma";
-import {
-  getLocation,
-  getPhoneNumber,
-  getSetting,
-  getUserInfo,
-} from "zmp-sdk/apis";
+import { getLocation, getPhoneNumber } from "zmp-sdk/apis";
 import toast from "react-hot-toast";
 import { calculateDistance } from "./utils/location";
 import { formatDistant } from "./utils/format";
@@ -160,6 +155,48 @@ const PLACEHOLDER_NAMES = ["", "Khách Zalo", "Zalo User", "Người dùng Zalo"
 // KHÔNG nằm ở đây để tránh cache cũ (hoặc thiếu avatar) ghi đè dữ liệu thật.
 type SavedUserOverrides = Partial<Pick<UserInfo, "phone" | "email" | "address" | "name">>;
 
+// ── Cache tên/ảnh live từ Zalo SDK ──────────────────────────────────────────
+// Ghi bởi useInitAuth/useEnsureJwt (nơi DUY NHẤT gọi getUserInfo lúc khởi động),
+// đọc bởi userInfoState. Mục đích: userInfoState không tự gọi getSetting/getUserInfo
+// nữa → loại bỏ các call SDK trùng gây lỗi -1409 "Request limit exceeded" và
+// hiện tượng "load đúng xong load lại".
+export type ZaloSdkProfile = { name?: string; avatar?: string };
+
+export function readZaloSdkProfile(): ZaloSdkProfile {
+  try {
+    const raw = localStorage.getItem(CONFIG.STORAGE_KEYS.ZALO_SDK_PROFILE);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as ZaloSdkProfile;
+    return {
+      name: parsed.name?.trim() || undefined,
+      avatar: parsed.avatar?.trim() || undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+export function writeZaloSdkProfile(profile: ZaloSdkProfile) {
+  try {
+    const name = profile.name?.trim();
+    const avatar = profile.avatar?.trim();
+    // Chỉ ghi khi có dữ liệu thật, và không cho placeholder che tên đã cache.
+    const existing = readZaloSdkProfile();
+    const next: ZaloSdkProfile = {
+      name:
+        name && !PLACEHOLDER_NAMES.includes(name) ? name : existing.name,
+      avatar: avatar || existing.avatar,
+    };
+    if (!next.name && !next.avatar) return;
+    localStorage.setItem(
+      CONFIG.STORAGE_KEYS.ZALO_SDK_PROFILE,
+      JSON.stringify(next)
+    );
+  } catch {
+    // ignore — cache là tối ưu, không bắt buộc
+  }
+}
+
 function readSavedOverrides(): SavedUserOverrides {
   try {
     const raw = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_INFO);
@@ -184,72 +221,36 @@ function readSavedOverrides(): SavedUserOverrides {
 export const userInfoState = atom<Promise<UserInfo>>(async (get) => {
   get(userInfoKeyState);
 
-  // Profile từ backend (đã đồng bộ tên/ảnh Zalo qua /authenticate). Dùng làm
-  // nguồn dự phòng cho tên/ảnh khi SDK getUserInfo() không trả được (vd cache
-  // permission chưa kịp, hoặc lỗi tạm thời) — backend đã backfill từ Graph API.
+  // Profile từ backend (đã đồng bộ tên/ảnh Zalo qua /authenticate). Đây là nguồn
+  // chính cho tên/ảnh/phone — backend backfill từ SDK (do FE gửi lên) và Graph API.
   const profile = get(customerProfileState);
 
-  const isDev = !window.ZJSBridge;
-
-  // getSetting() có thể throw (SDK lỗi tạm thời / chạy ngoài Zalo). Nếu để lọt
-  // exception ra ngoài, atom sẽ reject và toàn bộ màn profile rơi về "Đăng ký
-  // thành viên" dù user đã auth. → nuốt lỗi, coi như chưa cấp quyền.
-  let grantedUserInfo = false;
-  let grantedPhoneNumber = false;
-  try {
-    const { authSetting } = await getSetting({});
-    grantedUserInfo = !!authSetting["scope.userInfo"];
-    grantedPhoneNumber = !!authSetting["scope.userPhonenumber"];
-  } catch (error) {
-    console.warn("Error retrieving Zalo auth setting:", error);
-  }
-
-  // Số điện thoại chỉ lấy khi đã được cấp quyền (hoặc đang chạy dev).
-  // phoneState tự nuốt lỗi nội bộ, nhưng vẫn bọc thêm cho chắc.
-  let phone = "";
-  if (grantedPhoneNumber || isDev) {
-    try {
-      phone = await get(phoneState);
-    } catch (error) {
-      console.warn("Error retrieving phone number:", error);
-    }
-  }
+  // Tên/ảnh live từ Zalo SDK đã được useInitAuth/useEnsureJwt cache sẵn vào
+  // localStorage. KHÔNG gọi getSetting/getUserInfo/getPhoneNumber ở đây nữa:
+  // chúng đã được gọi một lần lúc khởi động. Gọi lại gây call SDK trùng →
+  // Zalo trả -1409 "Request limit exceeded" và màn profile nháy/đổi ảnh.
+  const sdk = readZaloSdkProfile();
 
   // Field người dùng tự nhập (phone/email/address + name nếu đã sửa).
   const saved = readSavedOverrides();
 
-  // Live data từ Zalo SDK khi đã cấp quyền — nguồn ưu tiên cao nhất cho tên/ảnh.
-  let sdkName = "";
-  let sdkAvatar = "";
-  let sdkId = "";
-  if (grantedUserInfo || isDev) {
-    try {
-      const { userInfo } = await getUserInfo({});
-      sdkName = userInfo.name?.trim() || "";
-      sdkAvatar = userInfo.avatar || "";
-      sdkId = userInfo.id || "";
-    } catch (error) {
-      console.warn("Error retrieving Zalo user info:", error);
-    }
-  }
-
-  // Ưu tiên: SDK (live) → backend profile → placeholder. saved.name (do user
-  // tự sửa) override sau cùng vì đó là chủ đích rõ ràng của người dùng.
+  // Ưu tiên: SDK live (cache) → backend profile → placeholder. saved.name (do
+  // user tự sửa) override sau cùng vì đó là chủ đích rõ ràng của người dùng.
   const resolvedName =
     saved.name ||
-    sdkName ||
+    sdk.name ||
     profile?.name?.trim() ||
     "Khách Zalo";
 
-  // Avatar: SDK → backend profile.profile. Không lấy từ localStorage (editor
-  // không lưu avatar nên cache luôn thiếu field này → tránh ảnh vỡ).
-  const resolvedAvatar = sdkAvatar || profile?.profile?.trim() || "";
+  // Avatar: SDK live (cache) → backend profile.profile. Không lấy từ localStorage
+  // USER_INFO (editor không lưu avatar nên luôn thiếu field này → tránh ảnh vỡ).
+  const resolvedAvatar = sdk.avatar || profile?.profile?.trim() || "";
 
   return {
-    id: sdkId || (profile?.id != null ? String(profile.id) : ""),
+    id: profile?.id != null ? String(profile.id) : "",
     name: resolvedName,
     avatar: resolvedAvatar,
-    phone: saved.phone || phone || profile?.mobile?.trim() || "",
+    phone: saved.phone || profile?.mobile?.trim() || "",
     email: saved.email || profile?.email?.trim() || "",
     address: saved.address || "",
   };

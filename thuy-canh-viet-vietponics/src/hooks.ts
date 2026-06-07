@@ -23,6 +23,7 @@ import {
   farmInventoryRefreshTokenState,
   shortcutPromptedAtom,
   oaFollowPromptedAtom,
+  writeZaloSdkProfile,
 } from "@/state";
 import { promptCreateShortcut, promptFollowOA } from "@/utils/zalo-prompts";
 import {
@@ -194,6 +195,8 @@ export function useEnsureJwt() {
               avatar: userInfoResult.value?.userInfo?.avatar,
             }
           : undefined;
+      // Cache tên/ảnh live để userInfoState đọc lại, khỏi gọi getUserInfo lần nữa.
+      if (zaloProfile) writeZaloSdkProfile(zaloProfile);
       const result = await authenticate(accessToken.value, phoneToken, zaloProfile);
       const newToken = result.data?.token;
       if (newToken) {
@@ -229,9 +232,21 @@ export function useInitAuth() {
       // hiện tại không biết). Bỏ qua nhánh ensureJwt vì sẽ là request trùng.
       try {
         const { getSetting, getPhoneNumber, getUserInfo } = await import("zmp-sdk/apis");
-        const { authSetting } = await getSetting({});
-        const phoneGranted = !!authSetting["scope.userPhonenumber"];
-        const userInfoGranted = !!authSetting["scope.userInfo"];
+
+        // getSetting có thể throw -1409 "Request limit exceeded". KHÔNG để nó
+        // dừng cả luồng auth (nếu throw mà không bắt, sẽ nhảy thẳng xuống catch
+        // ngoài → bỏ qua authenticate → profile không refresh, đúng lỗi gặp ở
+        // lần đăng nhập thứ 2). → bắt riêng; khi lỗi thì thử lạc quan cả phone
+        // lẫn userInfo (mỗi cái tự nuốt lỗi của nó).
+        let phoneGranted = true;
+        let userInfoGranted = true;
+        try {
+          const { authSetting } = await getSetting({});
+          phoneGranted = !!authSetting["scope.userPhonenumber"];
+          userInfoGranted = !!authSetting["scope.userInfo"];
+        } catch (e) {
+          console.warn("[useInitAuth] getSetting failed, optimistic auth", e);
+        }
 
         let phoneToken: string | undefined;
         if (phoneGranted) {
@@ -251,6 +266,8 @@ export function useInitAuth() {
           try {
             const { userInfo } = await getUserInfo({});
             zaloProfile = { name: userInfo?.name, avatar: userInfo?.avatar };
+            // Cache tên/ảnh live để userInfoState đọc lại (không gọi SDK lần nữa).
+            writeZaloSdkProfile(zaloProfile);
           } catch {
             // ignore — backend vẫn fallback Graph API / 'Zalo User'
           }
