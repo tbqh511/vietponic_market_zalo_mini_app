@@ -40,7 +40,7 @@ import {
   Order,
 } from "@/types";
 import { getConfig } from "@/utils/template";
-import { requestWithPost, request, requestWithFallback, authenticate } from "@/utils/request";
+import { requestWithPost, request, requestWithFallback, authenticate, AccountDisabledError, isAccountDisabled } from "@/utils/request";
 import { getAccessToken } from "@/utils/zma";
 import { applyPendingReferral } from "@/utils/affiliate";
 import { authorize,createOrder,events,EventName, openChat,CheckoutSDK, Payment } from "zmp-sdk/apis";
@@ -209,6 +209,7 @@ export function useEnsureJwt() {
         return newToken;
       }
     } catch (err) {
+      if (isAccountDisabled(err)) throw err; // cho caller hiển thị thông báo
       console.warn("[useEnsureJwt] authenticate failed", err);
     }
     return null;
@@ -285,7 +286,12 @@ export function useInitAuth() {
             applyPendingReferral(result.data.token);
           }
         }
-      } catch {
+      } catch (err) {
+        if (isAccountDisabled(err)) {
+          localStorage.removeItem("jwt_token");
+          toast.error((err as AccountDisabledError).message, { duration: 8000 });
+          return;
+        }
         // silent — PhoneRequiredGate sẽ xử lý nếu vẫn thiếu mobile
       }
     })();
@@ -540,6 +546,10 @@ export function useCheckout() {
             applyPendingReferral(jwtToken);
           }
         } catch (authError: any) {
+          if (isAccountDisabled(authError)) {
+            toast.error(authError.message, { duration: 8000 });
+            return;
+          }
           console.error("[ZaloCheckout] /authenticate - error:", {
             status: authError?.status,
             message: authError?.message,
@@ -690,7 +700,14 @@ export function useCheckout() {
           headers: authHeaders,
           body: JSON.stringify(orderPayload),
         });
-        console.log("[ZaloCheckout] checkout retry status:", finalOrderResponse.status, "url:", finalOrderResponse.url);
+      } else if (createOrderResponse.status === 403) {
+        const errText = await createOrderResponse.text();
+        let parsed: any = {};
+        try { parsed = JSON.parse(errText); } catch { /* ignore */ }
+        if (parsed?.code === "ACCOUNT_DISABLED") {
+          toast.error(parsed.message ?? "Tài khoản đã bị vô hiệu hoá, vui lòng liên hệ admin", { duration: 8000 });
+          return;
+        }
       }
       if (!finalOrderResponse.ok) {
         const errBody = await finalOrderResponse.text();
@@ -1072,7 +1089,16 @@ export function useCancelOrder() {
         body,
       });
 
-      // 401 → re-auth once và retry
+      // 401 → re-auth once và retry; 403 ACCOUNT_DISABLED → dừng hẳn
+      if (response.status === 403) {
+        const errText = await response.text();
+        let parsed: any = {};
+        try { parsed = JSON.parse(errText); } catch { /* ignore */ }
+        const msg = parsed?.code === "ACCOUNT_DISABLED"
+          ? (parsed.message ?? "Tài khoản đã bị vô hiệu hoá, vui lòng liên hệ admin")
+          : (parsed?.message ?? "Không có quyền thực hiện thao tác này");
+        throw Object.assign(new Error(msg), { status: 403 });
+      }
       if (response.status === 401) {
         localStorage.removeItem("jwt_token");
         const newAccessToken = await getAccessToken();
@@ -1148,6 +1174,7 @@ async function ensureJwtToken(): Promise<string | null> {
     }
     return jwt;
   } catch (e) {
+    if (isAccountDisabled(e)) throw e; // cho caller (useVouchers) hiển thị thông báo
     console.warn("[voucher] auth failed", e);
     return null;
   }
@@ -1192,7 +1219,16 @@ export function useAvailableVouchers() {
       }
     }
 
-    const token = await ensureJwtToken();
+    let token: string | null;
+    try {
+      token = await ensureJwtToken();
+    } catch (e) {
+      if (isAccountDisabled(e)) {
+        setError((e as AccountDisabledError).message);
+        return;
+      }
+      throw e;
+    }
     if (!token) {
       setError("Chưa xác thực");
       return;
@@ -1272,7 +1308,13 @@ export function useValidateVoucher() {
         }
       }
 
-      const token = await ensureJwtToken();
+      let token: string | null;
+      try {
+        token = await ensureJwtToken();
+      } catch (e) {
+        if (isAccountDisabled(e)) return { error: (e as AccountDisabledError).message };
+        throw e;
+      }
       if (!token) return { error: "Chưa xác thực — vui lòng thử lại" };
 
       try {

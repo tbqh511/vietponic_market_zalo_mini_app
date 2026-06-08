@@ -2,6 +2,18 @@ import { getConfig } from "./template";
 
 const API_URL = getConfig((config) => config.template.apiUrl);
 
+export class AccountDisabledError extends Error {
+  readonly code = "ACCOUNT_DISABLED";
+  constructor() {
+    super("Tài khoản đã bị vô hiệu hoá, vui lòng liên hệ admin");
+    this.name = "AccountDisabledError";
+  }
+}
+
+export function isAccountDisabled(err: unknown): err is AccountDisabledError {
+  return err instanceof AccountDisabledError;
+}
+
 const mockUrls = import.meta.glob<{ default: string }>("../mock/*.json", {
   query: "url",
   eager: true,
@@ -159,24 +171,36 @@ export async function authenticate(
   const PLACEHOLDER_NAMES = ["Khách Zalo", "Người dùng Zalo", "Zalo User"];
   if (zaloName && !PLACEHOLDER_NAMES.includes(zaloName)) body.name = zaloName;
   if (profile?.avatar) body.avatar = profile.avatar;
-  const result = await requestWithPost<
-    { access_token: string; phone_token?: string; name?: string; avatar?: string },
-    {
-      error: boolean;
-      message: string;
-      data: {
-        token: string;
-        user: {
-          id: number;
-          name: string;
-          email: string;
-          profile: string | null;
-          mobile: string | null;
-          is_farm_partner: boolean;
-        };
+  let result: {
+    error: boolean;
+    message: string;
+    code?: string;
+    data: {
+      token: string;
+      user: {
+        id: number;
+        name: string;
+        email: string;
+        profile: string | null;
+        mobile: string | null;
+        is_farm_partner: boolean;
       };
+    };
+  };
+  try {
+    result = await requestWithPost<
+      { access_token: string; phone_token?: string; name?: string; avatar?: string },
+      typeof result
+    >("/authenticate", body);
+  } catch (err: any) {
+    // Backend trả 403 + ACCOUNT_DISABLED → ném lỗi có type để caller nhận diện
+    if (err?.status === 403) {
+      let parsed: any = {};
+      try { parsed = JSON.parse(err.body ?? "{}"); } catch { /* ignore */ }
+      if (parsed?.code === "ACCOUNT_DISABLED") throw new AccountDisabledError();
     }
-  >("/authenticate", body);
+    throw err;
+  }
   console.log("[ZaloCheckout] /authenticate - result:", result);
   return result;
 }
