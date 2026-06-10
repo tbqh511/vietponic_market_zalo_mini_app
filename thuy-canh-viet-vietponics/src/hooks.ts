@@ -41,6 +41,12 @@ import {
 } from "@/types";
 import { getConfig } from "@/utils/template";
 import { requestWithPost, request, requestWithFallback, authenticate, AccountDisabledError, isAccountDisabled } from "@/utils/request";
+import {
+  notifyAccountDisabled,
+  isAccountDisabledFlag,
+  subscribeAccountDisabled,
+  detectAccountDisabledResponse,
+} from "@/utils/account-disabled";
 import { getAccessToken } from "@/utils/zma";
 import { applyPendingReferral } from "@/utils/affiliate";
 import { authorize,createOrder,events,EventName, openChat,CheckoutSDK, Payment } from "zmp-sdk/apis";
@@ -155,6 +161,33 @@ export function useToBeImplemented() {
     toast("Chức năng dành cho các bên tích hợp phát triển...", {
       icon: "🛠️",
     });
+}
+
+/**
+ * Gác toàn cục cho trạng thái "tài khoản bị vô hiệu hoá". Gọi đúng 1 lần trong
+ * Layout. Khi bất kỳ luồng nào bắn cờ (request.ts lõi hoặc fetch thô gọi
+ * notifyAccountDisabled), hook sẽ:
+ *   - dọn jwt_token + customer_profile → ẩn FAB Farm và để farm guard thôi coi
+ *     user là partner,
+ *   - trả về true để Layout render banner (customer space) / màn chặn (farm).
+ * Việc hiển thị thông báo tập trung ở đây nên các luồng lẻ không cần tự toast.
+ */
+export function useAccountDisabledGate(): boolean {
+  const [disabled, setDisabled] = useState(isAccountDisabledFlag());
+  const setProfile = useSetAtom(customerProfileState);
+
+  useEffect(() => {
+    if (disabled) return;
+    return subscribeAccountDisabled(() => setDisabled(true));
+  }, [disabled]);
+
+  useEffect(() => {
+    if (!disabled) return;
+    localStorage.removeItem("jwt_token");
+    setProfile(null);
+  }, [disabled, setProfile]);
+
+  return disabled;
 }
 
 function isJwtExpired(token: string): boolean {
@@ -288,8 +321,8 @@ export function useInitAuth() {
         }
       } catch (err) {
         if (isAccountDisabled(err)) {
+          // request.ts đã bắn cờ toàn cục → Layout hiển thị banner/màn chặn.
           localStorage.removeItem("jwt_token");
-          toast.error((err as AccountDisabledError).message, { duration: 8000 });
           return;
         }
         // silent — PhoneRequiredGate sẽ xử lý nếu vẫn thiếu mobile
@@ -547,7 +580,7 @@ export function useCheckout() {
           }
         } catch (authError: any) {
           if (isAccountDisabled(authError)) {
-            toast.error(authError.message, { duration: 8000 });
+            // Cờ toàn cục đã bật ở request.ts → banner/màn chặn hiển thị.
             return;
           }
           console.error("[ZaloCheckout] /authenticate - error:", {
@@ -705,7 +738,7 @@ export function useCheckout() {
         let parsed: any = {};
         try { parsed = JSON.parse(errText); } catch { /* ignore */ }
         if (parsed?.code === "ACCOUNT_DISABLED") {
-          toast.error(parsed.message ?? "Tài khoản đã bị vô hiệu hoá, vui lòng liên hệ admin", { duration: 8000 });
+          notifyAccountDisabled();
           return;
         }
       }
@@ -793,6 +826,17 @@ export function useCheckout() {
         body: prepareBodyText.slice(0, 1000),
       });
       if (!prepareResponse.ok) {
+        // Bị khoá đúng khe giữa /checkout và /prepare-order → báo đúng thông báo
+        // vô hiệu hoá thay vì lỗi MAC kỹ thuật. (Đơn đã tạo sẽ nằm pending; job
+        // CheckPaymentStatus phía backend dọn sau.)
+        if (prepareResponse.status === 403) {
+          let parsedPrepare: any = null;
+          try { parsedPrepare = JSON.parse(prepareBodyText); } catch { /* ignore */ }
+          if (parsedPrepare?.code === "ACCOUNT_DISABLED") {
+            notifyAccountDisabled();
+            return;
+          }
+        }
         throw new Error(`Tạo MAC thất bại (${prepareResponse.status}): ${prepareBodyText.slice(0, 200)}`);
       }
       let prepareJson: any;
@@ -903,6 +947,9 @@ export function useCheckout() {
           }
         );
         const linkResult = await linkResponse.json().catch(() => null);
+        if (linkResponse.status === 403 && linkResult?.code === "ACCOUNT_DISABLED") {
+          notifyAccountDisabled();
+        }
         console.log("[ZaloCheckout] getOrderStatus/link - result:", linkResult);
       } catch (linkError) {
         console.warn("[ZaloCheckout] getOrderStatus/link - lỗi:", linkError);
@@ -1094,9 +1141,11 @@ export function useCancelOrder() {
         const errText = await response.text();
         let parsed: any = {};
         try { parsed = JSON.parse(errText); } catch { /* ignore */ }
-        const msg = parsed?.code === "ACCOUNT_DISABLED"
-          ? (parsed.message ?? "Tài khoản đã bị vô hiệu hoá, vui lòng liên hệ admin")
-          : (parsed?.message ?? "Không có quyền thực hiện thao tác này");
+        if (parsed?.code === "ACCOUNT_DISABLED") {
+          notifyAccountDisabled();
+          throw new AccountDisabledError();
+        }
+        const msg = parsed?.message ?? "Không có quyền thực hiện thao tác này";
         throw Object.assign(new Error(msg), { status: 403 });
       }
       if (response.status === 401) {
@@ -1243,6 +1292,11 @@ export function useAvailableVouchers() {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       });
       if (!res.ok) {
+        if (await detectAccountDisabledResponse(res)) {
+          setError("Tài khoản đã bị vô hiệu hoá, vui lòng liên hệ admin");
+          setVouchers([]);
+          return;
+        }
         setError(`Lỗi ${res.status}`);
         setVouchers([]);
         return;
@@ -1333,6 +1387,10 @@ export function useValidateVoucher() {
         });
         const json = await res.json().catch(() => null);
         if (!res.ok) {
+          if (json?.code === "ACCOUNT_DISABLED") {
+            notifyAccountDisabled();
+            return { error: json?.message ?? "Tài khoản đã bị vô hiệu hoá, vui lòng liên hệ admin" };
+          }
           return { error: json?.message ?? `Lỗi ${res.status}` };
         }
         return {

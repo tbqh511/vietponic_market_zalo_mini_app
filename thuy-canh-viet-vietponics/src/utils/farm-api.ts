@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { request } from "./request";
+import { isAccountDisabledFlag } from "./account-disabled";
 import {
   FarmProfile,
   FarmOverview,
@@ -60,6 +61,9 @@ function usePolling<T>(
   const fetchData = useCallback(
     async (signal?: AbortSignal) => {
       if (!enabled) return;
+      // Tài khoản bị vô hiệu hoá → ngừng gọi (farmRequest sẽ ném AccountDisabledError
+      // mỗi lần; Layout đã hiển thị màn chặn). Tránh spam 403 mỗi nhịp poll.
+      if (isAccountDisabledFlag()) return;
       if (!hasLoadedOnce.current) {
         setState((s) => ({ ...s, loading: true, error: null }));
       }
@@ -91,6 +95,7 @@ function usePolling<T>(
     // Poll: chỉ chạy khi tab visible — Zalo Mini App giữ webview chạy ngầm
     // khi user thoát ra; không cần update khi không nhìn.
     const intervalId = setInterval(() => {
+      if (isAccountDisabledFlag()) return; // tài khoản bị khoá → dừng poll
       if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       fetchData(controller.signal);
     }, pollMs);

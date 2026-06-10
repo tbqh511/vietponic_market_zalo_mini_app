@@ -1,0 +1,231 @@
+# Nhóm: Đóng gói & Hub
+
+## HUB-01
+- **Vai trò:** Farm Owner | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+
+**Ngữ cảnh & các bước:**
+Dùng OWNER-A. 1) Mở 'Tổng quan'. 2) Đối chiếu doanh thu / đơn / SP bán hôm nay với đơn vừa đặt.
+
+**Kết quả mong đợi:**
+Số liệu khớp với đơn đã tạo trong ngày.
+
+**Đối chiếu code (Claude Code điền):** 🟡 Lệch tiêu chí thống kê (dashboard tính theo đơn ĐÃ GIAO, không phải đơn vừa đặt)
+- [x] File/route/màn hình liên quan:
+  - FE màn `src/pages/farm/index.tsx` (grid 2×2: Doanh thu / Đã bán / Lợi nhuận / AOV + list "Sản phẩm hôm nay"); hook `useFarmOverview("today")` + `useFarmProductsToday()` trong `src/utils/farm-api.ts`.
+  - BE `routes/api.php:96` `GET /farm/dashboard` → `FarmHubController@overview`; `:98` `GET /farm/products/today` → `productsToday`.
+  - BE `FarmDashboardService::getOverview()` + `itemsBaseQuery()` (gốc số liệu card).
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
+  - **Lệch định nghĩa "hôm nay":** card overview (`itemsBaseQuery`) chỉ tính `status='delivered'` lọc theo `delivered_at` trong ngày. Đơn **vừa đặt (pending) KHÔNG xuất hiện** trên dashboard cho tới khi giao xong → kỳ vọng "khớp với đơn đã tạo trong ngày" không thoả với đơn chưa giao. Card phụ ghi đúng "đơn đã giao" nên bản thân nó tự nhất quán.
+  - **Hai nguồn số khác basis:** card "Đã bán hôm nay" = `items_sold` (delivered + `delivered_at`), còn list "Sản phẩm hôm nay" (`productsToday`) tính `sold` theo `status IN (delivering,delivered)` lọc `created_at` → cùng 1 màn nhưng 2 con số "đã bán" có thể lệch nhau.
+  - Money/sellthrough/AI hint: logic đầy đủ, UTC-range thay CONVERT_TZ (tương thích sqlite test).
+- [x] Test coverage:
+  - BE `FarmHubTest`: `test_farm_partner_can_access_dashboard_overview`, `test_overview_counts_only_delivered_orders` (XÁC NHẬN chủ đích chỉ tính delivered), `test_products_today_*` (sellthrough/sentinel 999/restock hint). Phủ tốt nhưng **chính các test này khẳng định sai lệch với use case** (đơn vừa đặt không vào số).
+  - Thiếu test FE. Cần product owner chốt: dashboard "hôm nay" = doanh thu ĐÃ GIAO (hiện tại) hay gồm cả đơn mới đặt.
+
+---
+
+## HUB-02
+- **Vai trò:** Farm Owner | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+
+**Ngữ cảnh & các bước:**
+Dùng OWNER-A. 1) Mở 'Thu nhập' / Payout. 2) Xem breakdown.
+
+**Kết quả mong đợi:**
+Hiển thị doanh thu, phí Vietponics (theo %), số farm thực nhận; số liệu hợp lý.
+
+**Đối chiếu code (Claude Code điền):** 🟢 Đạt (phủ test tốt)
+- [x] File/route/màn hình liên quan:
+  - FE `src/pages/farm/payouts.tsx` (list) + `src/pages/farm/payout-detail.tsx` (`SummaryHeader`: Doanh thu gộp / Phí Vietponics (x%) / Đã bán + net); hooks `useFarmPayouts`, `useFarmPayoutDetail`.
+  - BE `routes/api.php:114-115` `GET /farm/payouts`, `GET /farm/payouts/{id}` → `FarmHubController@payouts|payoutDetail`; logic ở `PackingService::formatPayout()` + `expectedPayDate()`. Model `FarmPayout`.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
+  - Khớp. `formatPayout`: `commission_amount = gross*(1-commission_rate)` (phí Vietponics giữ); `net_estimated = gross*commission_rate + adjustment`. FE hiển thị "Phí Vietponics ({Math.round((1-commission_rate)*100)}%)" và net = `net_payout` nếu paid, ngược lại `net_estimated`.
+  - ⚠️ Lưu ý ngữ nghĩa **`commission_rate` = phần farm GIỮ LẠI** (vd 0.85 = farm nhận 85%, phí Vietponics 15%) — KHÔNG phải tỉ lệ phí. Nếu seed nhầm (đặt 0.15 tưởng là phí) thì breakdown đảo ngược. Rủi ro cấu hình dữ liệu (giống nhóm ORDER thiếu seed).
+  - `expectedPayDate` = `period_end + 1 ngày`; null nếu paid/cancelled. payoutDetail liệt kê đơn đóng góp (gross theo `cost_price_snapshot*qty`, gom theo order, kỳ `[period_start,period_end]`).
+- [x] Test coverage:
+  - BE `FarmHubTest`: `test_farm_me_returns_commission_rate`, `test_payouts_list_includes_commission_breakdown`, `test_paid_payout_has_no_expected_pay_date`, `test_payout_detail_lists_contributing_orders`, `test_payout_detail_404_for_other_farms_payout`. Phủ tốt.
+  - Thiếu test FE render breakdown.
+
+---
+
+## PACK-01
+- **Vai trò:** Farm Owner | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+
+**Ngữ cảnh & các bước:**
+Dùng OWNER-A (chủ hub). 1) KH-1 đặt 1 đơn. 2) OWNER-A mở 'Đơn đang đến', thấy phiếu 'Chưa phân công'. 3) Bấm 'Xác nhận đơn'.
+
+**Kết quả mong đợi:**
+Đơn chuyển 'Đã xác nhận'.
+
+**Đối chiếu code (Claude Code điền):** 🟢 Đạt
+- [x] File/route/màn hình liên quan:
+  - FE `src/pages/farm/orders.tsx` → `OwnerCard` nút "Xác nhận đơn" (chỉ hiện khi `order_status==='pending'`) → `confirmOrder()` (`farm-api.ts`). Phiếu mới hiện "Chưa phân công" (assignment_status `unassigned`) trong `useFarmIncomingOrders`.
+  - BE `routes/api.php:111` `POST /farm/orders/{id}/confirm-order` → `FarmPackingController@confirmOrder` (gác `requirePackingHub` + chỉ owner) → `PackingService::confirmOrder()`.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
+  - Khớp. `confirmOrder`: chỉ tiến từ `pending`→`confirmed`, idempotent nếu đã ≥ confirmed; ghi `OrderPackingLog` ACTION_ORDER_CONFIRMED + bắn thông báo `status_changed`. Phiếu hub được sinh lazily (`ensureAssignmentsExist`/`findHubAssignment`) nên đơn mới luôn có phiếu 'unassigned' để owner thấy.
+- [x] Test coverage:
+  - BE `OrderPackingTest::test_owner_confirm_order_moves_pending_to_confirmed`. Đạt.
+
+---
+
+## PACK-02
+- **Vai trò:** Farm Owner | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+
+**Ngữ cảnh & các bước:**
+Dùng OWNER-A. 1) Ở đơn vừa xác nhận, bấm 'Phân công'. 2) Chọn STAFF-A.
+
+**Kết quả mong đợi:**
+Phiếu chuyển 'Đã giao' cho STAFF-A; hiện tên người đóng.
+
+**Đối chiếu code (Claude Code điền):** 🟢 Đạt
+- [x] File/route/màn hình liên quan:
+  - FE `orders.tsx` → `OwnerCard` nút "Phân công"/"Đổi người" mở picker, list từ `useFarmStaff()`; chọn → `assignPacker(orderId, packerId)`. Dòng trạng thái "⊙ Đã giao: {staffLabel(packerName)}" khi `assignment_status==='assigned'`.
+  - BE `routes/api.php:109` `POST /farm/orders/{id}/assign` → `FarmPackingController@assign` (requirePackingHub + chỉ owner, validate `packer_customer_id` exists) → `PackingService::assign()`. Picker dùng `GET /farm/staff` → `FarmHubController@staff` (chỉ thành viên HUB).
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
+  - Khớp. `assign`: bắt packer phải thuộc đúng farm hub (`packer.farm_id === assignment.farm_id`) + `isFarmPartner`, không cho gán lại nếu đã 'packed'; set `assigned_customer_id`, status `unassigned→assigned`; ghi log ASSIGNED/REASSIGNED. Payload trả `is_mine`. Nhãn FE "Đã giao" khớp wording use case.
+  - Nút "Phân công" chỉ hiện khi `!isPending && !isPacked && !isDelivering` → owner phải xác nhận đơn (PACK-01) trước mới gán được, đúng wireframe.
+- [x] Test coverage:
+  - BE `OrderPackingTest`: `test_owner_can_assign_order_to_staff_and_log_is_recorded`, `test_cannot_assign_packer_from_other_farm`, `test_staff_cannot_assign_orders`, `test_staff_picker_lists_hub_members_only`. Đạt.
+
+---
+
+## PACK-03
+- **Vai trò:** Farm Staff | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+
+**Ngữ cảnh & các bước:**
+Dùng STAFF-A. 1) Mở đơn 'Chưa phân công' khác. 2) Bấm 'Nhận' (tự nhận).
+
+**Kết quả mong đợi:**
+Phiếu được gán cho chính STAFF-A.
+
+**Đối chiếu code (Claude Code điền):** 🟢 Đạt
+- [x] File/route/màn hình liên quan:
+  - FE `orders.tsx` → `StaffView`/`StaffCard` nút "Nhận đóng gói" (hiện khi `assignment_status==='unassigned'`) → `claimOrder(orderId)`.
+  - BE `routes/api.php:108` `POST /farm/orders/{id}/claim` → `FarmPackingController@claim` (requirePackingHub) → `PackingService::claim()`.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
+  - Khớp. `claim`: bắt packer thuộc farm hub; `lockForUpdate` chống race 2 NV cùng bấm; chỉ nhận phiếu chưa ai giữ — nếu đã có người → 422 "Đơn đã có người nhận đóng gói" (idempotent nếu chính mình). Set `assigned_customer_id = packer`, `assigned_by_customer_id = packer` (tự nhận), status → 'assigned'; log ACTION_CLAIMED.
+- [x] Test coverage:
+  - BE `OrderPackingTest`: `test_staff_can_claim_unassigned_order`, `test_staff_cannot_claim_order_already_taken`. Đạt.
+
+---
+
+## PACK-04
+- **Vai trò:** Farm Staff | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+
+**Ngữ cảnh & các bước:**
+Dùng STAFF-A (đã được gán). 1) Mở đơn. 2) Bấm 'Bắt đầu đóng gói'.
+
+**Kết quả mong đợi:**
+Phiếu 'Đang đóng'; đơn lên 'Đang chuẩn bị'.
+
+**Đối chiếu code (Claude Code điền):** 🟢 Đạt
+- [x] File/route/màn hình liên quan:
+  - FE `orders.tsx` → `StaffCard` nút "Bắt đầu đóng gói" (hiện khi `isMineAssigned`) → `startPacking(orderId)`; pill "Bạn đang đóng".
+  - BE `routes/api.php:106` `POST /farm/orders/{id}/start-packing` → `FarmPackingController@startPacking` (requirePackingHub + `actAsAssignee`) → `PackingService::startPacking()`.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
+  - Khớp. `startPacking`: bắt phiếu đã được gán, set status → 'packing', `packing_started_at`; gọi `advanceOrderTo(order, 'preparing')` (chỉ tiến không lùi) → đơn lên 'Đang chuẩn bị'. Idempotent nếu đã 'packed'. Log PACKING_STARTED. Owner card hiện "◐ Đang đóng: {staffLabel}".
+- [x] Test coverage:
+  - BE `OrderPackingTest::test_start_packing_advances_order_to_preparing`. Đạt.
+
+---
+
+## PACK-05
+- **Vai trò:** Farm Staff | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+
+**Ngữ cảnh & các bước:**
+Tiếp nối PACK-04. 1) Bấm 'Xác nhận đã đóng xong'.
+
+**Kết quả mong đợi:**
+Phiếu 'Đã đóng'; đơn CHƯA tự sang 'Đang giao'.
+
+**Đối chiếu code (Claude Code điền):** 🟢 Đạt
+- [x] File/route/màn hình liên quan:
+  - FE `orders.tsx` → `StaffCard` nút "Hoàn tất đóng gói" (hiện khi `isMinePacking`) → `confirmPacked(orderId)`; sau đó hiện "✓ Đã đóng gói xong — chờ chủ farm bàn giao".
+  - BE `routes/api.php:107` `POST /farm/orders/{id}/confirm-packed` → `FarmPackingController@confirmPacked` (requirePackingHub + actAsAssignee) → `PackingService::confirmPacked()`.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
+  - Khớp chính xác kỳ vọng "CHƯA tự sang Đang giao". `confirmPacked`: set status → 'packed', `packed_at`; **KHÔNG** đụng tới `order.status` → đơn vẫn ở 'preparing'. Việc đẩy delivering tách sang `handoffShipping` (PACK-06) cho owner bấm. Idempotent; log PACKED.
+- [x] Test coverage:
+  - BE `OrderPackingTest::test_confirm_packed_marks_slip_packed_without_auto_delivering` (KEY — khẳng định không auto-delivering). Đạt.
+
+---
+
+## PACK-06
+- **Vai trò:** Farm Owner | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+
+**Ngữ cảnh & các bước:**
+Dùng OWNER-A. 1) Mở đơn đã đóng xong. 2) Bấm 'Bàn giao ship'.
+
+**Kết quả mong đợi:**
+Đơn chuyển 'Đang giao'.
+
+**Đối chiếu code (Claude Code điền):** 🟢 Đạt
+- [x] File/route/màn hình liên quan:
+  - FE `orders.tsx` → `OwnerCard` nút "Bàn giao ship" (hiện khi `canHandoff = isPacked && !isDelivering`) → `handoffShip(orderId)`.
+  - BE `routes/api.php:112` `POST /farm/orders/{id}/handoff-ship` → `FarmPackingController@handoffShipping` (requirePackingHub + chỉ owner) → `PackingService::handoffShipping()`.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
+  - Khớp. `handoffShipping`: idempotent nếu đã ≥ delivering/cancelled; **chặn** nếu còn phiếu của đơn chưa 'packed' → 422 "Đơn chưa đóng gói xong — chưa thể bàn giao vận chuyển"; ngược lại `advanceOrderTo('delivering')`. Mô hình hub 1 phiếu/đơn nhưng query `remaining` vẫn an toàn cho legacy nhiều phiếu. `delivered_at` vẫn chỉ set ở 'delivered' (không ở đây).
+- [x] Test coverage:
+  - BE `OrderPackingTest`: `test_owner_handoff_ship_moves_packed_order_to_delivering`, `test_handoff_ship_blocked_when_a_farm_not_packed_yet`, `test_staff_cannot_handoff_or_confirm_order`. Đạt.
+
+---
+
+## PACK-07
+- **Vai trò:** Farm Staff | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+
+**Ngữ cảnh & các bước:**
+Dùng STAFF-A. 1) Mở chi tiết 1 đơn cần đóng. 2) Xem thông tin người nhận.
+
+**Kết quả mong đợi:**
+SĐT và địa chỉ KH bị che bớt (vd 09xx*); đơn nhận-tại-trạm hiện tên trạm thay địa chỉ.
+
+**Đối chiếu code (Claude Code điền):** 🟡 Che SĐT/địa chỉ đạt (test tốt); FE list hiện "Pickup" chứ chưa hiện tên trạm + chưa có màn chi tiết đơn
+- [x] File/route/màn hình liên quan:
+  - BE `App\Support\ContactMasker::maskPhone()` (giữ 4 đầu + 3 cuối → "0937***739"), `maskAddress()` (rút còn 2 đoạn cuối, bỏ số nhà/đường). Áp **server-side** trong `FarmHubController@incomingOrders` (`:542-543`) và `FarmPackingController@show` (`:119-122`).
+  - FE `orders.tsx`: `StaffCard` hiển thị "SĐT: {customer_phone}" (đã che), tên rút `shortenName`. Pickup: render " · Pickup".
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
+  - **Che SĐT/địa chỉ: ĐẠT** và làm ở server (không lộ qua network/DevTools) — đúng tinh thần bảo mật.
+  - ⚠️ **Tên trạm:** endpoint chi tiết `show()` có set `delivery_address = station_name` cho đơn pickup, NHƯNG **FE không có route `/farm/orders/:id`** → `show()` chưa được wire vào màn nào. UI đóng gói chỉ là list `incomingOrders`; ở card list, pickup render chuỗi cứng " · Pickup" — `station_name` có trong data (`GroupedOrder.station_name`) nhưng **không được hiển thị** → chưa thoả "hiện tên trạm thay địa chỉ".
+- [x] Test coverage:
+  - BE `OrderPackingTest`: `test_incoming_orders_mask_phone_and_address`, `test_contact_masker_phone`, `test_contact_masker_address`. Phủ tốt phần che.
+  - Thiếu test cho hiển thị tên trạm (pickup) + FE.
+
+---
+
+## PACK-08
+- **Vai trò:** Farm Owner | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+
+**Ngữ cảnh & các bước:**
+Dùng OWNER-B (farm KHÔNG phải hub). 1) Thử xác nhận / phân công / đóng 1 đơn.
+
+**Kết quả mong đợi:**
+Bị chặn 403 'Chỉ bộ phận đóng gói Vietponics được xử lý đơn'.
+
+**Đối chiếu code (Claude Code điền):** 🟢 Đạt
+- [x] File/route/màn hình liên quan:
+  - BE `FarmPackingController::requirePackingHub()` (`:42-53`) — gác đầu MỌI action (confirm-order/assign/claim/start/confirm-packed/handoff): nếu farm đăng nhập `!is_packing_hub` → 403 `{error:true, message:'Chỉ bộ phận đóng gói Vietponics được xử lý đơn.'}`.
+  - FE `orders.tsx`: farm không-hub render `ReadOnlyView` (`isHub=false`) — ẩn toàn bộ nút thao tác, chỉ xem phần hàng của mình.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
+  - Khớp đúng cả message lẫn mã 403. Phòng vệ 2 lớp: FE ẩn UI (read-only) + BE chặn cứng nếu gọi thẳng API. `incomingOrders` cho farm thường trả `read_only=true` và chỉ item của farm đó.
+- [x] Test coverage:
+  - BE `OrderPackingTest`: `test_non_hub_farm_cannot_perform_packing_actions` (403 + đúng message), `test_non_hub_farm_sees_orders_read_only`, `test_hub_sees_all_orders_even_without_own_items`. Đạt.
+
+---
+
+## PACK-09
+- **Vai trò:** Farm Staff | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+
+**Ngữ cảnh & các bước:**
+Dùng STAFF-A. 1) Mở 1 phiếu đã gán cho người khác. 2) Thử 'Bắt đầu đóng' / 'Xác nhận đóng'.
+
+**Kết quả mong đợi:**
+Bị chặn 'Bạn không được phân công đơn này'.
+
+**Đối chiếu code (Claude Code điền):** 🟢 Đạt
+- [x] File/route/màn hình liên quan:
+  - BE `FarmPackingController::actAsAssignee()` (`:333-356`) — bọc start-packing/confirm-packed: nếu `assigned_customer_id !== customer.id` và không phải owner → 403 "Bạn không được phân công đơn này". `show()` (`:77-80`) cũng chặn staff xem phiếu của người khác bằng cùng message.
+  - FE `orders.tsx`: `StaffCard` đơn của người khác (`isLockedByOther`) → khoá card, hiện "{staffLabel} đang đóng — không thể nhận", không render nút start/confirm.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
+  - Khớp. Staff chỉ thao tác/xem phiếu gán cho mình; owner được thao tác mọi phiếu (đúng phân quyền hub). FE chỉ là lớp che; BE chặn cứng nếu gọi thẳng API.
+- [x] Test coverage:
+  - BE `OrderPackingTest`: `test_unassigned_staff_cannot_start_or_confirm`, `test_staff_sees_all_farm_orders_with_is_mine_flag`. Đạt.
+
+---

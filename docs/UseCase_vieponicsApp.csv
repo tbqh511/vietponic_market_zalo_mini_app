@@ -1,0 +1,68 @@
+﻿ID,Mã task,Ngữ cảnh & các bước,Kết quả mong đợi,Nhóm chức năng,Trạng thái,Người nhận,🐞 Báo lỗi,Vai trò,Độ ưu tiên
+1,AUTH-03,"Dùng tài khoản Zalo CHƯA từng đăng nhập app. 1) Mở app lần đầu. 2) Khi hỏi quyền lấy tên, bấm Từ chối/Bỏ qua.","App vẫn vào được, không treo, không lỗi đỏ; tên hiện 'Zalo User' hoặc màn đăng ký.",Xác thực,Đạt,,,Khách,Cơ bản
+5,AUTH-05,Dùng tài khoản KH-KHOA (đã bị admin khoá). 1) Đăng nhập. 2) Thử đặt 1 đơn hoặc thao tác bất kỳ cần đăng nhập.,"Báo: 'Tài khoản đã bị vô hiệu hoá, vui lòng liên hệ admin'.",Xác thực,Chưa nhận,,,Khách,Nâng cao
+6,AUTH-02,"Tiếp nối AUTH-01. 1) Ở trang Cá nhân, làm theo bước app yêu cầu để chia sẻ số điện thoại.",Số điện thoại hiển thị đúng số thật của bạn.,Xác thực,Đạt,,,Khách,Cơ bản
+9,AUTH-01,"Bạn là khách mới. 1) Mở app lần đầu. 2) Khi Zalo hỏi cấp quyền, bấm Đồng ý. 3) Vào trang Cá nhân.",Hiện đúng TÊN Zalo và ẢNH đại diện của bạn.,Xác thực,Có lỗi,,,Khách,Cơ bản
+12,AUTH-04,Dùng tài khoản đã đăng nhập ở AUTH-01. 1) Thoát hẳn app. 2) Mở lại app (đăng nhập lần 2).,Vẫn đúng tên/ảnh/SĐT cũ; KHÔNG tạo tài khoản mới trùng.,Xác thực,Đạt,,,Khách,Cơ bản
+4,ROLE-06,Dùng tài khoản OWNER-B (chủ Farm B). 1) Vào Hub. 2) Xem danh sách Kho và Đơn.,Chỉ thấy dữ liệu của Farm B; KHÔNG thấy đơn/kho của Farm A.,Phân quyền,Chưa nhận,,,Farm Owner,Nâng cao
+7,ROLE-04,Dùng tài khoản STAFF-A (nhân viên farm). 1) Vào Hub. 2) Mở Kho & Đơn. 3) Tìm mục Thanh toán/Rút tiền (payout).,Vào được Kho & Đơn; KHÔNG vào/không thấy mục payout.,Phân quyền,Chưa nhận,,,Farm Staff,Cơ bản
+8,ROLE-01,Bạn là khách thường. 1) Tìm/thử mở khu vực Quản lý Farm (Farm Hub).,"Không thấy menu Hub, hoặc mở bị chặn — không được vào.",Phân quyền,Chưa nhận,,,Khách,Cơ bản
+11,ROLE-05,Dùng tài khoản SUSPEND-A (farm bị tạm dừng). 1) Thử vào Hub.,Bị chặn: tài khoản chưa được gán farm / farm đã bị vô hiệu hoá.,Phân quyền,Chưa nhận,,,Farm Owner,Nâng cao
+13,ROLE-02,Dùng tài khoản KH-REQ (đã đăng ký làm đối tác farm nhưng admin CHƯA duyệt). 1) Thử vào Farm Hub.,Bị chặn: 'Bạn không có quyền truy cập chức năng Farm Partner'.,Phân quyền,Chưa nhận,,,Khách,Cơ bản
+15,ROLE-03,"Dùng tài khoản OWNER-A (chủ farm). 1) Vào Hub. 2) Mở lần lượt: Bảng điều khiển, Kho, Đơn đang đến, Thanh toán/Rút tiền (payout).","Vào được TẤT CẢ mục, kể cả payout.",Phân quyền,Chưa nhận,,,Farm Owner,Cơ bản
+2,PROD-04,"Cần phối hợp Admin + Khách. 1) Admin tạo SP và gắn vào farm. 2) Dùng KH-1 mở mini app, tìm SP đó.",Khách NHÌN THẤY sản phẩm mới trong app.,Sản phẩm,Chưa nhận,,,Admin,Cơ bản
+3,PROD-03,"Trên admin web. 1) Tạo SP, tải ảnh SAI định dạng (vd .txt) hoặc ảnh >2MB. 2) Bấm Lưu.","Bị chặn, báo lỗi ảnh không hợp lệ.",Sản phẩm,Chưa nhận,,,Admin,Cơ bản
+10,PROD-02,Trên admin web. 1) Tạo sản phẩm nhưng BỎ TRỐNG tên. 2) Bấm Lưu.,"Bị chặn, báo lỗi 'tên bắt buộc'.",Sản phẩm,Có lỗi,,,Admin,Cơ bản
+14,PROD-05,Dùng KH-1. 1) Tìm 1 sản phẩm CHƯA nhập kho (chưa có lô hàng nào).,"Hiển thị 'Hết hàng', không thêm vào giỏ được.",Sản phẩm,Chưa nhận,,,Khách,Cơ bản
+16,PROD-01,"Trên admin web. 1) Tạo sản phẩm mới: nhập đủ tên, giá, danh mục, đơn vị, tải ảnh hợp lệ. 2) Bấm Lưu.","Lưu thành công, sản phẩm xuất hiện trong danh sách.",Sản phẩm,Chưa nhận,,,Admin,Cơ bản
+21,STOCK-04,Dùng KH-1. 1) Chọn SP Y chỉ còn 2kg. 2) Thử đặt 5kg.,Bị chặn: 'Một số sản phẩm không đủ số lượng tồn kho'.,Quản lý kho,Chưa nhận,,,Khách,Cơ bản
+22,STOCK-05,Dùng KH-1. 1) Chọn SP chỉ còn 1 lô. 2) Mua hết sạch số lượng còn lại.,SP chuyển sang 'Hết hàng' sau khi đặt.,Quản lý kho,Chưa nhận,,,Khách,Nâng cao
+23,STOCK-07,Cần Owner + Khách. 1) OWNER-A nhập 2 lô cùng 1 SP: lô A hết hạn sớm hơn lô B. 2) KH-1 mua 1 ít. 3) Owner xem lô nào bị trừ.,Số lượng bị trừ vào LÔ A (hết hạn sớm) trước.,Quản lý kho,Chưa nhận,,,Farm Owner,Nâng cao
+27,STOCK-02,Dùng OWNER-A. 1) Nhập 1 lô có chọn HẠN SỬ DỤNG. 2) Xem lại lô vừa nhập.,Lô hiển thị đúng ngày hết hạn đã nhập.,Quản lý kho,Chưa nhận,,,Farm Owner,Cơ bản
+30,STOCK-03,"Dùng KH-1. 1) Ghi lại tồn kho SP X (vd 10kg). 2) Đặt mua 3kg, hoàn tất đơn. 3) Quay lại xem tồn kho SP X.",Tồn kho còn 7kg (giảm đúng 3kg).,Quản lý kho,Chưa nhận,,,Khách,Cơ bản
+34,STOCK-01,Dùng OWNER-A. 1) Vào màn 'Khai báo nhập kho buổi sáng'. 2) Nhập 2-3 mặt hàng với số lượng. 3) Lưu.,Tồn kho mỗi mặt hàng tăng đúng số vừa nhập.,Quản lý kho,Chưa nhận,,,Farm Owner,Cơ bản
+35,STOCK-06,"Cần Khách + Admin. 1) KH-1 ghi tồn kho, đặt 1 đơn (trừ kho). 2) Admin huỷ đơn đó. 3) Xem lại tồn kho.",Tồn kho được HOÀN LẠI đúng số đã trừ.,Quản lý kho,Chưa nhận,,,Khách,Nâng cao
+51,ORDPRO-10,Dùng KH-1. 1) Đặt + thanh toán MoMo hoặc Banking (Sandbox) thành công. 2) Hủy đơn.,Báo hoàn tiền thủ công (MoMo ~24h / Bank 2–7 ngày làm việc); trạng thái 'Chờ hoàn tiền'.,Xử lý đơn,Chưa nhận,,,Khách,Nâng cao
+52,ORDPRO-11,"Dùng KH-1. 1) Hủy đơn, chọn 'Lý do khác'. 2) Bỏ trống hoặc nhập dưới 5 ký tự, bấm xác nhận.","Bị chặn, yêu cầu nhập lý do tối thiểu 5 ký tự.",Xử lý đơn,Chưa nhận,,,Khách,Cơ bản
+49,ORDPRO-08,"Dùng KH-1. 1) Đặt 1 đơn COD (chưa giao). 2) Vào đơn, bấm Hủy, chọn lý do.","Báo 'Đơn chưa thanh toán, không phát sinh hoàn tiền'; đơn chuyển 'Đã huỷ'; tồn kho được hoàn lại.",Xử lý đơn,Chưa nhận,,,Khách,Cơ bản
+50,ORDPRO-09,Dùng KH-1. 1) Đặt đơn + thanh toán ZaloPay (Sandbox) thành công. 2) Hủy đơn.,"Báo tiền hoàn về ví ZaloPay trong 5–15 phút; đơn 'Đã huỷ', hiện trạng thái hoàn tiền.",Xử lý đơn,Chưa nhận,,,Khách,Nâng cao
+18,ORDPRO-01,Cần Khách + Owner. 1) KH-1 đặt 1 đơn có SP của Farm A. 2) OWNER-A mở 'Đơn đang đến'.,"Đơn mới xuất hiện (trong ~30s), đúng SP & số lượng.",Xử lý đơn,Chưa nhận,,,Khách,Cơ bản
+19,ORDPRO-04,Trên admin web. 1) Chọn đơn đang 'Đang giao'. 2) Thử đổi NGƯỢC về 'Chờ xác nhận'.,"Bị chặn, báo 'Không thể chuyển đơn từ ... về ...'.",Xử lý đơn,Chưa nhận,,,Admin,Cơ bản
+20,ORDPRO-06,Dùng KH-1. 1) Mở trang Đơn hàng. 2) Xem 4 tab: Đang xử lý / Đang giao / Lịch sử / Đã huỷ.,Mỗi đơn nằm đúng tab theo trạng thái.,Xử lý đơn,Chưa nhận,,,Khách,Cơ bản
+25,ORDPRO-02,Cần Admin + Khách. 1) Admin xác nhận đơn (pending → confirmed). 2) KH-1 mở lại đơn của mình.,Trạng thái đơn phía khách cũng đổi sang 'Đã xác nhận'.,Xử lý đơn,Chưa nhận,,,Admin,Cơ bản
+28,ORDPRO-07,Dùng KH-1. 1) Đặt 1 đơn COD có giao hàng (ship). 2) Xem chi tiết đơn.,Có mã vận đơn VTP / thông tin theo dõi được tạo.,Xử lý đơn,Chưa nhận,,,Khách,Nâng cao
+29,ORDPRO-03,Trên admin web. 1) Chuyển đơn theo thứ tự: Đã xác nhận → Đang chuẩn bị → Đang giao → Đã giao.,"Mỗi bước lưu được, không lỗi.",Xử lý đơn,Chưa nhận,,,Admin,Cơ bản
+37,ORDPRO-05,Trên admin web. 1) Chọn đơn 'Đã giao'. 2) Thử huỷ.,Bị chặn: 'Không thể hủy đơn hàng đã giao thành công'.,Xử lý đơn,Chưa nhận,,,Admin,Cơ bản
+45,ORDER-13,"Dùng KH-1. 1) Mở 'Chọn mã giảm giá', nhập mã sai 'ABC123'. 2) Bấm Áp dụng.",Báo 'Mã giảm giá không tồn tại'.,Đặt hàng & TT,Chưa nhận,,,Khách,Cơ bản
+48,ORDER-16,"Dùng KH-1 (queue worker phải chạy). 1) Đặt đơn GIAO HÀNG + thanh toán online (Bank/ZaloPay/MoMo Sandbox) thành công. 2) Đợi ~1 phút, mở chi tiết đơn.",Đơn có mã vận đơn ViettelPost (tạo tự động sau khi thanh toán).,Đặt hàng & TT,Chưa nhận,,,Khách,Nâng cao
+44,ORDER-12,Dùng KH-1. 1) Chọn NHẬN TẠI TRẠM (không có phí ship). 2) Áp dụng mã FREESHIP.,"Bị chặn, báo 'Mã chỉ áp dụng cho đơn giao hàng'.",Đặt hàng & TT,Chưa nhận,,,Khách,Nâng cao
+46,ORDER-14,"Dùng KH-1. 1) Ở bước giao hàng, chọn 'Nhận tại trạm'. 2) Xem danh sách trạm.",Hiện danh sách trạm kèm khoảng cách; không phát sinh phí vận chuyển.,Đặt hàng & TT,Chưa nhận,,,Khách,Cơ bản
+43,ORDER-11,Dùng KH-1. 1) Chọn giao hàng (có phí ship). 2) Áp dụng mã FREESHIP.,Phí vận chuyển về 0; tổng tiền giảm đúng phần phí ship.,Đặt hàng & TT,Chưa nhận,,,Khách,Cơ bản
+41,ORDER-09,"Dùng KH-1. 1) Thêm vài sản phẩm vào giỏ. 2) Mở 'Chọn mã giảm giá', áp dụng SALE10 (giảm 10%).",Hiển thị số tiền giảm 10% (không vượt mức trần 50.000đ); tổng tiền cập nhật đúng.,Đặt hàng & TT,Chưa nhận,,,Khách,Cơ bản
+47,ORDER-15,Dùng KH-1. 1) Chọn nhận tại trạm + COD. 2) Đặt hàng.,"Đơn tạo thành công dạng 'nhận tại trạm', không tạo đơn vận chuyển VTP.",Đặt hàng & TT,Chưa nhận,,,Khách,Cơ bản
+42,ORDER-10,Dùng KH-1. 1) Để tổng giỏ DƯỚI 100.000đ. 2) Áp dụng mã GIAM20K.,"Bị chặn, báo 'Đơn tối thiểu 100.000đ...'.",Đặt hàng & TT,Có lỗi,,,Khách,Cơ bản
+17,ORDER-06,Dùng KH-1. 1) Đặt hàng online (Bank/MoMo). 2) Đóng cổng / không trả tiền.,"Đơn ở trạng thái chờ thanh toán, KHÔNG bị tính 'đã thanh toán'.",Đặt hàng & TT,Có lỗi,,,Khách,Nâng cao
+24,ORDER-02,Dùng KH-1. 1) Vào thanh toán. 2) Chọn địa chỉ giao (tỉnh/phường).,"Phí vận chuyển hiện ra, cộng vào tổng.",Đặt hàng & TT,Chưa nhận,,,Khách,Cơ bản
+26,ORDER-04,Dùng KH-1 (queue worker phải chạy). 1) Đặt hàng chọn Banking (Sandbox). 2) Thanh toán thành công trên cổng.,"Quay lại app, đơn chuyển sang đã thanh toán.",Đặt hàng & TT,Chưa nhận,,,Khách,Cơ bản
+31,ORDER-07,Dùng KH-1. 1) Để giỏ hàng trống. 2) Thử bấm đặt.,Không cho đặt / nút đặt mờ.,Đặt hàng & TT,Chưa nhận,,,Khách,Cơ bản
+32,ORDER-05,Dùng KH-1 (queue worker phải chạy). 1) Đặt hàng chọn MoMo (Sandbox). 2) Thanh toán thành công.,Đơn chuyển sang đã thanh toán.,Đặt hàng & TT,Chưa nhận,,,Khách,Cơ bản
+33,ORDER-03,Dùng KH-1. 1) Đặt hàng chọn COD (Sandbox). 2) Hoàn tất.,"Đơn tạo thành công, trạng thái 'Chờ xác nhận', thanh toán = COD.",Đặt hàng & TT,Chưa nhận,,,Khách,Cơ bản
+36,ORDER-01,Dùng KH-1. 1) Thêm vài SP vào giỏ. 2) Đổi số lượng tăng/giảm.,Số lượng & tổng tiền tính đúng theo từng thay đổi.,Đặt hàng & TT,Chưa nhận,,,Khách,Cơ bản
+38,ORDER-08,"Dùng KH-1. 1) Ở bước đặt hàng, bấm nút đặt 2 lần thật nhanh (double tap).","Chỉ tạo 1 đơn, không bị nhân đôi.",Đặt hàng & TT,Chưa nhận,,,Khách,Nâng cao
+54,AFF-02,"Lấy link/QR giới thiệu của KH-2. 1) Dùng tài khoản Zalo KHÁC chưa từng vào app, mở link đó. 2) Vào app.",Tài khoản mới được ghi nhận do KH-2 giới thiệu.,Giới thiệu/CTV,Chưa nhận,,,Khách,Nâng cao
+56,AFF-04,"Dùng KH-2 (đã là CTV). 1) Mở mục Cộng tác viên. 2) Xem danh sách đã giới thiệu + tổng hoa hồng. 3) Nhập thông tin tài khoản ngân hàng, lưu.",Hiển thị đúng số khách đã giới thiệu + tổng hoa hồng; lưu tài khoản ngân hàng thành công.,Giới thiệu/CTV,Chưa nhận,,,Khách,Cơ bản
+57,AFF-05,Trên admin web. 1) Vào danh sách Cộng tác viên. 2) Duyệt (hoặc Từ chối) 1 CTV đang chờ.,Trạng thái CTV đổi đúng; nếu duyệt thì CTV vào trạng thái 'Đã duyệt'.,Giới thiệu/CTV,Chưa nhận,,,Admin,Cơ bản
+53,AFF-01,Dùng KH-2 (chưa là CTV). 1) Vào Cá nhân → Cộng tác viên. 2) Bấm Đăng ký.,Nhận được Mã giới thiệu; trạng thái 'Đã duyệt' hoặc 'Chờ duyệt'.,Giới thiệu/CTV,Chưa nhận,,,Khách,Cơ bản
+55,AFF-03,Tiếp nối AFF-02. 1) Tài khoản được giới thiệu đặt 1 đơn và hoàn tất (giao thành công). 2) KH-2 mở mục Cộng tác viên.,KH-2 phát sinh 1 dòng hoa hồng tương ứng đơn đó.,Giới thiệu/CTV,Chưa nhận,,,Khách,Nâng cao
+58,PACK-01,"Dùng OWNER-A (chủ hub). 1) KH-1 đặt 1 đơn. 2) OWNER-A mở 'Đơn đang đến', thấy phiếu 'Chưa phân công'. 3) Bấm 'Xác nhận đơn'.",Đơn chuyển 'Đã xác nhận'.,Đóng gói & Hub,Chưa nhận,,,Farm Owner,Cơ bản
+67,HUB-01,Dùng OWNER-A. 1) Mở 'Tổng quan'. 2) Đối chiếu doanh thu / đơn / SP bán hôm nay với đơn vừa đặt.,Số liệu khớp với đơn đã tạo trong ngày.,Đóng gói & Hub,Chưa nhận,,,Farm Owner,Cơ bản
+63,PACK-06,Dùng OWNER-A. 1) Mở đơn đã đóng xong. 2) Bấm 'Bàn giao ship'.,Đơn chuyển 'Đang giao'.,Đóng gói & Hub,Chưa nhận,,,Farm Owner,Cơ bản
+60,PACK-03,Dùng STAFF-A. 1) Mở đơn 'Chưa phân công' khác. 2) Bấm 'Nhận' (tự nhận).,Phiếu được gán cho chính STAFF-A.,Đóng gói & Hub,Chưa nhận,,,Farm Staff,Cơ bản
+66,PACK-09,Dùng STAFF-A. 1) Mở 1 phiếu đã gán cho người khác. 2) Thử 'Bắt đầu đóng' / 'Xác nhận đóng'.,Bị chặn 'Bạn không được phân công đơn này'.,Đóng gói & Hub,Chưa nhận,,,Farm Staff,Nâng cao
+61,PACK-04,Dùng STAFF-A (đã được gán). 1) Mở đơn. 2) Bấm 'Bắt đầu đóng gói'.,Phiếu 'Đang đóng'; đơn lên 'Đang chuẩn bị'.,Đóng gói & Hub,Chưa nhận,,,Farm Staff,Cơ bản
+59,PACK-02,"Dùng OWNER-A. 1) Ở đơn vừa xác nhận, bấm 'Phân công'. 2) Chọn STAFF-A.",Phiếu chuyển 'Đã giao' cho STAFF-A; hiện tên người đóng.,Đóng gói & Hub,Chưa nhận,,,Farm Owner,Cơ bản
+65,PACK-08,Dùng OWNER-B (farm KHÔNG phải hub). 1) Thử xác nhận / phân công / đóng 1 đơn.,Bị chặn 403 'Chỉ bộ phận đóng gói Vietponics được xử lý đơn'.,Đóng gói & Hub,Chưa nhận,,,Farm Owner,Nâng cao
+62,PACK-05,Tiếp nối PACK-04. 1) Bấm 'Xác nhận đã đóng xong'.,Phiếu 'Đã đóng'; đơn CHƯA tự sang 'Đang giao'.,Đóng gói & Hub,Chưa nhận,,,Farm Staff,Cơ bản
+68,HUB-02,Dùng OWNER-A. 1) Mở 'Thu nhập' / Payout. 2) Xem breakdown.,"Hiển thị doanh thu, phí Vietponics (theo %), số farm thực nhận; số liệu hợp lý.",Đóng gói & Hub,Chưa nhận,,,Farm Owner,Nâng cao
+64,PACK-07,Dùng STAFF-A. 1) Mở chi tiết 1 đơn cần đóng. 2) Xem thông tin người nhận.,SĐT và địa chỉ KH bị che bớt (vd 09xx*); đơn nhận-tại-trạm hiện tên trạm thay địa chỉ.,Đóng gói & Hub,Chưa nhận,,,Farm Staff,Nâng cao
+69,,,,,,,,,

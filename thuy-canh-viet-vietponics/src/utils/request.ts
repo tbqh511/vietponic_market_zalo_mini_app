@@ -1,4 +1,5 @@
 import { getConfig } from "./template";
+import { notifyAccountDisabled } from "./account-disabled";
 
 const API_URL = getConfig((config) => config.template.apiUrl);
 
@@ -80,6 +81,17 @@ export async function request<T>(
   }
 
   if (!response.ok) {
+    // Nhận diện tập trung "tài khoản bị vô hiệu hoá" cho MỌI caller đi qua
+    // request() (kể cả farm-api.ts vốn không tự parse body 403). Backend trả
+    // 403 + code ACCOUNT_DISABLED ở cả 3 chốt (xem InteractsWithAccountStatus.php).
+    if (response.status === 403) {
+      let parsed: any = null;
+      try { parsed = JSON.parse(bodyText); } catch { /* không phải JSON */ }
+      if (parsed?.code === "ACCOUNT_DISABLED") {
+        notifyAccountDisabled();
+        throw new AccountDisabledError();
+      }
+    }
     const err = new Error(`Request failed with status ${response.status}`);
     (err as any).status = response.status;
     (err as any).body = bodyText;
@@ -187,20 +199,12 @@ export async function authenticate(
       };
     };
   };
-  try {
-    result = await requestWithPost<
-      { access_token: string; phone_token?: string; name?: string; avatar?: string },
-      typeof result
-    >("/authenticate", body);
-  } catch (err: any) {
-    // Backend trả 403 + ACCOUNT_DISABLED → ném lỗi có type để caller nhận diện
-    if (err?.status === 403) {
-      let parsed: any = {};
-      try { parsed = JSON.parse(err.body ?? "{}"); } catch { /* ignore */ }
-      if (parsed?.code === "ACCOUNT_DISABLED") throw new AccountDisabledError();
-    }
-    throw err;
-  }
+  // 403 + ACCOUNT_DISABLED đã được request() lõi chuyển thành AccountDisabledError
+  // (interceptor tập trung), nên ở đây không cần parse 403 thủ công nữa.
+  result = await requestWithPost<
+    { access_token: string; phone_token?: string; name?: string; avatar?: string },
+    typeof result
+  >("/authenticate", body);
   console.log("[ZaloCheckout] /authenticate - result:", result);
   return result;
 }

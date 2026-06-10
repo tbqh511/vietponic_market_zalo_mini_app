@@ -79,6 +79,22 @@ Backend stores six statuses (`pending | confirmed | preparing | delivering | del
 - **Shipping fee estimate** — [src/hooks/useShippingFee.ts](thuy-canh-viet-vietponics/src/hooks/useShippingFee.ts) (note: separate file, not inside hooks.ts). Calls `POST /shipping/estimate` with VTP address IDs; auto-selects the first returned service. Falls back to a static flat fee when `apiUrl` is empty (offline/mock mode).
 - **VTP address lookup** — Provinces/districts/wards are served from `GET /locations/provinces|districts|wards`. Data is synced from VTP via `php artisan vtp:sync-locations` (run after credential changes or if the dropdowns look stale).
 
+### Farm API layer (`src/utils/farm-api.ts`)
+
+Farm portal routes do **not** go through `request.ts`/`requestWithFallback` — they use a dedicated `farmRequest`/`farmPost` wrapper in [src/utils/farm-api.ts](thuy-canh-viet-vietponics/src/utils/farm-api.ts) that:
+- Injects JWT from `localStorage.getItem("jwt_token")` directly (does not re-auth on 401 — that's already done by `useEnsureJwt()` before entering farm pages).
+- Unwraps the farm response envelope `{ error: boolean, data: T, message? }` and throws on `error: true`.
+- Exposes a `usePolling<T>(path, enabled, pollMs)` internal hook used by all farm dashboard hooks. Poll interval is 30s for real-time data (overview, productsToday, incoming orders), 60s for payouts, and 0 (fetch-once) for static data (profile, staff list). The poller skips ticks when `document.visibilityState === "hidden"` — Zalo Mini Apps keep webviews alive in the background, so this prevents wasted background fetches.
+
+When adding new farm dashboard data: use `usePolling` from `farm-api.ts`, not `useState + useEffect` manually.
+
+### Zalo SDK graceful fallback (`src/utils/zalo-prompts.ts`)
+
+Any Zalo SDK call that can be denied by the user or unsupported outside Zalo runtime (`createShortcut`, `followOA`) must go through [src/utils/zalo-prompts.ts](thuy-canh-viet-vietponics/src/utils/zalo-prompts.ts). It:
+- Guards with `isZaloRuntime()` — checks `window.ZJSBridge`; skips silently in browser/desktop.
+- Maps SDK error code `-201` to `{ ok: false, cancelled: true }` (user dismissed the prompt).
+- Returns `{ ok: false, unsupported: true }` when not in Zalo runtime, so callers can branch without try/catch.
+
 ## Notes on existing docs
 
 - [thuy-canh-viet-vietponics/README.md](thuy-canh-viet-vietponics/README.md) is the upstream ZaUI Market template README, kept as-is. Its "Load data from your server" recipe is generic and superseded by the `request.ts` / `extractArray` notes above — prefer this file when they conflict.
@@ -90,3 +106,17 @@ Backend stores six statuses (`pending | confirmed | preparing | delivering | del
 - Protected API calls (JWT routes) must include `Authorization: Bearer <token>` from `localStorage.getItem("jwt_token")`. Use `useEnsureJwt()` to obtain/refresh the token before making protected calls.
 - Tailwind theme tokens come from CSS variables in `src/css/tailwind.scss` — change colors there, not in component classes.
 - `app-config.json.template.apiUrl` is the single source of truth for the API host. Don't hardcode `https://vietponics.vn/api` in fetches; read it via `getConfig`.
+
+### localStorage key split
+
+`src/config.ts` exports `CONFIG.STORAGE_KEYS` for all non-JWT data (`USER_INFO`, `DELIVERY`, `SHIPPING_ADDRESS`, `ZALO_SDK_PROFILE`, etc.) — always use these constants, not bare strings. The JWT token is the **only** exception: it is stored and read under the hardcoded key `"jwt_token"` throughout `hooks.ts` and `farm-api.ts` — it intentionally does not appear in `STORAGE_KEYS` (the key `TOKEN = "token"` in config is a stale artifact, not used for auth).
+
+## Quy trình làm việc (BẮT BUỘC theo thứ tự)
+Khi kiểm tra/refactor theo một use case (vd ORDER-06):
+1. **Đọc** case đó trong file nhóm tương ứng
+2. **Scan** code liên quan cả backend lẫn Mini App (controller, service, model, route, page/component)
+3. **Điền** mục "Đối chiếu code" ngay trong file use case: file liên quan, sai lệch, test coverage
+4. **Lập plan** sửa/refactor và CHỜ DUYỆT — không tự ý sửa
+5. **Viết test trước** (Pest) mô phỏng đúng kết quả mong đợi của use case
+6. **Sửa code** từng bước nhỏ, chạy test sau mỗi bước
+7. **Cập nhật** trạng thái case trong file use case và INDEX.md

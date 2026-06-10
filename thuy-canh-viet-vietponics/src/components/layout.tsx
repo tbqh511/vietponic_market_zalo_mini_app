@@ -9,7 +9,8 @@ import FloatingCartPreview from "./floating-cart-preview";
 import StockInFab from "./farm/stock-in-fab";
 import FarmHubFab from "./farm/farm-hub-fab";
 import BackToShopFab from "./farm/back-to-shop-fab";
-import { useInitAuth, useRouteHandle } from "@/hooks";
+import AccountDisabledNotice from "./account-disabled-notice";
+import { useAccountDisabledGate, useInitAuth, useRouteHandle } from "@/hooks";
 import { useAtom, useAtomValue } from "jotai";
 import {
   appSpaceState,
@@ -19,6 +20,7 @@ import {
 
 export default function Layout() {
   useInitAuth();
+  const accountDisabled = useAccountDisabledGate();
 
   const [handle] = useRouteHandle();
   const location = useLocation();
@@ -54,6 +56,9 @@ export default function Layout() {
   return (
     <div className="w-screen h-screen flex flex-col bg-section text-foreground">
       <Header />
+      {/* Banner (customer space) / màn chặn toàn trang (farm space) khi tài khoản
+          bị vô hiệu hoá. Component tự chọn dạng theo route. */}
+      {accountDisabled && <AccountDisabledNotice />}
       <div className="flex-1 overflow-y-auto bg-background">
         <Suspense fallback={<PageSkeleton />}>
           <Outlet />
