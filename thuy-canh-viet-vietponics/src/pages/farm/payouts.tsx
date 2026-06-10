@@ -87,7 +87,11 @@ export default function FarmPayoutsPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const profile = useFarmProfile(isFarm);
-  const payouts = useFarmPayouts(isFarm);
+  // Thu nhập (payout) chỉ dành cho CHỦ farm. Staff vào thẳng URL sẽ bị chặn.
+  const isOwner = profile.data?.viewer?.is_owner ?? false;
+  const profileLoaded = !!profile.data;
+  // Defense-in-depth: staff KHÔNG fetch dữ liệu payout (BE cũng đã trả 403).
+  const payouts = useFarmPayouts(isFarm && isOwner);
 
   // Tách đợt "đang tích lũy" (draft) làm card nổi bật; phần còn lại vào lịch sử.
   // Backend sort period_end desc → draft kỳ hiện tại thường ở đầu. Lấy draft mới
@@ -104,6 +108,43 @@ export default function FarmPayoutsPage() {
     return (
       <div className="flex items-center justify-center h-40">
         <p className="text-gray-400 text-sm">Đang kiểm tra quyền truy cập...</p>
+      </div>
+    );
+  }
+
+  // Chưa biết vai trò (chưa có /farm/me) → chờ, tránh chớp màn chặn cho owner.
+  if (!profileLoaded) {
+    if (profile.error) {
+      return (
+        <div className="flex flex-col items-center justify-center h-40 gap-2 px-6">
+          <p className="text-gray-400 text-sm text-center">
+            Không thể kiểm tra quyền truy cập.
+          </p>
+          <button onClick={profile.refresh} className="text-primary text-sm underline">
+            Thử lại
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center justify-center h-40">
+        <p className="text-gray-400 text-sm">Đang kiểm tra quyền truy cập...</p>
+      </div>
+    );
+  }
+
+  // Staff (không phải owner) → chặn, KHÔNG render dữ liệu tài chính.
+  if (!isOwner) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-full bg-gray-100 px-8 text-center gap-2">
+        <LockIcon />
+        <p className="text-gray-700 text-sm font-medium">
+          Bạn không có quyền xem mục này
+        </p>
+        <p className="text-gray-400 text-xs">Mục Thu nhập chỉ dành cho chủ farm.</p>
+        <Link to="/farm" className="mt-2 text-primary text-sm underline">
+          Quay lại Tổng quan
+        </Link>
       </div>
     );
   }
@@ -297,6 +338,25 @@ function HistoryRow({ payout }: { payout: FarmPayout }) {
         </div>
       </div>
     </Link>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg
+      width="40"
+      height="40"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="text-gray-300"
+    >
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0110 0v4" />
+    </svg>
   );
 }
 

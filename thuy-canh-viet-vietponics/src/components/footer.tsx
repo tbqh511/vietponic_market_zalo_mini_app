@@ -13,6 +13,7 @@ import { useAtomValue } from "jotai";
 import { appSpaceState, cartState, farmPendingOrdersCountState } from "@/state";
 import TransitionLink from "./transition-link";
 import { useRouteHandle } from "@/hooks";
+import { useFarmProfile } from "@/utils/farm-api";
 import Badge from "./badge";
 
 // Tab bar Customer — GIỮ NGUYÊN 4 tab gốc, không đổi.
@@ -85,7 +86,18 @@ export default function Footer() {
   const [handle] = useRouteHandle();
   // Tab bar đổi theo không gian app hiện tại (customer mua / farm bán).
   const space = useAtomValue(appSpaceState);
-  const navItems = space === "farm" ? FARM_NAV : CUSTOMER_NAV;
+  const isFarm = space === "farm";
+
+  // Tab "Thu nhập" (payout) chỉ dành cho CHỦ farm — staff không thấy. Vai trò
+  // đọc qua /farm/me (fetch-once, enabled khi đang ở không gian farm).
+  // Fail-closed: ẩn tab cho tới khi xác nhận is_owner — an toàn hơn hiện rồi ẩn.
+  const profile = useFarmProfile(isFarm);
+  const isOwner = profile.data?.viewer?.is_owner ?? false;
+  const farmNav = isOwner
+    ? FARM_NAV
+    : FARM_NAV.filter((t) => t.path !== "/farm/payouts");
+
+  const navItems = isFarm ? farmNav : CUSTOMER_NAV;
 
   if (!handle?.noFooter) {
     return (

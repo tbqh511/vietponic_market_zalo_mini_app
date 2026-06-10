@@ -55,7 +55,7 @@ Vào được TẤT CẢ mục, kể cả payout.
 ---
 
 ## ROLE-04
-- **Vai trò:** Farm Staff | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+- **Vai trò:** Farm Staff | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** 🟢 Đã sửa (B7) — test đạt
 
 **Ngữ cảnh & các bước:**
 Dùng tài khoản STAFF-A (nhân viên farm). 1) Vào Hub. 2) Mở Kho & Đơn. 3) Tìm mục Thanh toán/Rút tiền (payout).
@@ -65,10 +65,10 @@ Vào được Kho & Đơn; KHÔNG vào/không thấy mục payout.
 
 **Đối chiếu code (Claude Code điền):**
 - [x] File/route/màn hình liên quan:
-  - FE: `src/components/footer.tsx:78-81` `FARM_NAV` hiện tab **"Thu nhập"** cho MỌI farm user — KHÔNG lọc theo `is_owner`/`farm_role`; `src/pages/farm/payouts.tsx:80,103` chỉ gate `useFarmGuard()` (= `is_farm_partner`), KHÔNG kiểm tra `is_owner`.
-  - BE: `EnsureFarmPartner.php:90-96` lookup theo `farm_id` → **staff PASS** middleware; `FarmHubController.payouts():647-672` và `payoutDetail():683-691` chỉ scope `where farm_id=$farm->id`, **KHÔNG có check `is_owner`**.
-- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **❌ KHÔNG KHỚP (🔴).** Staff VẪN thấy tab "Thu nhập" và VẪN gọi được `/farm/payouts` + `/farm/payouts/{id}` → nhận đủ dữ liệu payout (gross/phí/net) của farm. Kỳ vọng "staff không thấy/không vào payout" **chưa được thực thi ở cả FE lẫn BE**. Cần: (a) FE ẩn tab Thu nhập khi `!viewer.is_owner`; (b) BE gate `is_owner` trong `payouts()`/`payoutDetail()` (403 nếu staff). *Lưu ý so với Đóng gói:* thao tác đơn (confirm-order/handoff-ship) đã được tách quyền owner trong `FarmPackingController` — nhưng payout thì chưa.
-- [x] Test coverage: **Thiếu hoàn toàn** — không có test staff-bị-chặn-payout. Cần thêm khi sửa.
+  - FE: `src/components/footer.tsx` `FARM_NAV` — **đã lọc** tab "Thu nhập" khi `!is_owner` (đọc `is_owner` qua `useFarmProfile()` → `viewer.is_owner`, fail-closed: ẩn cho tới khi xác nhận owner); `src/pages/farm/payouts.tsx` — **đã thêm** màn chặn khi `!is_owner` + gate `useFarmPayouts(isFarm && isOwner)` để staff không bao giờ fetch dữ liệu (defense-in-depth).
+  - BE: `EnsureFarmPartner.php:90-96` lookup theo `farm_id` → staff vẫn PASS middleware (đúng — staff cần vào Kho/Đơn); `FarmHubController` — **đã thêm** private helper `ensureOwner()` gọi ở ĐẦU `payouts()` + `payoutDetail()` → 403 `'Bạn không có quyền xem mục này'` nếu `!isFarmOwner()`. Gate đặt trước scope-farm nên staff farm khác cũng nhận 403 (không leak 404).
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **✅ ĐÃ KHỚP (🟢) sau B7.** Staff không còn thấy tab "Thu nhập"; vào thẳng `/farm/payouts` → màn "Bạn không có quyền xem mục này"; gọi `/farm/payouts` + `/farm/payouts/{id}` → **403** ở backend (chỉ owner xem gross/phí/net). Owner giữ nguyên truy cập đầy đủ; owner farm khác xem payout farm này vẫn **404** (scope-farm, không đổi).
+- [x] Test coverage: **Đã bổ sung** trong `tests/Feature/FarmHubTest.php` — `test_owner_can_access_payouts` (200), `test_staff_cannot_access_payouts_list` (403), `test_staff_cannot_access_payout_detail` (403), `test_staff_of_other_farm_cannot_access_payout_detail` (403); giữ `test_payout_detail_404_for_other_farms_payout` (owner farm khác → 404). Helper mới `makeFarmStaff()`. FarmHubTest: **29/29 pass**.
 
 ---
 

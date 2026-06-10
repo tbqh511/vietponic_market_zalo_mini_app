@@ -13,7 +13,7 @@ Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 - **ROLE-01** — ⚪ Chưa kiểm tra — Khách — Cơ bản — ✅ audit
 - **ROLE-02** — ⚪ Chưa kiểm tra — Khách — Cơ bản — ✅ audit
 - **ROLE-03** — ⚪ Chưa kiểm tra — Farm Owner — Cơ bản — ✅ audit
-- **ROLE-04** — 🔴 Có lỗi (phát hiện khi audit) — Farm Staff — Cơ bản — ✅ audit
+- **ROLE-04** — 🟢 Đã sửa (B7) — Farm Staff — Cơ bản — ✅ audit
 - **ROLE-05** — ⚪ Chưa kiểm tra — Farm Owner — Nâng cao — ✅ audit
 - **ROLE-06** — ⚪ Chưa kiểm tra — Farm Owner — Nâng cao — ✅ audit
 
