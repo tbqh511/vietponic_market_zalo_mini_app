@@ -80,8 +80,7 @@ export function useRequestInformation() {
     const userInfo = await get(userInfoState);
     return userInfo;
   });
-  const setInfoKey = useSetAtom(userInfoKeyState);
-  const refreshPermissions = () => setInfoKey((key) => key + 1);
+  const syncAuth = useZaloAuthSync();
 
   return async () => {
     const userInfo = await getStoredUserInfo();
@@ -91,8 +90,13 @@ export function useRequestInformation() {
       try {
         await authorize({
           scopes: ["scope.userInfo", "scope.userPhonenumber"],
-        }).then(refreshPermissions);
+        });
+        // User đã Đồng ý → re-getUserInfo + re-authenticate NGAY để tên/ảnh thật
+        // hiển thị trong phiên này, không phải đợi lần mở app sau (AUTH-01).
+        // assumeGranted: bỏ qua getSetting (có thể lag ngay sau cấp quyền).
+        await syncAuth({ assumeGranted: true });
       } catch (error) {
+        if (isAccountDisabled(error)) throw error; // cho caller hiển thị thông báo
         // Người dùng từ chối cấp quyền — vẫn tiếp tục với fallback mặc định.
         console.warn("User declined authorization:", error);
       }
@@ -249,13 +253,92 @@ export function useEnsureJwt() {
   };
 }
 
+// Core auth-sync dùng chung: đọc scope đã cấp → lấy tên/ảnh thật từ SDK
+// (getUserInfo) + phone token → authenticate → cập nhật customerProfileState,
+// jwt và cache SDK profile, rồi bump userInfoKeyState để userInfoState tính lại.
+// Dùng bởi useInitAuth (lúc mount) và useRequestInformation (ngay sau khi user
+// Đồng ý cấp quyền) → tên/ảnh thật hiện NGAY trong phiên (AUTH-01), không phải
+// đợi lần mở app sau.
+function useZaloAuthSync() {
+  const setProfile = useSetAtom(customerProfileState);
+  const setInfoKey = useSetAtom(userInfoKeyState);
+
+  return useCallback(
+    async (
+      opts: { isCancelled?: () => boolean; assumeGranted?: boolean } = {}
+    ): Promise<unknown> => {
+      const { isCancelled = () => false, assumeGranted = false } = opts;
+      const { getSetting, getPhoneNumber, getUserInfo } = await import("zmp-sdk/apis");
+
+      // getSetting có thể throw -1409 "Request limit exceeded". KHÔNG để nó
+      // dừng cả luồng auth → bắt riêng; khi lỗi thì thử lạc quan cả phone lẫn
+      // userInfo. assumeGranted (gọi ngay sau authorize) cũng bỏ qua getSetting
+      // vì scope vừa cấp có thể chưa kịp phản ánh → cứ thử getUserInfo.
+      let phoneGranted = true;
+      let userInfoGranted = true;
+      if (!assumeGranted) {
+        try {
+          const { authSetting } = await getSetting({});
+          phoneGranted = !!authSetting["scope.userPhonenumber"];
+          userInfoGranted = !!authSetting["scope.userInfo"];
+        } catch (e) {
+          console.warn("[useZaloAuthSync] getSetting failed, optimistic auth", e);
+        }
+      }
+
+      let phoneToken: string | undefined;
+      if (phoneGranted) {
+        try {
+          const result = await getPhoneNumber({});
+          phoneToken = result?.token ?? undefined;
+        } catch {
+          // ignore — vẫn có thể auth không có phone_token để load profile
+        }
+      }
+
+      // Lấy tên/ảnh thật từ SDK khi đã cấp scope.userInfo và gửi lên backend
+      // để đồng bộ xuống DB (Graph API phía backend không tự lấy được nếu user
+      // chưa cấp quyền). Tránh phụ thuộc vào lần auth sau.
+      let zaloProfile: { name?: string; avatar?: string } | undefined;
+      if (userInfoGranted) {
+        try {
+          const { userInfo } = await getUserInfo({});
+          zaloProfile = { name: userInfo?.name, avatar: userInfo?.avatar };
+          // Cache tên/ảnh live để userInfoState đọc lại (không gọi SDK lần nữa).
+          writeZaloSdkProfile(zaloProfile);
+        } catch {
+          // ignore — backend vẫn fallback Graph API / 'Khách Zalo'
+        }
+      }
+
+      const accessToken = await getAccessToken();
+      if (isCancelled() || !accessToken) return null;
+
+      const result = await authenticate(accessToken, phoneToken, zaloProfile);
+      if (isCancelled()) return null;
+      if (result.data?.user) {
+        setProfile(result.data.user);
+        if (result.data.token) {
+          localStorage.setItem("jwt_token", result.data.token);
+          applyPendingReferral(result.data.token);
+        }
+      }
+      // Buộc userInfoState tính lại (kể cả khi customerProfileState không đổi
+      // tham chiếu) → tên/ảnh mới hiển thị ngay sau khi cấp quyền.
+      setInfoKey((key) => key + 1);
+      return result.data?.user ?? null;
+    },
+    [setProfile, setInfoKey]
+  );
+}
+
 // Gọi trong Layout để đảm bảo customerProfile luôn được load khi app khởi động.
 // Mỗi lần mở mini app sẽ gọi /authenticate để refresh profile mới nhất —
 // quan trọng cho các flag thay đổi từ phía admin (is_farm_partner, mobile sync).
 // Profile cached trong localStorage chỉ dùng để render ngay trên cold start;
 // re-auth chạy nền sẽ ghi đè bằng giá trị fresh từ backend.
 export function useInitAuth() {
-  const setProfile = useSetAtom(customerProfileState);
+  const syncAuth = useZaloAuthSync();
 
   useEffect(() => {
     let cancelled = false;
@@ -265,60 +348,7 @@ export function useInitAuth() {
       // (bao gồm is_farm_partner — flag này có thể bị admin thay đổi mà JWT
       // hiện tại không biết). Bỏ qua nhánh ensureJwt vì sẽ là request trùng.
       try {
-        const { getSetting, getPhoneNumber, getUserInfo } = await import("zmp-sdk/apis");
-
-        // getSetting có thể throw -1409 "Request limit exceeded". KHÔNG để nó
-        // dừng cả luồng auth (nếu throw mà không bắt, sẽ nhảy thẳng xuống catch
-        // ngoài → bỏ qua authenticate → profile không refresh, đúng lỗi gặp ở
-        // lần đăng nhập thứ 2). → bắt riêng; khi lỗi thì thử lạc quan cả phone
-        // lẫn userInfo (mỗi cái tự nuốt lỗi của nó).
-        let phoneGranted = true;
-        let userInfoGranted = true;
-        try {
-          const { authSetting } = await getSetting({});
-          phoneGranted = !!authSetting["scope.userPhonenumber"];
-          userInfoGranted = !!authSetting["scope.userInfo"];
-        } catch (e) {
-          console.warn("[useInitAuth] getSetting failed, optimistic auth", e);
-        }
-
-        let phoneToken: string | undefined;
-        if (phoneGranted) {
-          try {
-            const result = await getPhoneNumber({});
-            phoneToken = result?.token ?? undefined;
-          } catch {
-            // ignore — vẫn có thể auth không có phone_token để load profile
-          }
-        }
-
-        // Lấy tên/ảnh thật từ SDK khi đã cấp scope.userInfo và gửi lên backend
-        // để đồng bộ xuống DB (Graph API phía backend không tự lấy được nếu
-        // user chưa cấp quyền). Tránh phụ thuộc vào lần auth sau.
-        let zaloProfile: { name?: string; avatar?: string } | undefined;
-        if (userInfoGranted) {
-          try {
-            const { userInfo } = await getUserInfo({});
-            zaloProfile = { name: userInfo?.name, avatar: userInfo?.avatar };
-            // Cache tên/ảnh live để userInfoState đọc lại (không gọi SDK lần nữa).
-            writeZaloSdkProfile(zaloProfile);
-          } catch {
-            // ignore — backend vẫn fallback Graph API / 'Zalo User'
-          }
-        }
-
-        const accessToken = await getAccessToken();
-        if (cancelled || !accessToken) return;
-
-        const result = await authenticate(accessToken, phoneToken, zaloProfile);
-        if (cancelled) return;
-        if (result.data?.user) {
-          setProfile(result.data.user);
-          if (result.data.token) {
-            localStorage.setItem("jwt_token", result.data.token);
-            applyPendingReferral(result.data.token);
-          }
-        }
+        await syncAuth({ isCancelled: () => cancelled });
       } catch (err) {
         if (isAccountDisabled(err)) {
           // request.ts đã bắn cờ toàn cục → Layout hiển thị banner/màn chặn.
@@ -332,7 +362,7 @@ export function useInitAuth() {
     return () => {
       cancelled = true;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [syncAuth]);
 }
 
 export function useFarmGuard() {

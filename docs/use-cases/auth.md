@@ -1,7 +1,7 @@
 # Nhóm: Xác thực
 
 ## AUTH-01
-- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** 🔴 Có lỗi
+- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** 🟢 Đã sửa (B10)
 
 **Ngữ cảnh & các bước:**
 Bạn là khách mới. 1) Mở app lần đầu. 2) Khi Zalo hỏi cấp quyền, bấm Đồng ý. 3) Vào trang Cá nhân.
@@ -16,7 +16,8 @@ Hiện đúng TÊN Zalo và ẢNH đại diện của bạn.
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
   - **Có sai lệch — khớp với trạng thái 🔴.** Vấn đề thứ tự khởi tạo: `useInitAuth` chạy 1 lần lúc mount (`useEffect([])`). Trên lần mở ĐẦU TIÊN, popup cấp quyền chỉ bật qua `useRequestInformation` (lúc bấm Đăng ký/checkout), KHÔNG bật khi vào Profile. Nếu lúc `useInitAuth` chạy mà `getSetting` báo chưa cấp `scope.userInfo` → KHÔNG gọi `getUserInfo` → KHÔNG cache tên/ảnh và `authenticate` gửi lên không kèm name/avatar → backend phải dựa Graph API (chỉ trả tên thật khi đã cấp scope) → tên/ảnh dễ rơi về placeholder "Khách Zalo".
   - Sau khi user bấm Đồng ý, `refreshPermissions` chỉ bump `userInfoKeyState` để đọc lại `userInfoState`, KHÔNG re-chạy `getUserInfo` cũng KHÔNG re-`authenticate` → tên/ảnh thật thường chỉ xuất hiện ở lần mở thứ 2 (AUTH-04). Đây là nghi vấn gốc của 🔴: lần đầu cấp quyền xong vẫn chưa thấy tên/ảnh đúng ngay.
-- [x] Test coverage: KHÔNG có test tự động cho `/authenticate` (cả backend lẫn FE). Luồng SDK getUserInfo/getSetting không test được ngoài runtime Zalo. → Cần test backend cho `authenticate` (ưu tiên client name/avatar, fallback Graph) + kịch bản re-auth sau khi cấp quyền.
+  - **→ Đã sửa (B10):** trích core auth-sync thành hook dùng chung `useZaloAuthSync()` (getSetting/getUserInfo/getPhoneNumber → `writeZaloSdkProfile` → `authenticate` → set `customerProfileState`+jwt → bump `userInfoKeyState`). `useRequestInformation` **sau khi `authorize` thành công** gọi `syncAuth({ assumeGranted: true })` (bỏ qua `getSetting` có thể lag) → re-`getUserInfo` + re-`authenticate` NGAY → tên/ảnh thật hiển thị trong CHÍNH phiên đó, không cần mở lại app. `useInitAuth` cũng dùng lại hook này (giữ guard unmount qua `isCancelled`).
+- [x] Test coverage: **Có (B10)** — `tests/Feature/AuthenticateTest.php` (suite `Zalo`): tạo customer ưu tiên client name/avatar hơn Graph; placeholder "Khách Zalo" khi thiếu name; idempotent theo `firebase_id`; re-auth cập nhật tên thật đè placeholder; guard placeholder không che tên thật (5/5 xanh). Luồng SDK `getUserInfo/getSetting` + hiển thị-ngay chỉ verify được trên runtime Zalo thật (checklist sandbox cuối B10).
 
 ---
 
@@ -41,22 +42,22 @@ Số điện thoại hiển thị đúng số thật của bạn.
 ---
 
 ## AUTH-03
-- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** 🟢 Đạt
+- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** 🟢 Đạt (đã thống nhất placeholder — B10)
 
 **Ngữ cảnh & các bước:**
 Dùng tài khoản Zalo CHƯA từng đăng nhập app. 1) Mở app lần đầu. 2) Khi hỏi quyền lấy tên, bấm Từ chối/Bỏ qua.
 
 **Kết quả mong đợi:**
-App vẫn vào được, không treo, không lỗi đỏ; tên hiện 'Zalo User' hoặc màn đăng ký.
+App vẫn vào được, không treo, không lỗi đỏ; tên hiện 'Khách Zalo' hoặc màn đăng ký.
 
 **Đối chiếu code (Claude Code điền):**
 - [x] File/route/màn hình liên quan:
-  - FE: `useRequestInformation` (hooks.ts:95) bắt lỗi `authorize` bị từ chối → `console.warn` rồi tiếp tục với fallback; `useInitAuth` bọc `getSetting` trong try/catch và mỗi call `getPhoneNumber`/`getUserInfo` tự nuốt lỗi → vẫn `authenticate` chỉ với `access_token`; `userInfoState` fallback tên "Khách Zalo"; `user-info.tsx` hiển thị thẻ user khi có `profile` (đã auth) hoặc hiện `Register` khi không có gì.
-  - BE: `authenticate` tạo `Customer` với `name = 'Zalo User'` khi `resolvedName` rỗng (dòng 926).
+  - FE: `useRequestInformation` bắt lỗi `authorize` bị từ chối → `console.warn` rồi tiếp tục với fallback; `useZaloAuthSync`/`useInitAuth` bọc `getSetting` trong try/catch và mỗi call `getPhoneNumber`/`getUserInfo` tự nuốt lỗi → vẫn `authenticate` chỉ với `access_token`; `userInfoState` fallback tên "Khách Zalo"; `user-info.tsx` hiển thị thẻ user khi có `profile` (đã auth) hoặc hiện `Register` khi không có gì.
+  - BE: `authenticate` tạo `Customer` với `name = 'Khách Zalo'` khi `resolvedName` rỗng (dòng 941, đã đổi từ 'Zalo User' ở B10).
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
   - **Khớp** (đúng trạng thái 🟢). Từ chối quyền không làm app treo: mọi call SDK đều có fallback, `authenticate` chỉ cần `access_token`. App hiển thị thẻ user với placeholder hoặc màn Đăng ký.
-  - Sai lệch nhỏ về wording: kết quả mong đợi nói tên 'Zalo User' (default backend), nhưng FE `userInfoState` mặc định "Khách Zalo". Hai placeholder khác nhau nhưng đều thoả "không lỗi đỏ + có placeholder". Backend ghi 'Zalo User' xuống DB; nếu `customerProfileState` về kịp thì có thể hiện 'Zalo User', còn trước đó FE hiện 'Khách Zalo' → có thể nháy đổi tên. Cân nhắc thống nhất 1 placeholder.
-- [x] Test coverage: KHÔNG có test tự động (luồng từ chối quyền là hành vi runtime Zalo SDK). Backend nhánh tạo customer 'Zalo User' chưa có test.
+  - **→ Đã thống nhất (B10):** placeholder tạo customer mới ở BE đổi `'Zalo User'` → `'Khách Zalo'` khớp với FE `userInfoState` → không còn nháy đổi tên giữa hai placeholder. Mảng `$placeholderNames` (BE) + `PLACEHOLDER_NAMES` (FE state.ts/request.ts) giữ cả hai để vẫn nhận diện 'Zalo User' cũ trong DB, không cho che tên thật.
+- [x] Test coverage: **Có (B10)** — `AuthenticateTest::test_creates_customer_with_unified_placeholder_when_no_name` assert tên = 'Khách Zalo' khi thiếu name. Luồng từ chối quyền phía SDK vẫn là hành vi runtime Zalo (checklist sandbox).
 
 ---
 
@@ -76,7 +77,7 @@ Vẫn đúng tên/ảnh/SĐT cũ; KHÔNG tạo tài khoản mới trùng.
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
   - **Khớp** (đúng trạng thái 🟢). Mở lại app: lookup theo `firebase_id` đảm bảo không trùng tài khoản; tên/ảnh/mobile được sync lại từ DB; profile cache hiển thị tức thì tránh nháy "chưa đăng nhập".
   - Không phát hiện sai lệch. (Liên quan AUTH-01: chính ở lần mở thứ 2 này tên/ảnh thật mới chắc chắn hiện đủ vì SDK cache đã được ghi từ phiên trước.)
-- [x] Test coverage: KHÔNG có test cho tính idempotent theo `firebase_id` (không tạo trùng) của `authenticate`. → Nên thêm test: gọi `authenticate` 2 lần cùng `firebase_id` ⇒ chỉ 1 row `customers`, dữ liệu được cập nhật chứ không nhân bản.
+- [x] Test coverage: **Có (B10)** — `AuthenticateTest::test_re_authenticate_same_zalo_id_does_not_duplicate` (gọi 2 lần cùng `firebase_id` ⇒ đúng 1 row, cùng `id`) + `test_re_authenticate_updates_placeholder_with_real_name` (lần 2 cập nhật tên thật, không nhân bản).
 
 ---
 

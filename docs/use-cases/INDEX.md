@@ -3,10 +3,10 @@
 Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 
 ## Xác thực (5 case) — `docs/use-cases/auth.md`
-- **AUTH-01** — 🔴 Có lỗi — Khách — Cơ bản — ✅ audit
+- **AUTH-01** — 🟢 Đã sửa (B10) — Khách — Cơ bản — ✅ audit
 - **AUTH-02** — 🟢 Đạt — Khách — Cơ bản — ✅ audit
-- **AUTH-03** — 🟢 Đạt — Khách — Cơ bản — ✅ audit
-- **AUTH-04** — 🟢 Đạt — Khách — Cơ bản — ✅ audit
+- **AUTH-03** — 🟢 Đạt (thống nhất placeholder — B10) — Khách — Cơ bản — ✅ audit
+- **AUTH-04** — 🟢 Đạt (test idempotent — B10) — Khách — Cơ bản — ✅ audit
 - **AUTH-05** — ⚪ Chưa kiểm tra — Khách — Nâng cao — ✅ audit
 
 ## Phân quyền (6 case) — `docs/use-cases/role.md`
