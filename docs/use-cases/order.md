@@ -54,7 +54,7 @@ Dùng KH-1. 1) Đặt hàng chọn COD (Sandbox). 2) Hoàn tất.
 ---
 
 ## ORDER-04
-- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** 🟢 Đạt (B1 — đã tách BANK khỏi offline flow)
 
 **Ngữ cảnh & các bước:**
 Dùng KH-1 (queue worker phải chạy). 1) Đặt hàng chọn Banking (Sandbox). 2) Thanh toán thành công trên cổng.
@@ -64,10 +64,10 @@ Quay lại app, đơn chuyển sang đã thanh toán.
 
 **Đối chiếu code (Claude Code điền):**
 - [x] File/route/màn hình liên quan:
-  - FE: `useCheckout:993-1002` — **BANK_SANDBOX cũng ∈ isOfflineFlow** (`codePrefix.startsWith("BANK")`) → cleanup + navigate NGAY, không chờ PaymentDone; cập nhật trạng thái dựa `refreshNewOrders` (setTimeout 2.5s/7s + reload tab).
-  - BE: lúc tạo `payment_status='pending'` (online); chuyển `'success'` qua `notifySDK` (`ZaloApiController:1251-1257`, fire `OrderPaymentSucceeded`) hoặc job `CheckPaymentStatus` (`returnCode==1` → success, :86-89). `order-summary.tsx:60` `success` → "Đã thanh toán".
-- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **🟡 Khớp CÓ điều kiện.** Cổng sandbox trả success qua webhook/job → `payment_status='success'` → khách thấy "Đã thanh toán" sau khi list reload. *Sai lệch:* (1) **BANK gộp chung luồng offline với COD** → FE hiện "Đặt hàng thành công" ngay mà không chờ xác nhận trả tiền (đúng cho sandbox vì không có giao dịch thật, nhưng **SẼ SAI khi đổi sang BANK production** — cần tách BANK khỏi `isOfflineFlow` để chờ PaymentDone); (2) cập nhật "đã thanh toán" KHÔNG realtime, phụ thuộc poll setTimeout + mở lại tab.
-- [x] Test coverage: **🟡** — `CommissionCreditedOnPaymentTest::test_webhook_notify_credits_commission` + `test_job_polling_path_credits_commission` phủ nhánh notify/job → `payment_status='success'` (gián tiếp đúng cho ORDER-04/05). **Thiếu** test gắn riêng method BANK.
+  - FE: `useCheckout` `isOfflineFlow` — **B1: chỉ còn `startsWith("COD")`**; BANK đi tiếp nhánh `PaymentDone` như MoMo (chờ xác nhận trả tiền, KHÔNG báo "Đặt hàng thành công" ngay). BANK_SANDBOX không fire PaymentDone → rơi vào timeout 10s fallback "Giao dịch đang xử lý" (đúng kỳ vọng production).
+  - BE: lúc tạo `payment_status='pending'` (online); chuyển `'success'` qua `notifySDK` (fire `OrderPaymentSucceeded`) hoặc job `CheckPaymentStatus` (`returnCode==1`). `order-summary.tsx:60` `success` → "Đã thanh toán".
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **🟢 Đã sửa (B1).** Tách BANK khỏi `isOfflineFlow` → BANK chờ `PaymentDone`, không tự nhận "đặt hàng thành công" trước khi trả tiền → sẵn sàng production. Webhook/job vẫn xác nhận `payment_status='success'` → "Đã thanh toán".
+- [x] Test coverage: **🟢 (B1)** — `ZaloNotifyTest::test_online_result_code_1_marks_success_and_fires_event` (method BANK_SANDBOX) + `CheckPaymentStatusJobTest::test_return_code_1_marks_success_and_fires_event`; regression `CommissionCreditedOnPaymentTest` vẫn xanh. FE: thay đổi 1 dòng (`isOfflineFlow`) chưa có test FE.
 
 ---
 
@@ -90,7 +90,7 @@ Dùng KH-1 (queue worker phải chạy). 1) Đặt hàng chọn MoMo (Sandbox). 
 ---
 
 ## ORDER-06
-- **Vai trò:** Khách | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** 🔴 Có lỗi
+- **Vai trò:** Khách | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** 🟢 Đã sửa (B1)
 
 **Ngữ cảnh & các bước:**
 Dùng KH-1. 1) Đặt hàng online (Bank/MoMo). 2) Đóng cổng / không trả tiền.
@@ -100,9 +100,9 @@ Dùng KH-1. 1) Đặt hàng online (Bank/MoMo). 2) Đóng cổng / không trả 
 
 **Đối chiếu code (Claude Code điền):**
 - [x] File/route/màn hình liên quan:
-  - BE: `notifySDK:1234-1258` (`resultCode=-1` → `'failed'`; thiếu `resultCode` & Zalo gọi → **mặc định 1=success**, :1235; khách KHÔNG trả → Zalo không gọi `/notify` → giữ `'pending'`); job `CheckPaymentStatus:34-141` (chỉ `success` khi `returnCode==1`, `failed` khi `-1`, còn lại GIỮ `pending` + reschedule tối đa 3 lần ~30s/2min/10min rồi **DỪNG, không auto-cancel**); `StockService::deductOnPayment:276-279` (**no-op** — kho đã trừ lúc tạo đơn). FE `useCheckout` (BANK→finalize ngay; MoMo→PaymentDone `-1` toast "Giao dịch không thành công", KHÔNG finalize). `order-summary.tsx:59` `pending`→"Chờ thanh toán".
-- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Backend ĐÚNG vế chính (đơn online chưa trả giữ `payment_status='pending'`, không bị tính 'đã thanh toán'; FE hiện "Chờ thanh toán").** NHƯNG các sai lệch khiến case giữ **🔴**: (1) **Đơn tạo TRƯỚC khi thanh toán + trừ kho NGAY lúc tạo** (FEFO reserve = deduct) → đơn online bỏ dở để lại đơn `pending` **giữ kho** mà **KHÔNG có cơ chế auto-cancel/giải phóng kho** (job chỉ dừng poll, không huỷ đơn; đơn `failed` cũng không release kho); (2) **BANK gộp offline** → FE hiện "Đặt hàng thành công" dù chưa trả tiền; (3) `resultCode` mặc định = 1 (success) khi thiếu field — rủi ro nếu `/notify` bị gọi mà thiếu `resultCode`.
-- [x] Test coverage: **🔴 Thiếu** — không test nào khẳng định đơn online chưa trả (hoặc `resultCode=-1`) GIỮ `pending`/không `success`, và không test việc kho bị giữ khi bỏ dở. Hiện chỉ có nhánh success (notify/job) và `test_webhook_notify_cod_keeps_status` (COD).
+  - BE: `notifySDK` (**B1**: chặn default-success — online thiếu/sai `resultCode` → giữ `pending`, return `returnCode 0`, log; + race guard `status='cancelled'` → KHÔNG hồi sinh thành paid); `Jobs/CancelUnpaidOrder` (**MỚI B1**: tự huỷ đơn online `pending` quá `ZALO_UNPAID_TIMEOUT_MINUTES` (≈20′) + `releaseReservation` + nhả voucher; best-effort poll Zalo trước khi huỷ để cứu đơn đã trả nhưng webhook trễ); `Jobs/CheckPaymentStatus` (**B1**: thêm guard `status='cancelled'` → job poll không hồi sinh đơn đã huỷ); dispatch `CancelUnpaidOrder` từ `ZaloApiController::checkout` cho đơn online (phủ cả khi khách đóng cổng trước `/link`). `StockService::releaseReservation` hoàn `quantity_sold` + `depleted→active`.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **🟢 Đã sửa (B1).** (1) Đơn online bỏ dở: sau ≈20′ job `CancelUnpaidOrder` huỷ đơn (`status='cancelled'`, `payment_status='failed'`, `cancelled_by='system'`) + **HOÀN KHO** + nhả voucher → hết kẹt kho; (2) BANK tách khỏi offline (xem ORDER-04); (3) `resultCode` thiếu/sai KHÔNG còn mặc định success. Race "trả tiền đúng lúc job chạy": `lockForUpdate` + re-check + best-effort poll cứu đơn đã trả; "notify paid đến sau khi đã huỷ" bị race guard chặn (giữ `cancelled`, log refund thủ công).
+- [x] Test coverage: **🟢 (B1)** — `CancelUnpaidOrderTest` (6: huỷ+hoàn kho, không đụng paid/COD, poll cứu đơn đã trả / poll fail thì huỷ, idempotent); `ZaloNotifyTest` (thiếu/sai resultCode KHÔNG paid; race notify-sau-huỷ); `CheckPaymentStatusJobTest::test_cancelled_order_is_not_revived_by_poll`. `composer test:zalo` xanh (34).
 
 ---
 

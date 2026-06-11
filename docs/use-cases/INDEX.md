@@ -50,9 +50,9 @@ Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 - **ORDER-01** — 🟢 Đạt — Khách — Cơ bản — ✅ audit
 - **ORDER-02** — 🟢 Đạt (phủ test tốt) — Khách — Cơ bản — ✅ audit
 - **ORDER-03** — 🟢 Đạt (lệch wording "Chờ xác nhận") — Khách — Cơ bản — ✅ audit
-- **ORDER-04** — 🟡 BANK gộp luồng offline + thiếu test (phát hiện khi audit) — Khách — Cơ bản — ✅ audit
+- **ORDER-04** — 🟢 Đạt (B1 — tách BANK khỏi offline flow, chờ PaymentDone) — Khách — Cơ bản — ✅ fixed
 - **ORDER-05** — 🟢 Đạt (thiếu test MoMo) — Khách — Cơ bản — ✅ audit
-- **ORDER-06** — 🔴 Có lỗi — kho bị giữ khi bỏ dở + thiếu test (xác nhận khi audit) — Khách — Nâng cao — ✅ audit
+- **ORDER-06** — 🟢 Đã sửa (B1 — auto-cancel + hoàn kho, chặn default-success, race guard) — Khách — Nâng cao — ✅ fixed
 - **ORDER-07** — 🟢 Đạt — Khách — Cơ bản — ✅ audit
 - **ORDER-08** — 🟡 Thiếu test idempotency (phát hiện khi audit) — Khách — Nâng cao — ✅ audit
 - **ORDER-09** — 🟢 Đạt (phủ test tốt) — Khách — Cơ bản — ✅ audit
