@@ -596,6 +596,14 @@ export const isFarmPartnerState = atom((get) => {
   return profile?.is_farm_partner === true;
 });
 
+// Trạng thái đối tác farm thô ('approved'|'requested'|'suspended'|'none'|null).
+// Guard Farm (layout.tsx) đọc atom này để chọn màn chặn phù hợp khi khách KHÔNG
+// phải partner đã duyệt: 'requested' → "Đang chờ duyệt"; 'suspended' → "tạm dừng";
+// còn lại (none/null/role=customer) → "Khu vực dành cho đối tác farm".
+export const farmPartnerStatusState = atom(
+  (get) => get(customerProfileState)?.farm_partner_status ?? null
+);
+
 // Số đơn farm đang chờ xử lý — hiển thị làm badge trên tab "Đơn đến".
 // Trang /farm/orders set giá trị này từ data polling 30s của useFarmIncomingOrders
 // (đếm các đơn distinct có order_status === 'pending'). Không poll riêng ở đây

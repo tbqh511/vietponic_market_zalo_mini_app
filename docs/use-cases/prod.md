@@ -1,7 +1,7 @@
 # Nhóm: Sản phẩm
 
 ## PROD-01
-- **Vai trò:** Admin | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+- **Vai trò:** Admin | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ✅ Đã sửa (B3)
 
 **Ngữ cảnh & các bước:**
 Trên admin web. 1) Tạo sản phẩm mới: nhập đủ tên, giá, danh mục, đơn vị, tải ảnh hợp lệ. 2) Bấm Lưu.
@@ -14,11 +14,12 @@ Lưu thành công, sản phẩm xuất hiện trong danh sách.
   - BE: `routes/web.php:111` `Route::resource('zalo-products', ZaloProductController::class)` (middleware `auth + checklogin + language`); `app/Http/Controllers/Admin/ZaloProductController.php@create` (form) + `@store:33-67` (validate → lưu → redirect `zalo-products.index` với flash `'Product created'`); view `resources/views/admin/zalo_products/create.blade.php`; danh sách `@index:15-24` + `index.blade.php`. Model `app/Models/ZaloProduct.php` (`$incrementing=false`, `timestamps=false`).
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Khớp (🟢).** Nhập đủ → validate pass → `ZaloProduct::create` → hiện trong `index` (orderBy id). *Sai lệch/Lưu ý:* (1) `category_id`, `unit_id`, **`image` đều `nullable`** — use case nói "nhập đủ danh mục, đơn vị, ảnh" nhưng code KHÔNG bắt buộc; chỉ `name`, `system_unit`, `conversion_factor` mới `required` (đều có default trong form). (2) ID gán thủ công `$max = ZaloProduct::max('id'); $id = $max+1` (vì `$incrementing=false`) → **race condition** nếu 2 admin tạo đồng thời có thể trùng id → lỗi insert. (3) flash message tiếng Anh `'Product created'` (lệ thuộc i18n, lẫn ngôn ngữ với UI tiếng Việt).
 - [x] Test coverage: **Thiếu hoàn toàn** — không có Feature test cho admin-web product CRUD (tests hiện chỉ đọc qua API `/products` gián tiếp trong order tests). Cần thêm khi sửa.
+- **✅ Đã sửa (B3):** `ZaloProductController@store` — (1) bỏ `max(id)+1` thô → bọc trong `DB::transaction` + `lockForUpdate()->max('id')` (atomic, race-safe MySQL + sqlite test); **giữ `$incrementing=false`** vì mock product dùng id cố định khớp FE → KHÔNG đổi schema, KHÔNG migration mới. (2) `category_id`/`unit_id`/`image` đổi `nullable` → **`required`** (khớp use case "nhập đủ danh mục, đơn vị, ảnh"). (3) flash `'Product created'` → `'Đã tạo sản phẩm'` (tiếng Việt). **Test:** `tests/Feature/AdminProductCreateTest.php` — `test_two_consecutive_products_get_distinct_ids` (2 SP liên tiếp id khác nhau), `test_missing_category_is_required` (thiếu danh mục → lỗi), `test_successful_create_flashes_vietnamese_message` (flash VN + SP xuất hiện).
 
 ---
 
 ## PROD-02
-- **Vai trò:** Admin | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** 🔴 Có lỗi
+- **Vai trò:** Admin | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ✅ Đã sửa (B3)
 
 **Ngữ cảnh & các bước:**
 Trên admin web. 1) Tạo sản phẩm nhưng BỎ TRỐNG tên. 2) Bấm Lưu.
@@ -32,11 +33,12 @@ Bị chặn, báo lỗi 'tên bắt buộc'.
   - i18n: `config/app.php:85` `'locale' => 'vi'`, `:98` `'fallback_locale' => 'en'`; **KHÔNG có `resources/lang/vi/validation.php`** (chỉ có `lang/en/`); message lấy từ `lang/en/validation.php:120` `'required' => 'The :attribute field is required.'`.
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **🔴 (đã đánh dấu).** Chức năng chặn ĐÚNG (validation fail → redirect back hiện lỗi). NHƯNG **message KHÔNG phải 'tên bắt buộc'**: vì thiếu `lang/vi/validation.php`, locale `vi` fallback sang `en` → hiện *"The name field is required."* (tiếng Anh). Ngoài ra HTML `required` chặn ở trình duyệt trước khi submit → tooltip mặc định của browser (cũng không phải chuỗi 'tên bắt buộc' do app kiểm soát). Cần: thêm `lang/vi/validation.php` (+ `attributes.name = 'tên'`) hoặc `messages()` tuỳ biến trong controller để ra đúng "Tên sản phẩm là bắt buộc".
 - [x] Test coverage: **Thiếu** — không có test gửi form thiếu `name` để khẳng định 422/redirect-with-errors và nội dung message.
+- **✅ Đã sửa (B3):** tạo `resources/lang/vi/validation.php` (bản dịch đầy đủ, mirror cấu trúc `lang/en`) + mảng `attributes` Việt hoá tên field (`name → 'tên sản phẩm'`, `image → 'hình ảnh'`, `category_id → 'danh mục'`, `unit_id → 'đơn vị'`…). Locale = `vi` (đã xác nhận `config/app.php:85`) nên message giờ ra **"tên sản phẩm là bắt buộc."** thay vì "The name field is required.". **Test:** `AdminProductCreateTest::test_missing_name_returns_vietnamese_required_message` (assert chứa "tên sản phẩm là bắt buộc" + KHÔNG chứa "field is required").
 
 ---
 
 ## PROD-03
-- **Vai trò:** Admin | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+- **Vai trò:** Admin | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ✅ Đã sửa (B3)
 
 **Ngữ cảnh & các bước:**
 Trên admin web. 1) Tạo SP, tải ảnh SAI định dạng (vd .txt) hoặc ảnh >2MB. 2) Bấm Lưu.
@@ -50,6 +52,7 @@ Bị chặn, báo lỗi ảnh không hợp lệ.
   - FE: `create.blade.php:99-125` `previewImage()` validate client-side type + size với **alert tiếng Việt** ('Vui lòng chọn tệp hình ảnh hợp lệ (JPEG, PNG, JPG, GIF)' / 'Dung lượng tệp phải nhỏ hơn 2MB'); `accept="image/*"`.
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Khớp về chức năng (🟢) — chặn được.** Sai lệch chi tiết: (1) **Message server tiếng Anh** (cùng gốc PROD-02, thiếu `lang/vi`): "The image must be a file of type: jpeg, png, jpg, gif." / "The image may not be greater than 2048 kilobytes." (2) **Rủi ro 500**: nếu file lọt qua rule `image|mimes` nhưng `getimagesize` fail/mime lạ thì `processImage` ném `\Exception` thô → trang lỗi 500 thay vì message thân thiện (validation `image` thường đã chặn trước nên hiếm, nhưng nhánh throw không có guard hiển thị). (3) Lớp JS client-side chặn sớm + thân thiện, nhưng tắt JS thì chỉ còn validate server (tiếng Anh).
 - [x] Test coverage: **Thiếu** — không có test upload sai định dạng / >2MB (dùng `UploadedFile::fake()`), cũng chưa test nhánh `processImage` ném exception.
+- **✅ Đã sửa (B3):** (1) message ảnh giờ ra tiếng Việt nhờ `lang/vi/validation.php` ("hình ảnh phải là tệp có định dạng: jpeg, png, jpg, gif." / "hình ảnh không được lớn hơn 2048 kilobyte."). (2) **Không-500**: bọc khối `processImage` trong `try/catch (\Throwable)` ở `@store` → khi xử lý ảnh lỗi (`getimagesize` fail / mime lạ) trả `ValidationException` "Hình ảnh không hợp lệ hoặc không thể xử lý." (redirect-back, HTTP 302) thay vì ném Exception thô gây 500; `processImage()` giữ nguyên (vẫn ném nội bộ — chỉ chuyển thành validation error ở store). **Test:** `AdminProductCreateTest` — `test_invalid_image_format_returns_vietnamese_error` (.txt), `test_oversized_image_returns_vietnamese_error` (>2MB, message "kilobyte"), `test_corrupt_image_does_not_500_and_returns_validation_error` (jpeg mime hợp lệ qua được rule `image|mimes` nhưng nội dung hỏng → nhận lỗi `image` VN, KHÔNG 500 — xác nhận đúng nhánh try/catch).
 
 ---
 

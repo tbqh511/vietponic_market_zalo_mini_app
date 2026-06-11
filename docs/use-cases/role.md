@@ -1,7 +1,7 @@
 # Nhóm: Phân quyền
 
 ## ROLE-01
-- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** 🟢 Đã sửa (B8)
 
 **Ngữ cảnh & các bước:**
 Bạn là khách thường. 1) Tìm/thử mở khu vực Quản lý Farm (Farm Hub).
@@ -11,15 +11,15 @@ Không thấy menu Hub, hoặc mở bị chặn — không được vào.
 
 **Đối chiếu code (Claude Code điền):**
 - [x] File/route/màn hình liên quan:
-  - FE: `src/components/farm/farm-hub-fab.tsx` (FAB Hub chỉ hiện khi `isFarmPartner` = true → khách KHÔNG thấy lối tắt); `src/components/layout.tsx:48-54` (route guard: vào `/farm*` mà `profile !== null && !isFarmPartner` → `navigate("/farm/register")`); `src/state.ts:594 isFarmPartnerState`; `src/hooks.ts:338 useFarmGuard`.
-  - BE: `app/Http/Middleware/EnsureFarmPartner.php:81-86` (role≠farm_partner → 403 `'Bạn không có quyền truy cập chức năng Farm Partner'`); `routes/api.php:78` group `zalo.farm` bọc toàn bộ `/farm/*`.
-- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Khớp (🟢).** Khách không thấy FAB Hub; nếu cố mở `/farm*` bị đẩy về `/farm/register`; gọi API trực tiếp → 403. *Sai lệch nhỏ:* FE không hiện thông báo "không có quyền" mà âm thầm redirect sang form đăng ký (hợp lý cho khách thường, nhưng khác trải nghiệm "bị chặn có thông báo").
-- [x] Test coverage: BE có `test_regular_customer_gets_403_on_farm_endpoint` (FarmHubTest.php:109) + `test_farm_endpoint_requires_jwt` (:99). **Thiếu** test FE cho guard redirect.
+  - FE: `src/components/farm/farm-hub-fab.tsx` (FAB Hub chỉ hiện khi `isFarmPartner` = true → khách KHÔNG thấy lối tắt); `src/components/layout.tsx` (route guard) — **B8 đổi:** thay `navigate("/farm/register")` âm thầm bằng **overlay** `FarmAccessNotice` (mới: `src/components/farm/farm-access-notice.tsx`) hiện thông báo "Khu vực dành cho đối tác farm" + nút "Đăng ký đối tác"; `src/state.ts isFarmPartnerState` + `farmPartnerStatusState` (mới); `src/hooks.ts:338 useFarmGuard` (giữ làm defense-in-depth).
+  - BE: `app/Http/Middleware/EnsureFarmPartner.php` — **B8:** 403 kèm `code:FARM_PARTNER_REQUIRED` (message giữ nguyên `'Bạn không có quyền truy cập chức năng Farm Partner'`); `routes/api.php:78` group `zalo.farm` bọc toàn bộ `/farm/*`.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **✅ ĐÃ KHỚP (🟢) sau B8.** Khách không thấy FAB Hub; mở `/farm*` → màn "Khu vực dành cho đối tác farm" + nút đăng ký (KHÔNG còn silent-redirect); gọi API trực tiếp → 403 `code:FARM_PARTNER_REQUIRED`. Nút "Đăng ký đối tác" mở `/farm/register` (vào được vì guard short-circuit route register), không loop.
+- [x] Test coverage: BE `test_regular_customer_gets_403_on_farm_endpoint` (FarmHubTest) — **B8 bổ sung** assert `code:FARM_PARTNER_REQUIRED` + message nguyên văn; `test_farm_endpoint_requires_jwt`. FE chưa có hạ tầng test → checklist sandbox (mở `/farm` bằng tài khoản khách → thấy màn mời đăng ký).
 
 ---
 
 ## ROLE-02
-- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** 🟢 Đã sửa (B8)
 
 **Ngữ cảnh & các bước:**
 Dùng tài khoản KH-REQ (đã đăng ký làm đối tác farm nhưng admin CHƯA duyệt). 1) Thử vào Farm Hub.
@@ -29,10 +29,10 @@ Bị chặn: 'Bạn không có quyền truy cập chức năng Farm Partner'.
 
 **Đối chiếu code (Claude Code điền):**
 - [x] File/route/màn hình liên quan:
-  - BE: `app/Models/Customer.php:84-87 isFarmPartner()` (yêu cầu `role='farm_partner'` **VÀ** `farm_partner_status='approved'`; `'requested'/'suspended'/'none'` → false); `EnsureFarmPartner.php:81-86` → 403 với message **khớp chính xác** `'Bạn không có quyền truy cập chức năng Farm Partner'`.
-  - FE: cùng guard `layout.tsx:48-54` — KH-REQ có `is_farm_partner=false` nên bị redirect về `/farm/register`.
-- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Khớp ở backend (🟢)** — message trả về đúng từng chữ. *Sai lệch FE:* KH-REQ (đã đăng ký, chờ duyệt) bị đẩy lại `/farm/register` — có thể gây bối rối ("đã đăng ký rồi sao lại thấy form đăng ký"). FE không phân biệt trạng thái `requested` vs chưa đăng ký để hiện thông báo "đang chờ duyệt".
-- [x] Test coverage: **Thiếu** test riêng cho `farm_partner_status='requested'`. Test hiện có chỉ cover `role='customer'` (:109) và `role=farm_partner` **đã approved nhưng thiếu farm** (:123) — chưa cover nhánh status chưa duyệt.
+  - BE: `app/Models/Customer.php:84-87 isFarmPartner()` (yêu cầu `role='farm_partner'` **VÀ** `farm_partner_status='approved'`; `'requested'/'suspended'/'none'` → false); `EnsureFarmPartner.php` → 403 message **giữ nguyên chính xác** `'Bạn không có quyền truy cập chức năng Farm Partner'` + **B8:** thêm `code:FARM_PARTNER_REQUIRED`. **B8:** `ZaloApiController::authenticate` trả thêm `data.user.farm_partner_status` (thô) để FE phân biệt trạng thái.
+  - FE: guard `layout.tsx` — **B8 đổi:** KH-REQ (`farm_partner_status='requested'`) nay thấy màn **"Đang chờ duyệt"** (`FarmAccessNotice` variant `requested`, đọc `farmPartnerStatusState`), KHÔNG đẩy lại form đăng ký.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **✅ ĐÃ KHỚP (🟢) sau B8.** Backend message vẫn đúng từng chữ (hợp đồng giữ nguyên). FE phân biệt `requested` vs chưa đăng ký: `requested` → "Đang chờ duyệt" (không có form), `none`/khách → "Khu vực dành cho đối tác farm" (có nút đăng ký). Discriminator `code:FARM_PARTNER_REQUIRED` (cùng code cho cả requested lẫn none — FE dùng `farm_partner_status` để chia màn).
+- [x] Test coverage: **B8 thêm** `test_requested_farm_partner_gets_403_distinguishable` (FarmHubTest — assert `code:FARM_PARTNER_REQUIRED` + message nguyên văn, phân biệt với suspended) + `test_authenticate_returns_farm_partner_status` (AuthenticateTest — `data.user.farm_partner_status='requested'`, `is_farm_partner=false`). FE: checklist sandbox (set `requested` → mở `/farm` thấy "Đang chờ duyệt").
 
 ---
 
@@ -73,22 +73,19 @@ Vào được Kho & Đơn; KHÔNG vào/không thấy mục payout.
 ---
 
 ## ROLE-05
-- **Vai trò:** Farm Owner | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+- **Vai trò:** Farm Owner | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** 🟢 Đã sửa (B8)
 
 **Ngữ cảnh & các bước:**
 Dùng tài khoản SUSPEND-A (farm bị tạm dừng). 1) Thử vào Hub.
 
 **Kết quả mong đợi:**
-Bị chặn: tài khoản chưa được gán farm / farm đã bị vô hiệu hoá.
+Bị chặn với 1 message "tạm dừng" thống nhất: **"Farm của bạn đang tạm dừng, vui lòng liên hệ admin"** (áp cho cả farm `is_active=false` lẫn `farm_partner_status='suspended'`).
 
 **Đối chiếu code (Claude Code điền):**
 - [x] File/route/màn hình liên quan:
-  - BE: `EnsureFarmPartner.php:94-103` — `Farm::active()->find($customer->farm_id)`; `scopeActive` yêu cầu `is_active=true` AND `approved_at NOT NULL`. Farm bị vô hiệu hoá (is_active=false) → `null` → 403 `'Tài khoản farm partner chưa được gán farm hoặc farm đã bị vô hiệu hoá'`. Nếu admin suspend qua `farm_partner_status='suspended'` thì chặn sớm hơn ở `Customer.isFarmPartner():84-87` → 403 `'Bạn không có quyền truy cập chức năng Farm Partner'`.
-- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Khớp về kết quả "bị chặn" (🟢).** *Sai lệch chi tiết:* có **2 đường khác message** tuỳ cách admin tạm dừng:
-  - Vô hiệu hoá record Farm (`is_active=false`) → message **khớp đúng** kỳ vọng.
-  - Suspend partner (`farm_partner_status='suspended'`) → message khác ("không có quyền truy cập chức năng Farm Partner") nhưng vẫn chặn.
-  - Cần thống nhất quy ước admin dùng cách nào để message hiển thị nhất quán với UI.
-- [x] Test coverage: `test_farm_partner_without_farm_record_gets_403` (:123) cover nhánh "approved nhưng không có farm active" (gần với farm inactive). **Thiếu** test riêng cho farm còn record nhưng `is_active=false`, và cho `farm_partner_status='suspended'`.
+  - BE: `EnsureFarmPartner.php` — **B8 đổi:** KHÔNG dùng `Farm::active()` trực tiếp (vốn gộp inactive với no-record thành null), mà tra `Farm::find()` không scope rồi branch: row tồn tại nhưng `is_active=false` → 403 `code:FARM_SUSPENDED` + message "tạm dừng"; không có row HOẶC `approved_at=null` (onboarding) → 403 `code:FARM_NOT_ASSIGNED` + message "chưa được gán". Đường suspend qua `farm_partner_status='suspended'` (`Customer.isFarmPartner()` false) → **cùng** message "tạm dừng" + `code:FARM_SUSPENDED` (branch theo status). FE: màn `FarmAccessNotice` variant `suspended` + nút "Liên hệ admin".
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **✅ ĐÃ KHỚP (🟢) sau B8.** Cả 2 đường tạm dừng (`is_active=false` lẫn `farm_partner_status='suspended'`) nay → **1 message thống nhất** `'Farm của bạn đang tạm dừng, vui lòng liên hệ admin'` + `code:FARM_SUSPENDED`. *(Chốt PO:* farm `approved_at=null` — đang onboarding chưa duyệt lần đầu — vẫn là "chưa được gán" `FARM_NOT_ASSIGNED`, KHÔNG phải "tạm dừng"; chỉ `is_active=false` = từng active rồi tắt mới là suspended.)
+- [x] Test coverage: **B8 thêm** `test_suspended_farm_partner_gets_403_paused` (`farm_partner_status='suspended'` → FARM_SUSPENDED + message thống nhất) + `test_farm_partner_with_inactive_farm_gets_403_paused` (farm còn record `is_active=false` → FARM_SUSPENDED) + `test_farm_partner_without_farm_record_gets_403` (B8 bổ sung assert `code:FARM_NOT_ASSIGNED`). FE: checklist sandbox.
 
 ---
 

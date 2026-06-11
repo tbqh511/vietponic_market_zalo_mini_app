@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Header from "./header";
 import Footer from "./footer";
 import { Suspense, useEffect } from "react";
@@ -10,11 +10,15 @@ import StockInFab from "./farm/stock-in-fab";
 import FarmHubFab from "./farm/farm-hub-fab";
 import BackToShopFab from "./farm/back-to-shop-fab";
 import AccountDisabledNotice from "./account-disabled-notice";
+import FarmAccessNotice, {
+  FarmAccessVariant,
+} from "./farm/farm-access-notice";
 import { useAccountDisabledGate, useInitAuth, useRouteHandle } from "@/hooks";
 import { useAtom, useAtomValue } from "jotai";
 import {
   appSpaceState,
   customerProfileState,
+  farmPartnerStatusState,
   isFarmPartnerState,
 } from "@/state";
 
@@ -24,10 +28,10 @@ export default function Layout() {
 
   const [handle] = useRouteHandle();
   const location = useLocation();
-  const navigate = useNavigate();
   const [space, setSpace] = useAtom(appSpaceState);
   const profile = useAtomValue(customerProfileState);
   const isFarmPartner = useAtomValue(isFarmPartnerState);
+  const farmPartnerStatus = useAtomValue(farmPartnerStatusState);
 
   // Đồng bộ space theo route — để deep link (vd Zalo OA notification mở
   // /farm/orders) tự bật farm space, và rời farm thì về customer.
@@ -42,16 +46,26 @@ export default function Layout() {
     }
   }, [handle, location.pathname, space, setSpace]);
 
-  // Route guard: vào /farm* mà chưa phải farm partner → đẩy về /farm/register.
-  // /farm/register cho phép customer thường vào (để đăng ký). Chỉ redirect khi
-  // profile đã load (!== null) để tránh đá nhầm trong lúc auth chưa xong.
-  useEffect(() => {
-    const onFarmRoute = location.pathname.startsWith("/farm");
-    const isRegister = location.pathname.startsWith("/farm/register");
-    if (onFarmRoute && !isRegister && profile !== null && !isFarmPartner) {
-      navigate("/farm/register", { replace: true });
-    }
-  }, [location.pathname, profile, isFarmPartner, navigate]);
+  // Route guard (ROLE-01/02/05): khách KHÔNG phải farm partner đã duyệt mở /farm*
+  // → hiện màn thông báo "bị chặn" thay vì âm thầm redirect về /farm/register
+  // (hành vi cũ gây bối rối, nhất là cho người đã đăng ký đang chờ duyệt).
+  //   - /farm/register vẫn vào được (isRegister short-circuit) để nút "Đăng ký
+  //     đối tác" trên màn thông báo hoạt động; register.tsx tự bounce partner
+  //     đã duyệt về /farm nên không loop.
+  //   - Chỉ chặn khi profile đã load (!== null) để tránh nháy màn lúc auth chưa
+  //     xong (cold start hiện skeleton, không hiện màn chặn).
+  // Variant chọn theo farm_partner_status: 'suspended' → màn tạm dừng;
+  // 'requested' → "đang chờ duyệt"; còn lại (none/null/customer) → mời đăng ký.
+  const onFarmRoute = location.pathname.startsWith("/farm");
+  const isRegister = location.pathname.startsWith("/farm/register");
+  const showFarmNotice =
+    onFarmRoute && !isRegister && profile !== null && !isFarmPartner;
+  const farmNoticeVariant: FarmAccessVariant =
+    farmPartnerStatus === "suspended"
+      ? "suspended"
+      : farmPartnerStatus === "requested"
+        ? "requested"
+        : "none";
 
   return (
     <div className="w-screen h-screen flex flex-col bg-section text-foreground">
@@ -59,6 +73,11 @@ export default function Layout() {
       {/* Banner (customer space) / màn chặn toàn trang (farm space) khi tài khoản
           bị vô hiệu hoá. Component tự chọn dạng theo route. */}
       {accountDisabled && <AccountDisabledNotice />}
+      {/* Màn chặn farm (ROLE-01/02/05) — overlay khi non-partner mở /farm*.
+          Đặt sau AccountDisabledNotice: nếu tài khoản bị vô hiệu hoá thì màn đó
+          ưu tiên (cùng z-[60], render sau sẽ đè — nhưng accountDisabled hiếm khi
+          trùng non-partner). */}
+      {showFarmNotice && <FarmAccessNotice variant={farmNoticeVariant} />}
       <div className="flex-1 overflow-y-auto bg-background">
         <Suspense fallback={<PageSkeleton />}>
           <Outlet />

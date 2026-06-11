@@ -10,17 +10,17 @@ Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 - **AUTH-05** — ⚪ Chưa kiểm tra — Khách — Nâng cao — ✅ audit
 
 ## Phân quyền (6 case) — `docs/use-cases/role.md`
-- **ROLE-01** — ⚪ Chưa kiểm tra — Khách — Cơ bản — ✅ audit
-- **ROLE-02** — ⚪ Chưa kiểm tra — Khách — Cơ bản — ✅ audit
+- **ROLE-01** — 🟢 Đã sửa (B8 — thay silent-redirect bằng màn "Khu vực dành cho đối tác farm" + nút đăng ký) — Khách — Cơ bản — ✅ audit
+- **ROLE-02** — 🟢 Đã sửa (B8 — phân biệt `requested` → màn "Đang chờ duyệt"; authenticate trả `farm_partner_status`) — Khách — Cơ bản — ✅ audit
 - **ROLE-03** — ⚪ Chưa kiểm tra — Farm Owner — Cơ bản — ✅ audit
 - **ROLE-04** — 🟢 Đã sửa (B7) — Farm Staff — Cơ bản — ✅ audit
-- **ROLE-05** — ⚪ Chưa kiểm tra — Farm Owner — Nâng cao — ✅ audit
+- **ROLE-05** — 🟢 Đã sửa (B8 — 1 message "tạm dừng" thống nhất cho is_active=false + suspended, code FARM_SUSPENDED) — Farm Owner — Nâng cao — ✅ audit
 - **ROLE-06** — ⚪ Chưa kiểm tra — Farm Owner — Nâng cao — ✅ audit
 
 ## Sản phẩm (5 case) — `docs/use-cases/prod.md`
-- **PROD-01** — ⚪ Chưa kiểm tra — Admin — Cơ bản — ✅ audit
-- **PROD-02** — 🔴 Có lỗi — Admin — Cơ bản — ✅ audit
-- **PROD-03** — ⚪ Chưa kiểm tra — Admin — Cơ bản — ✅ audit
+- **PROD-01** — 🟢 Đã sửa (B3 — lockForUpdate id race-safe + required danh mục/đơn vị/ảnh + flash VN) — Admin — Cơ bản — ✅ fixed
+- **PROD-02** — 🟢 Đã sửa (B3 — `lang/vi/validation.php` + attributes → "tên sản phẩm là bắt buộc") — Admin — Cơ bản — ✅ fixed
+- **PROD-03** — 🟢 Đã sửa (B3 — message ảnh tiếng Việt + try/catch processImage không-500) — Admin — Cơ bản — ✅ fixed
 - **PROD-04** — ⚪ Chưa kiểm tra — Admin — Cơ bản — ✅ audit
 - **PROD-05** — ⚪ Chưa kiểm tra — Khách — Cơ bản — ✅ audit
 
@@ -37,14 +37,14 @@ Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 - **ORDPRO-01** — ⚪ Chưa kiểm tra — Khách — Cơ bản — ✅ audit
 - **ORDPRO-02** — ⚪ Chưa kiểm tra — Admin — Cơ bản — ✅ audit
 - **ORDPRO-03** — ⚪ Chưa kiểm tra — Admin — Cơ bản — ✅ audit
-- **ORDPRO-04** — 🟡 Thiếu test guard (phát hiện khi audit) — Admin — Cơ bản — ✅ audit
-- **ORDPRO-05** — 🟡 Thiếu test guard (phát hiện khi audit) — Admin — Cơ bản — ✅ audit
+- **ORDPRO-04** — 🟢 Đã sửa (B4 — test guard chặn lùi 422 + message: admin web `AdminWebOrderUpdateGuardTest` + API `UpdateOrderStatusTest`) — Admin — Cơ bản — ✅ fixed
+- **ORDPRO-05** — 🟢 Đã sửa (B4 — test chặn huỷ đơn delivered 422 + message: admin web/API/khách) — Admin — Cơ bản — ✅ fixed
 - **ORDPRO-06** — ⚪ Chưa kiểm tra — Khách — Cơ bản — ✅ audit
 - **ORDPRO-07** — 🟢 Đạt (phủ test tốt) — Khách — Nâng cao — ✅ audit
 - **ORDPRO-08** — ✅ B6 (kho/refund_status) + ✅ B5 (assert COD không gọi refund API) — 🟢 Đạt — Khách — Cơ bản — ✅ audit
 - **ORDPRO-09** — ✅ B5 — 🟢 nhãn ZaloPay phản ánh refund_status thật + test nhánh ZALOPAY/job — Khách — Nâng cao — ✅ audit
 - **ORDPRO-10** — ✅ B5 — 🟢 nhãn pending_manual theo payment_method (MoMo ~24h / Bank 2–7 ngày) + test MOMO/BANK — Khách — Nâng cao — ✅ audit
-- **ORDPRO-11** — 🟡 Validate chỉ ở FE (phát hiện khi audit) — Khách — Cơ bản — ✅ audit
+- **ORDPRO-11** — 🟢 Đã sửa (B4 — thêm rule BE `required_if:reason_code,other|min:5` + test `CustomerCancelGuardTest`) — Khách — Cơ bản — ✅ fixed
 
 ## Đặt hàng & TT (16 case) — `docs/use-cases/order.md`
 - **ORDER-01** — 🟢 Đạt — Khách — Cơ bản — ✅ audit

@@ -308,6 +308,11 @@ export interface CustomerProfile {
   profile: string | null;
   mobile: string | null;
   is_farm_partner: boolean;
+  // Trạng thái đối tác farm thô từ backend (/authenticate). Dùng để phân biệt
+  // màn chặn ở guard Farm: 'requested' → "Đang chờ duyệt", 'suspended' → "tạm
+  // dừng", còn lại → "khu vực dành cho đối tác". Optional vì profile cached
+  // cold-start (trước B8) chưa có field — re-auth lúc mount (useInitAuth) backfill.
+  farm_partner_status?: "approved" | "requested" | "suspended" | "none";
 }
 
 // Tồn kho sản phẩm (dùng trong farm dashboard)

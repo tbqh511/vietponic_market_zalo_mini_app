@@ -54,8 +54,8 @@ Mỗi bước lưu được, không lỗi.
 
 ---
 
-## ORDPRO-04
-- **Vai trò:** Admin | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+## ORDPRO-04 ✅ (B4)
+- **Vai trò:** Admin | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** 🟢 Đạt (B4 — test guard chặn lùi 422 + message, admin web & API)
 
 **Ngữ cảnh & các bước:**
 Trên admin web. 1) Chọn đơn đang 'Đang giao'. 2) Thử đổi NGƯỢC về 'Chờ xác nhận'.
@@ -68,12 +68,12 @@ Bị chặn, báo 'Không thể chuyển đơn từ ... về ...'.
   - BE admin web: `ZaloOrderController@update:150-159` — nếu `previousStatus ∈ {delivering,delivered}` và `newStatus ∈ {pending,confirmed,preparing}` → `redirect()->back()->withErrors(['status' => "Không thể chuyển đơn từ \"{$previousStatus}\" về \"{$data['status']}\"."])`.
   - BE API: `ZaloApiController@updateStatus:535-543` — cùng guard, trả `422 {error:true, message:"Không thể chuyển đơn từ \"…\" về \"…\"."}`.
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Khớp (🟢).** Đơn `delivering` → đổi về `pending`/`confirmed`/`preparing` đều bị chặn với message đúng mẫu kỳ vọng. *Lưu ý:* guard chỉ chặn về 3 status trước; **không chặn** delivering↔delivered hay delivered→delivering (chỉnh sửa cùng/ kế cận vẫn cho) — nằm ngoài phạm vi case này.
-- [x] Test coverage: **🔴 Thiếu** — không có test nào assert 422 + chuỗi "Không thể chuyển đơn từ" (cả admin web lẫn API). Cần thêm khi sửa.
+- [x] Test coverage: **✅ Đã bổ sung (B4 — 2026-06-11).** Guard không đổi (đã có sẵn), chỉ phủ test: (a) **API admin** — `UpdateOrderStatusTest::test_blocks_backward_transition` nay assert thêm message `Không thể chuyển đơn từ "delivering" về "pending".` (trước chỉ assert 422); (b) **Admin web** — `AdminWebOrderUpdateGuardTest::test_blocks_backward_transition` assert `assertSessionHasErrors(['status' => 'Không thể chuyển đơn từ "delivering" về "pending".'])` + đơn vẫn `delivering`; `test_forward_transition_succeeds` (confirmed→preparing) chống over-block. Cả 2 đăng ký suite `Zalo`.
 
 ---
 
-## ORDPRO-05
-- **Vai trò:** Admin | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+## ORDPRO-05 ✅ (B4)
+- **Vai trò:** Admin | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** 🟢 Đạt (B4 — test chặn huỷ đơn delivered 422 + message, admin web/API/khách)
 
 **Ngữ cảnh & các bước:**
 Trên admin web. 1) Chọn đơn 'Đã giao'. 2) Thử huỷ.
@@ -87,7 +87,7 @@ Bị chặn: 'Không thể hủy đơn hàng đã giao thành công'.
   - BE API: `ZaloApiController@updateStatus:521-527` → `422 {message:'Không thể hủy đơn hàng đã giao thành công (status: delivered). Liên hệ kế toán để xử lý hoàn tiền thủ công nếu cần.'}`.
   - BE khách: `cancelByCustomer:643-648` — khách chỉ huỷ được khi status ∈ {pending,confirmed,preparing}; `delivered` → 422 'Đơn hàng đang ở trạng thái "delivered" — không thể huỷ…'.
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Khớp (🟢).** Đơn delivered bị chặn huỷ ở cả admin web/API/khách. *Sai lệch nhỏ về chuỗi:* message admin/API có thêm đuôi "(status: delivered). Liên hệ kế toán…" so với chuỗi rút gọn trong use case — vẫn chứa đúng cụm 'Không thể hủy đơn hàng đã giao thành công'.
-- [x] Test coverage: **🔴 Thiếu** — không có test assert 422 + 'Không thể hủy đơn hàng đã giao thành công' (admin lẫn khách). Cần thêm khi sửa.
+- [x] Test coverage: **✅ Đã bổ sung (B4 — 2026-06-11).** Guard không đổi, chỉ phủ test trên cả 3 đường: (a) **API admin** — `UpdateOrderStatusTest::test_blocks_cancelling_delivered_order` nay assert thêm cụm `Không thể hủy đơn hàng đã giao thành công`; (b) **Admin web** — `AdminWebOrderUpdateGuardTest::test_blocks_cancelling_delivered` assert `assertSessionHasErrors('status')` + chứa cụm trên + đơn vẫn `delivered`; (c) **Khách** — `CustomerCancelGuardTest::test_customer_cannot_cancel_delivered_order` (`POST /orders/{id}/cancel` đơn delivered → 422, message chứa "delivered"/"không thể huỷ", trạng thái không đổi).
 
 ---
 
@@ -182,8 +182,8 @@ Báo hoàn tiền thủ công (MoMo ~24h / Bank 2–7 ngày làm việc); trạn
 
 ---
 
-## ORDPRO-11
-- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+## ORDPRO-11 ✅ (B4)
+- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** 🟢 Đạt (B4 — thêm rule BE `required_if:reason_code,other|min:5` + test)
 
 **Ngữ cảnh & các bước:**
 Dùng KH-1. 1) Hủy đơn, chọn 'Lý do khác'. 2) Bỏ trống hoặc nhập dưới 5 ký tự, bấm xác nhận.
@@ -194,8 +194,8 @@ Bị chặn, yêu cầu nhập lý do tối thiểu 5 ký tự.
 **Đối chiếu code (Claude Code điền):**
 - [x] File/route/màn hình liên quan:
   - FE: `cancel-modal.tsx:52-59 handleSubmit` — `isOther = reasonCode==='other'`; nếu `isOther && otherText.trim().length < 5` → `toast.error('Vui lòng nhập lý do (tối thiểu 5 ký tự).')` và **return (không gọi API)**. Textarea placeholder nhắc "(tối thiểu 5 ký tự)".
-  - BE: `cancelByCustomer:620-623` validate `reason: nullable|string|max:500` — **KHÔNG có rule min:5**.
-- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **🟡 Khớp ở FE, hở ở BE.** Trên UI khách: chọn "Lý do khác" + để trống/<5 ký tự → bị chặn đúng với thông báo yêu cầu ≥5 ký tự (đúng kỳ vọng). *Sai lệch:* ràng buộc **chỉ ở client** — gọi thẳng `POST /orders/{id}/cancel {reason_code:'other', reason:'a'}` qua API vẫn huỷ thành công (BE không validate min-5). Nếu coi đây là quy tắc nghiệp vụ thì cần thêm rule BE (vd `reason: required_if:reason_code,other|min:5`).
-- [x] Test coverage: **🔴 Thiếu** — không test FE (chặn <5 ký tự) lẫn BE (hiện không enforce nên cũng chưa có test khẳng định hành vi). Cần thêm khi chốt yêu cầu.
+  - BE: `cancelByCustomer:635-642` validate `reason: required_if:reason_code,other|min:5|max:500` — **đã thêm rule ở B4** (trước là `nullable|string|max:500`, không có min:5).
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **✅ Đã sửa (B4 — 2026-06-11).** Khớp cả FE lẫn BE. BE nay enforce: khi `reason_code='other'` thì `reason` BẮT BUỘC và ≥5 ký tự → gọi thẳng `POST /orders/{id}/cancel {reason_code:'other', reason:'a'}` (hoặc thiếu `reason`) qua API → **422**, đơn KHÔNG bị huỷ. Lý do preset (`reason_code` khác `'other'`, không kèm `reason`) vẫn huỷ bình thường — `required_if` không kích hoạt, `min`/`max` bỏ qua giá trị absent/null (không over-block). FE `cancel-modal.tsx` giữ nguyên (chặn sớm <5 ký tự cho UX; BE là chốt cuối).
+- [x] Test coverage: **✅ Đã bổ sung (B4).** `CustomerCancelGuardTest`: `test_other_reason_under_5_chars_rejected` (`reason:'a'` → 422 + `assertJsonValidationErrors('reason')`, đơn vẫn `pending`), `test_other_reason_missing_rejected` (`reason_code:'other'` không `reason` → 422), `test_other_reason_valid_passes` (`reason` đủ dài → 200 cancelled), `test_preset_reason_without_text_passes` (`reason_code:'changed_mind'` không `reason` → 200, regression chống over-block). Regression `StockReleaseOnCancelTest` (dùng `reason_code:'customer_other'` không `reason`) vẫn xanh. FE chưa có hạ tầng test → giữ chặn sớm review tay.
 
 ---
