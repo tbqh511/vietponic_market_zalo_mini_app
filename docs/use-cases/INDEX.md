@@ -67,7 +67,7 @@ Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 ## Giới thiệu/CTV (5 case) — `docs/use-cases/aff.md`
 - **AFF-01** — 🟢 Đạt (phủ test tốt) — Khách — Cơ bản — ✅ audit
 - **AFF-02** — 🟡 Rủi ro Zalo giữ query ?ref= + thiếu test FE (phát hiện khi audit) — Khách — Nâng cao — ✅ audit
-- **AFF-03** — 🔴 Lệch nghiệp vụ: hoa hồng theo thanh toán online, đơn COD không sinh hoa hồng (phát hiện khi audit) — Khách — Nâng cao — ✅ audit
+- **AFF-03** — 🟢 Đã sửa (B2 — hoa hồng theo đơn GIAO THÀNH CÔNG/delivered, áp dụng cả COD, qua event OrderDelivered) — Khách — Nâng cao — ✅ fixed
 - **AFF-04** — 🟡 Thiếu test referrals/updateBank + updateBank "" ghi đè (phát hiện khi audit) — Khách — Cơ bản — ✅ audit
 - **AFF-05** — 🟢 Đạt (thiếu test admin-web) — Admin — Cơ bản — ✅ audit
 
