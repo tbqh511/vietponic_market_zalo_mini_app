@@ -90,8 +90,8 @@ SP chuyển sang 'Hết hàng' sau khi đặt.
 
 ---
 
-## STOCK-06
-- **Vai trò:** Khách | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+## STOCK-06 ✅ (B6)
+- **Vai trò:** Khách | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** 🟢 Đạt (đã bổ sung test B6)
 
 **Ngữ cảnh & các bước:**
 Cần Khách + Admin. 1) KH-1 ghi tồn kho, đặt 1 đơn (trừ kho). 2) Admin huỷ đơn đó. 3) Xem lại tồn kho.
@@ -103,7 +103,11 @@ Tồn kho được HOÀN LẠI đúng số đã trừ.
 - [x] File/route/màn hình liên quan:
   - BE: `StockService::releaseReservation:238-270` — quét `zalo_order_items` có `farm_stock_batch_id`, giảm `batch.quantity_sold -= item.quantity` (`lockForUpdate`), và **revert `status` depleted→active** để bán tiếp; SQLite bù `quantity_remaining` tay. Gọi từ: admin `PATCH orders/{id}/status` (`ZaloApiController:571`), customer cancel `orders/{id}/cancel` (`:684`), và VTP webhook cancel.
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Khớp (🟢) ở code.** Huỷ đơn → hoàn đúng số đã trừ vào từng batch nguồn (theo `farm_stock_batch_id` đã ghi lúc reserve), không xoá row order_item (giữ audit), revert lô đã depleted về active. *Lưu ý:* release bọc try/catch + chỉ log nếu lỗi (không chặn việc huỷ đơn) — nếu releaseReservation văng lỗi giữa chừng, đơn vẫn cancelled nhưng kho có thể hoàn thiếu (không retry).
-- [x] Test coverage: **❌ Thiếu coverage thực (🔴 cho test).** `test_status_504_..._releases_stock` (ViettelPostWebhookTest:202) **CỐ TÌNH bỏ** assert hoàn kho (comment `:204-206`: phần kiểm tra stock đã bị remove khi chuyển sang FEFO batch model) — chỉ check `status/cancelled_by/reason`. Không có test nào assert `quantity_sold`/`quantity_remaining` được hoàn đúng và `status` active phục hồi sau cancel. Cần test: tạo đơn → reserve → cancel (admin & customer) → assert tồn về đúng số ban đầu + lô depleted→active.
+- [x] Test coverage: **✅ Đã bổ sung (B6 — 2026-06-11).** Kết luận điều tra: assert bị bỏ ở `ViettelPostWebhookTest:204-206` là do **lỗ hổng fixture** (setup cũ chạm `stock_reserved`/`stock_movements` đã gỡ khi sang FEFO; order không có item gắn batch → release no-op), **KHÔNG phải code bug**. Đã phủ:
+  - `tests/Feature/StockReleaseOnCancelTest.php` (mới): `test_customer_cancel_cod_restores_stock_per_item` (sold→0, remaining hoàn đủ), `test_admin_cancel_restores_stock`, `test_cancel_reverts_depleted_batch_to_active` (depleted→active), `test_cancel_multi_batch_order_restores_each_batch` (mỗi lô hoàn đúng phần của mình), `test_customer_cancel_cod_sets_refund_status_not_required_and_restores_stock` (ORDPRO-08).
+  - `ViettelPostWebhookTest::test_status_504_returns_cancels_order_and_releases_stock`: **khôi phục assert** — thêm fixture batch + reserve, assert sau 504 cancel kho hoàn đủ + lô depleted→active.
+  - `CancelUnpaidOrderTest::test_auto_cancel_reverts_depleted_batch_to_active`: nhánh job B1 (auto-cancel đơn online timeout) cũng hoàn kho + depleted→active. (Nhánh job hoàn kho cơ bản đã có sẵn ở `test_cancels_unpaid_online_order_and_releases_stock`.)
+  - Toàn bộ xanh: StockReleaseOnCancelTest (5), CancelUnpaidOrderTest (7), ViettelPostWebhookTest (13), FarmHubTest (29).
 
 ---
 

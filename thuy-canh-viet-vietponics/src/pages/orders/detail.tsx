@@ -11,13 +11,45 @@ import CancelOrderModal from "./cancel-modal";
 
 const CANCELLABLE_STATUSES: Order["status"][] = ["pending", "confirmed", "preparing"];
 
-const REFUND_STATUS_LABEL: Record<NonNullable<Order["refundStatus"]>, { text: string; tone: "info" | "ok" | "warn" }> = {
-  not_required: { text: "Không phát sinh hoàn tiền", tone: "info" },
-  pending_manual: { text: "Chờ hoàn tiền — kế toán đang xử lý (2–7 ngày)", tone: "warn" },
-  processing: { text: "Đang hoàn tiền về ví thanh toán...", tone: "warn" },
-  refunded: { text: "Đã hoàn tiền ✓", tone: "ok" },
-  failed: { text: "Hoàn tiền thất bại — bộ phận hỗ trợ sẽ liên hệ bạn", tone: "warn" },
-};
+/**
+ * Nhãn hoàn tiền SAU khi huỷ — phản ánh refund_status THẬT, key theo cả
+ * payment_method (đồng bộ RefundService backend). Trả null khi không cần hiện.
+ *
+ *  not_required (COD/chưa trả) → ẩn dòng hoàn tiền.
+ *  processing                  → ZaloPay tự hoàn (5–15′); method khác: chung.
+ *  pending_manual              → SLA theo method (MoMo ~24h / Bank 2–7 ngày);
+ *                                ZaloPay (auto-refund fail) / method lạ → xử lý thủ công.
+ *  refunded / failed           → trạng thái cuối.
+ */
+function refundStatusInfo(order: Order): { text: string; tone: "info" | "ok" | "warn" } | null {
+  const status = order.refundStatus;
+  if (!status || status === "not_required") return null;
+
+  const method = (order.paymentMethod ?? "").toUpperCase();
+
+  if (status === "refunded") return { text: "Đã hoàn tiền ✓", tone: "ok" };
+  if (status === "failed") {
+    return { text: "Hoàn tiền thất bại — bộ phận hỗ trợ sẽ liên hệ bạn.", tone: "warn" };
+  }
+  if (status === "processing") {
+    if (method.startsWith("ZALOPAY")) {
+      return { text: "Đang hoàn tiền về ví ZaloPay (trong 5–15 phút).", tone: "warn" };
+    }
+    return { text: "Đang hoàn tiền về ví thanh toán…", tone: "warn" };
+  }
+  // pending_manual
+  if (method.startsWith("MOMO")) {
+    return { text: "Chờ hoàn tiền về ví MoMo (~24 giờ).", tone: "warn" };
+  }
+  if (method.startsWith("BANK")) {
+    return { text: "Chờ hoàn tiền về tài khoản ngân hàng (2–7 ngày làm việc).", tone: "warn" };
+  }
+  // ZaloPay auto-refund thất bại → pending_manual, hoặc method không xác định.
+  return {
+    text: "Hoàn tiền tự động chưa thành công — đang xử lý thủ công, vui lòng liên hệ hỗ trợ.",
+    tone: "warn",
+  };
+}
 
 function OrderDetailPage() {
   const { state } = useLocation();
@@ -47,7 +79,7 @@ function OrderDetailPage() {
   }, [initialOrder?.id]);
 
   const canCancel = CANCELLABLE_STATUSES.includes(order.status);
-  const refundInfo = order.refundStatus ? REFUND_STATUS_LABEL[order.refundStatus] : null;
+  const refundInfo = refundStatusInfo(order);
 
   return (
     <div className="w-full p-4 space-y-2 pb-24">

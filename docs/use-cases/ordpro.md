@@ -128,8 +128,8 @@ Có mã vận đơn VTP / thông tin theo dõi được tạo.
 
 ---
 
-## ORDPRO-08
-- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+## ORDPRO-08 ✅ (B6 kho + B5 refund)
+- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** 🟢 Đạt (B6: kho + refund_status; B5: assert COD không gọi refund API)
 
 **Ngữ cảnh & các bước:**
 Dùng KH-1. 1) Đặt 1 đơn COD (chưa giao). 2) Vào đơn, bấm Hủy, chọn lý do.
@@ -142,12 +142,12 @@ Báo 'Đơn chưa thanh toán, không phát sinh hoàn tiền'; đơn chuyển '
   - FE: `src/pages/orders/cancel-modal.tsx` — chọn lý do → `useCancelOrder` (hooks.ts:1109) → `POST /orders/{id}/cancel {reason_code, reason}`. `refundExpectationMessage:20-36`: COD/chưa trả → **"Đơn hàng chưa thanh toán, không phát sinh hoàn tiền."** `detail.tsx:14-20 REFUND_STATUS_LABEL.not_required`="Không phát sinh hoàn tiền".
   - BE: `cancelByCustomer:618-723` (transaction set `status='cancelled', cancelled_by='customer'`) → sau commit: `stockService->releaseReservation` (:684) + `refundService->processCancellationRefund(order,'customer')`. `RefundService:32-39`: COD hoặc chưa `payment_status='success'` → `refund_status='not_required'`.
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Khớp (🟢) cả 3 vế.** (1) Message FE đúng "Đơn hàng chưa thanh toán, không phát sinh hoàn tiền."; (2) status → cancelled; (3) `releaseReservation` hoàn batch (revert quantity_sold + depleted→active). *Lưu ý:* khớp với phát hiện STOCK-06 — code hoàn kho đúng nhưng **không có assertion test**.
-- [x] Test coverage: **🔴 Thiếu chốt.** Có `ZaloNotificationTest:120 test_customer_cancel_dispatches_cancelled` và `CommissionClawbackOnCancelTest:49` (chỉ assert commission) nhưng **KHÔNG test nào assert `refund_status='not_required'` lẫn tồn kho được hoàn sau huỷ khách** (xem STOCK-06). Cần thêm khi sửa.
+- [x] Test coverage: **✅ Đã bổ sung (B6 — 2026-06-11).** `StockReleaseOnCancelTest::test_customer_cancel_cod_sets_refund_status_not_required_and_restores_stock` khẳng định **cả 2 vế BE**: `refund_status='not_required'` (COD chưa trả) **và** kho được hoàn (sold→0, remaining hoàn đủ). Phần kho dùng chung với STOCK-06 (xem). **✅ B5 bổ sung (2026-06-11):** `RefundServiceTest::test_cod_unpaid_sets_not_required_without_api_call` + `test_cod_method_even_if_paid_is_not_required` khẳng định COD → `not_required` **và KHÔNG gọi `ZaloPayRefundClient::requestRefund`** (mock `shouldNotReceive`). Nhãn FE `not_required` → ẩn dòng hoàn tiền (xem ORDPRO-09).
 
 ---
 
-## ORDPRO-09
-- **Vai trò:** Khách | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+## ORDPRO-09 ✅ (B5)
+- **Vai trò:** Khách | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** 🟢 Đạt (B5 — nhãn phản ánh refund_status thật + test nhánh ZALOPAY/job)
 
 **Ngữ cảnh & các bước:**
 Dùng KH-1. 1) Đặt đơn + thanh toán ZaloPay (Sandbox) thành công. 2) Hủy đơn.
@@ -157,15 +157,15 @@ Báo tiền hoàn về ví ZaloPay trong 5–15 phút; đơn 'Đã huỷ', hiệ
 
 **Đối chiếu code (Claude Code điền):**
 - [x] File/route/màn hình liên quan:
-  - FE: `cancel-modal.tsx:26-28` — ZALOPAY (đã trả) → **"Tiền sẽ được hoàn về ví ZaloPay của bạn trong 5–15 phút."**; `detail.tsx:14-20 REFUND_STATUS_LABEL` (`processing`="Đang hoàn tiền về ví thanh toán...", `refunded`="Đã hoàn tiền ✓").
+  - FE: `cancel-modal.tsx:26-28` (modal TRƯỚC-huỷ) — ZALOPAY → **"…hoàn về ví ZaloPay trong 5–15 phút."** (giữ nguyên — chốt PO); `detail.tsx refundStatusInfo()` (nhãn SAU-huỷ) key theo CẢ `refundStatus` + `paymentMethod`.
   - BE: `RefundService:46-77` (ZALOPAY) → `ZaloPayRefundClient->requestRefund`: `refunded`→`refund_status='refunded'+refunded_at`; `processing`→`refund_status='processing'` + dispatch `CheckRefundStatus` (delay 60s, poll); fail→fallback `pending_manual`. `CheckRefundStatus` job + `confirmManualRefund`.
-- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **🟡 Khớp về luồng, lệch nhẹ thông điệp.** Đơn → cancelled, refund tự động qua ZaloPay API, hiện trạng thái hoàn tiền (processing/refunded) đúng kỳ vọng. *Sai lệch:* (1) message "5–15 phút" là **chuỗi tĩnh ở modal trước khi huỷ**, không phản ánh kết quả thật (API có thể trả `refunded` ngay hoặc `pending_manual` nếu fail); (2) nếu refund API fail → rơi `pending_manual` nhưng label `detail.tsx` lại hiện "Chờ hoàn tiền — kế toán đang xử lý (2–7 ngày)" (mâu thuẫn với kỳ vọng ZaloPay tự động) — đây là fallback hợp lý nhưng thông điệp ban đầu gây hiểu nhầm.
-- [x] Test coverage: **🔴 Thiếu** — không có test cho nhánh ZALOPAY của `RefundService` (refunded/processing/fallback), `CheckRefundStatus` job, hay `ZaloPayRefundClient`. Cần mock client + assert `refund_status`.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **✅ Đã sửa (B5 — 2026-06-11).** Logic BE đã đúng từ trước (set `refund_status` chính xác); sửa **nhãn FE sau-huỷ** ở `detail.tsx`: ZALOPAY `processing` → "Đang hoàn tiền về ví ZaloPay (trong 5–15 phút)"; ZALOPAY `pending_manual` (auto-refund **fail**) → **"Hoàn tiền tự động chưa thành công — đang xử lý thủ công, vui lòng liên hệ hỗ trợ"** (KHÔNG còn hiện "2–7 ngày" mâu thuẫn); `refunded` → "Đã hoàn tiền ✓". Modal trước-huỷ giữ nguyên (dự báo hợp lý, chốt PO).
+- [x] Test coverage: **✅ Đã bổ sung (B5).** `RefundServiceTest`: `test_zalopay_paid_refund_success_sets_refunded`, `test_zalopay_processing_dispatches_check_refund_job` (assert job dispatch), `test_zalopay_refund_failure_falls_back_to_pending_manual`. `CheckRefundStatusJobTest` (5): refunded / failed / re-dispatch / fallback manual / bail khi không còn `processing`. Mock `ZaloPayRefundClient` qua container. FE (không có hạ tầng test) → bảng map nhãn review tay + checklist sandbox.
 
 ---
 
-## ORDPRO-10
-- **Vai trò:** Khách | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+## ORDPRO-10 ✅ (B5)
+- **Vai trò:** Khách | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** 🟢 Đạt (B5 — nhãn pending_manual theo payment_method + test MOMO/BANK)
 
 **Ngữ cảnh & các bước:**
 Dùng KH-1. 1) Đặt + thanh toán MoMo hoặc Banking (Sandbox) thành công. 2) Hủy đơn.
@@ -175,10 +175,10 @@ Báo hoàn tiền thủ công (MoMo ~24h / Bank 2–7 ngày làm việc); trạn
 
 **Đối chiếu code (Claude Code điền):**
 - [x] File/route/màn hình liên quan:
-  - FE: `cancel-modal.tsx:29-33` — MoMo→**"…hoàn về ví MoMo trong vòng 24 giờ (kế toán xử lý thủ công)."**; Bank→**"…hoàn về tài khoản ngân hàng trong 2–7 ngày làm việc."**; `detail.tsx:16 REFUND_STATUS_LABEL.pending_manual`="Chờ hoàn tiền — kế toán đang xử lý (2–7 ngày)".
+  - FE: `cancel-modal.tsx:29-33` (modal trước-huỷ, giữ nguyên) — MoMo→"~24 giờ", Bank→"2–7 ngày làm việc"; `detail.tsx refundStatusInfo()` (nhãn sau-huỷ) nay key theo `payment_method`.
   - BE: `RefundService:79-88` — MOMO/BANK (đã trả) → `refund_status='pending_manual'` + `refund_amount=total` + `refund_method` + `refund_note`. Kế toán chốt qua `confirmManualRefund` (route `orders/{id}/refund/confirm-manual`, middleware admin).
-- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **🟡 Khớp luồng, lệch nhãn thời gian.** Đúng: đơn → cancelled, refund vào hàng đợi thủ công, trạng thái "Chờ hoàn tiền". *Sai lệch:* nhãn trạng thái sau-huỷ `detail.tsx` **luôn hiện "(2–7 ngày)"** cho cả MoMo lẫn Bank — mâu thuẫn với thông điệp modal MoMo "~24 giờ". Tức message-trước-huỷ phân biệt MoMo/Bank, nhưng nhãn-sau-huỷ gộp chung "2–7 ngày" → khách huỷ MoMo thấy 2 con số khác nhau. Cần thống nhất (truyền `payment_method` vào label hoặc bỏ con số cứng).
-- [x] Test coverage: **🔴 Thiếu** — không test nhánh MOMO/BANK của `RefundService` (assert `pending_manual` + `refund_amount/method/note`) lẫn `confirmManualRefund`. Cần thêm.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **✅ Đã sửa (B5 — 2026-06-11).** Nhãn sau-huỷ `detail.tsx` `pending_manual` nay **theo payment_method**: MoMo → "Chờ hoàn tiền về ví MoMo (~24 giờ)"; Bank → "Chờ hoàn tiền về tài khoản ngân hàng (2–7 ngày làm việc)" — khớp modal trước-huỷ, hết mâu thuẫn "2 con số khác nhau". (Logic BE đã đúng từ trước, không đổi.)
+- [x] Test coverage: **✅ Đã bổ sung (B5).** `RefundServiceTest::test_momo_paid_goes_to_pending_manual_without_api_call` + `test_bank_paid_goes_to_pending_manual_without_api_call`: khẳng định `pending_manual` + `refund_amount=total` + `refund_method` + `refund_note`, **và KHÔNG gọi** `ZaloPayRefundClient` (mock `shouldNotReceive`). `test_unknown_method_paid_goes_to_pending_manual` phủ method lạ. (`confirmManualRefund` của kế toán thuộc admin-flow — ngoài phạm vi B5.)
 
 ---
 

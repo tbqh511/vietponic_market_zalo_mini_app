@@ -30,7 +30,7 @@ Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 - **STOCK-03** — ⚪ Chưa kiểm tra — Khách — Cơ bản — ✅ audit
 - **STOCK-04** — ⚪ Chưa kiểm tra — Khách — Cơ bản — ✅ audit
 - **STOCK-05** — ⚪ Chưa kiểm tra — Khách — Nâng cao — ✅ audit
-- **STOCK-06** — 🟡 Thiếu test hoàn kho (phát hiện khi audit) — Khách — Nâng cao — ✅ audit
+- **STOCK-06** — ✅ B6 — 🟢 Đạt + đã bổ sung test hoàn kho — Khách — Nâng cao — ✅ audit
 - **STOCK-07** — ⚪ Chưa kiểm tra — Farm Owner — Nâng cao — ✅ audit
 
 ## Xử lý đơn (11 case) — `docs/use-cases/ordpro.md`
@@ -41,9 +41,9 @@ Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 - **ORDPRO-05** — 🟡 Thiếu test guard (phát hiện khi audit) — Admin — Cơ bản — ✅ audit
 - **ORDPRO-06** — ⚪ Chưa kiểm tra — Khách — Cơ bản — ✅ audit
 - **ORDPRO-07** — 🟢 Đạt (phủ test tốt) — Khách — Nâng cao — ✅ audit
-- **ORDPRO-08** — 🟡 Thiếu test hoàn kho/refund (phát hiện khi audit) — Khách — Cơ bản — ✅ audit
-- **ORDPRO-09** — 🟡 Lệch thông điệp + thiếu test (phát hiện khi audit) — Khách — Nâng cao — ✅ audit
-- **ORDPRO-10** — 🟡 Lệch nhãn thời gian + thiếu test (phát hiện khi audit) — Khách — Nâng cao — ✅ audit
+- **ORDPRO-08** — ✅ B6 (kho/refund_status) + ✅ B5 (assert COD không gọi refund API) — 🟢 Đạt — Khách — Cơ bản — ✅ audit
+- **ORDPRO-09** — ✅ B5 — 🟢 nhãn ZaloPay phản ánh refund_status thật + test nhánh ZALOPAY/job — Khách — Nâng cao — ✅ audit
+- **ORDPRO-10** — ✅ B5 — 🟢 nhãn pending_manual theo payment_method (MoMo ~24h / Bank 2–7 ngày) + test MOMO/BANK — Khách — Nâng cao — ✅ audit
 - **ORDPRO-11** — 🟡 Validate chỉ ở FE (phát hiện khi audit) — Khách — Cơ bản — ✅ audit
 
 ## Đặt hàng & TT (16 case) — `docs/use-cases/order.md`
