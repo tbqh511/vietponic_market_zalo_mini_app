@@ -986,12 +986,16 @@ export function useCheckout() {
         }, 1800);
       };
 
-      // COD/BANK sandbox không thực hiện giao dịch tiền thật → SDK không fire
-      // EventName.PaymentDone đồng bộ. Cleanup + navigate ngay sau khi link xong,
-      // không chờ event. Backend sẽ update payment_status qua webhook /notify
+      // CHỈ COD là luồng offline thật (thu tiền khi giao) → cleanup + navigate ngay,
+      // không chờ PaymentDone. Backend cập nhật trạng thái sau qua webhook /notify
       // hoặc job CheckPaymentStatus (poll lại bằng setTimeout refreshNewOrders).
+      //
+      // ORDER-04: BANK ĐÃ TÁCH khỏi luồng offline — đi tiếp nhánh PaymentDone như MoMo
+      // (chờ xác nhận trả tiền, KHÔNG báo "Đặt hàng thành công" ngay) để sẵn sàng
+      // production. BANK_SANDBOX không fire PaymentDone → rơi vào timeout 10s fallback
+      // ("Giao dịch đang xử lý") — đúng kỳ vọng.
       const codePrefix = selectedMethod.method?.toUpperCase() ?? "";
-      const isOfflineFlow = codePrefix.startsWith("COD") || codePrefix.startsWith("BANK");
+      const isOfflineFlow = codePrefix.startsWith("COD");
       if (isOfflineFlow) {
         toast.success("Đặt hàng thành công. Cảm ơn bạn đã mua hàng!", {
           icon: "🎉",

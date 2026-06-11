@@ -12,7 +12,7 @@ Chỉ liệt kê case **CÓ sai lệch** (🔴/🟡 hoặc 🟢 nhưng có sai l
 
 ### Nghiệp vụ lớn (đã hỏi & chốt)
 
-1. **AFF-03 — Hoa hồng CTV:** tính theo **đơn GIAO THÀNH CÔNG (gồm COD)**. → fire event mới khi `status→delivered` (áp cả COD), dời mốc ghi `RecordAffiliateCommission` sang đó; giữ clawback khi huỷ. *(thay vì "chỉ khi thanh toán online")*
+1. ~~**AFF-03 — Hoa hồng CTV:** tính theo **đơn GIAO THÀNH CÔNG (gồm COD)**~~ ✅ **(B2 done)** → event `OrderDelivered` fire khi `status→delivered` (API admin / admin web / webhook VTP), dời mốc ghi `RecordAffiliateCommission` sang đó; giữ clawback.
 2. **ORDER-06 — Kho đơn online chưa trả:** **Auto-cancel + hoàn kho sau timeout** — job tự huỷ đơn `pending` online & gọi `releaseReservation` sau ~15–20 phút chưa trả. **Không** đổi sang 2-phase reserve.
 3. **ORDER-04 — BANK:** **Tách BANK khỏi `isOfflineFlow` NGAY** (mở SDK, chờ `PaymentDone` như MoMo) để sẵn sàng production.
 4. **HUB-01 — Dashboard farm:** **Tách riêng 2 chỉ số** "đã đặt (hôm nay)" và "đã giao (hôm nay)" hiển thị song song; mỗi chỉ số tự nhất quán basis.
@@ -39,7 +39,7 @@ Chỉ liệt kê case **CÓ sai lệch** (🔴/🟡 hoặc 🟢 nhưng có sai l
 | **AUTH-01** | Lần đầu cấp quyền xong tên/ảnh chưa hiện ngay: `useInitAuth` chạy 1 lần lúc mount; `refreshPermissions` chỉ bump key, KHÔNG re-`getUserInfo` cũng KHÔNG re-`authenticate` → tên/ảnh thật chỉ ra ở lần mở thứ 2. | FE `src/hooks.ts` (`useInitAuth`, `useRequestInformation`, `refreshPermissions`); BE `ZaloApiController::authenticate` | Trung bình | vừa |
 | **PROD-02** | Báo lỗi "tên bắt buộc" ra **tiếng Anh** ("The name field is required.") do thiếu `lang/vi/validation.php` (locale `vi` fallback `en`); HTML `required` chặn bằng tooltip browser. | BE thiếu `resources/lang/vi/validation.php`; `ZaloProductController@store`; `create.blade.php` | Thấp | nhỏ |
 | **ORDER-10** | Code đúng (message + chặn ở validate/checkout) nhưng repo **KHÔNG có seeder voucher** → `GIAM20K`/`SALE10`/`FREESHIP` không tồn tại → manual test fail vì DATA, không phải code. | BE thiếu seeder trong `database/seeders`; `Voucher::isUsable` | Trung bình | nhỏ |
-| **ORDER-06** | Đơn online bỏ dở **GIỮ kho** (reserve = deduct ngay lúc tạo đơn, không 2-phase, không auto-cancel/release; job chỉ dừng poll); **BANK gộp luồng offline**; `resultCode` mặc định = 1 (success) khi thiếu field. **→ Chốt: auto-cancel + hoàn kho sau timeout; tách BANK; chặn resultCode mặc định.** | BE `ZaloApiController` (`checkout`, `notifySDK`), `StockService` (`reserveItems`, `deductOnPayment` no-op), `Jobs/CheckPaymentStatus`; FE `hooks.ts` `useCheckout` | **Cao** | lớn |
+| **ORDER-06** ✅ | ~~Đơn online bỏ dở **GIỮ kho**; **BANK gộp luồng offline**; `resultCode` mặc định = 1 (success) khi thiếu field~~ → **Đã sửa (B1):** job `CancelUnpaidOrder` tự huỷ + hoàn kho sau ~20′; tách BANK; chặn default-success + race guard. | BE `ZaloApiController` (`checkout`, `notifySDK`), `Jobs/CancelUnpaidOrder` (mới), `Jobs/CheckPaymentStatus`; FE `hooks.ts` `useCheckout` | **Cao** | lớn |
 
 ---
 
@@ -58,7 +58,7 @@ Chỉ liệt kê case **CÓ sai lệch** (🔴/🟡 hoặc 🟢 nhưng có sai l
 
 | Mã case | Sai lệch chính | File liên quan | Mức rủi ro | Ước lượng |
 |---|---|---|---|---|
-| **ORDER-04** | `BANK_SANDBOX` ∈ `isOfflineFlow` (như COD) → hiện "Đặt hàng thành công" ngay, không chờ trả tiền. **SẼ SAI khi đổi sang BANK production** (phải tách để chờ `PaymentDone`). **→ Chốt: tách BANK ngay (production-ready).** | FE `hooks.ts` `useCheckout` (`isOfflineFlow`) | **Cao** | vừa |
+| **ORDER-04** ✅ | ~~`BANK_SANDBOX` ∈ `isOfflineFlow` → hiện "Đặt hàng thành công" ngay~~ → **Đã sửa (B1):** `isOfflineFlow` chỉ còn `startsWith("COD")`; BANK chờ `PaymentDone` như MoMo (production-ready). | FE `hooks.ts` `useCheckout` (`isOfflineFlow`) | **Cao** | vừa |
 | **ORDER-08** | Thiếu test idempotency 2×`/checkout`; **TOCTOU**: `Cache::put` chỉ chạy SAU khi tạo đơn → 2 request đồng thời lý thuyết vẫn lọt 2 đơn (FE `inFlightRef` chặn double-tap thực tế). | BE `ZaloApiController:175-206,448`; FE `useCheckout` | Trung bình | nhỏ |
 | **ORDER-16** | Thiếu test nhánh **listener** `CreateVtpOrderOnPayment` (đơn online shipping tạo VTP qua event); test hiện chỉ phủ COD-inline. | BE `Listeners/CreateVtpOrderOnPayment` | Thấp | nhỏ |
 | **ORDER-03** ✅ | Không có **nhãn chữ "Chờ xác nhận"** phía khách (chuỗi chỉ ở `farm/orders.tsx`); `detail.tsx` không render label trạng thái đơn dạng chữ cho khách. **→ Chốt: thêm nhãn trạng thái đơn (map 6 status → tiếng Việt).** | FE `pages/orders/detail.tsx`, `order-summary.tsx` | Thấp | nhỏ–vừa |
@@ -75,7 +75,7 @@ Chỉ liệt kê case **CÓ sai lệch** (🔴/🟡 hoặc 🟢 nhưng có sai l
 
 | Mã case | Sai lệch chính | File liên quan | Mức rủi ro | Ước lượng |
 |---|---|---|---|---|
-| **AFF-03** ✅ | 🔴 **Lệch nghiệp vụ:** hoa hồng chỉ sinh khi **thanh toán ONLINE thành công** — đơn **COD KHÔNG BAO GIỜ** sinh hoa hồng (COD là luồng chủ đạo VN); mốc "giao thành công" (`delivered`) không fire `OrderPaymentSucceeded`. **→ Chốt: hoa hồng theo đơn GIAO THÀNH CÔNG (gồm COD).** | BE `Listeners/RecordAffiliateCommission`, `ZaloApiController:1257`, `Jobs/CheckPaymentStatus:89` | **Cao** | lớn |
+| ~~**AFF-03**~~ ✅ B2 | ~~🔴 **Lệch nghiệp vụ:** hoa hồng chỉ sinh khi **thanh toán ONLINE thành công** — đơn **COD KHÔNG BAO GIỜ** sinh hoa hồng~~ → **Đã sửa (B2):** dời mốc ghi commission sang event `OrderDelivered` (fire tại API/admin-web/VTP-webhook khi `status→delivered`), áp dụng mọi method gồm COD; giữ clawback. | BE `Events/OrderDelivered`, `Listeners/RecordAffiliateCommission`, `EventServiceProvider`, `ZaloApiController::updateStatus`, `Admin/ZaloOrderController::update`, `VtpWebhookService` | **Cao** | ✅ |
 | **AFF-02** | Rủi ro Zalo **strip query `?ref=`** khi mở từ share link → không bắt được mã giới thiệu (phải verify thiết bị thật). Thiếu test FE capture/apply. | FE `src/app.ts:30-34`, `utils/affiliate.ts` | Trung bình | vừa |
 | **HUB-01** ✅ | Dashboard "hôm nay" tính theo đơn **ĐÃ GIAO** (`delivered_at`), không gồm đơn vừa đặt; card "Đã bán" (delivered) vs list "Sản phẩm hôm nay" (`delivering,delivered` + `created_at`) **khác basis** → 2 con số lệch. **→ Chốt: tách riêng 2 chỉ số "đã đặt" / "đã giao".** | BE `FarmDashboardService` (`itemsBaseQuery`), `FarmHubController@overview/productsToday` | Trung bình | vừa |
 | **STOCK-06** | Code hoàn kho đúng nhưng test **cố tình bỏ** assert hoàn kho (`ViettelPostWebhookTest:204-206`) → không test nào khẳng định `quantity_sold/remaining` hoàn đúng + `depleted→active` sau cancel. | BE `StockService::releaseReservation`; tests | Trung bình | nhỏ–vừa |
@@ -98,8 +98,8 @@ Gộp các case động vào cùng file/lớp để sửa + viết test 1 lần 
 
 | # | Batch (chỗ code chung) | Case gộp | Ghi chú |
 |---|---|---|---|
-| **B1** | **Vòng đời thanh toán & giữ kho** — `ZaloApiController` (`checkout`/`notifySDK`) + `StockService` (`reserveItems`/`deductOnPayment`) + `Jobs/CheckPaymentStatus` + FE `useCheckout` (`isOfflineFlow`) | **ORDER-06**, **ORDER-04** | Lõi nặng nhất. **Chốt:** job **auto-cancel + `releaseReservation`** đơn `pending` online sau ~15–20′ (KHÔNG đổi 2-phase); **tách BANK** khỏi offline flow (chờ `PaymentDone`); chặn `resultCode` mặc định success. |
-| **B2** | **Sự kiện hoa hồng** — `Listeners/RecordAffiliateCommission` + điểm fire event (`ZaloApiController:1257`, `CheckPaymentStatus:89`) | **AFF-03** ✅ | Cùng đụng vòng đời thanh toán với B1. **Chốt:** hoa hồng theo **đơn giao thành công (gồm COD)** → thêm/fire 1 event khi `status→delivered` (mọi payment method), dời mốc ghi commission sang đó; giữ clawback khi huỷ. |
+| **B1** ✅ | **Vòng đời thanh toán & giữ kho** — `ZaloApiController` (`checkout`/`notifySDK`) + `Jobs/CancelUnpaidOrder` (mới) + `Jobs/CheckPaymentStatus` + FE `useCheckout` (`isOfflineFlow`) | **ORDER-06** ✅, **ORDER-04** ✅ | **Done:** job mới `CancelUnpaidOrder` tự huỷ + `releaseReservation` đơn online `pending` sau ~20′ (`ZALO_UNPAID_TIMEOUT_MINUTES`), best-effort poll Zalo trước khi huỷ; dispatch từ `checkout` (phủ cả khi đóng cổng trước `/link`); `notifySDK` chặn default-success (thiếu/sai `resultCode` → KHÔNG paid) + race guard `status='cancelled'`; `CheckPaymentStatus` thêm guard cancelled; FE tách BANK khỏi `isOfflineFlow`. Test: khôi phục toàn bộ suite `Zalo` (`composer test:zalo` 34 xanh) + `CancelUnpaidOrderTest`. |
+| **B2** ✅ | **Sự kiện hoa hồng** — `Events/OrderDelivered` (mới) + `Listeners/RecordAffiliateCommission` + `EventServiceProvider` + 3 điểm fire (`ZaloApiController::updateStatus`, `Admin/ZaloOrderController::update`, `VtpWebhookService`) | **AFF-03** ✅ | **Done:** hoa hồng theo **đơn giao thành công (gồm COD)** — tạo event `OrderDelivered`, fire tại MỌI điểm `status→delivered` (API admin / admin web / webhook VTP 501); GỠ `RecordAffiliateCommission` khỏi `OrderPaymentSucceeded` (giữ DeductStock/CreateVtp/SendNotification ở mốc paid), gắn vào `OrderDelivered`; idempotent `firstOrCreate`; giữ clawback. Test: `CommissionOnDeliveryTest` (6) + sửa `CommissionCreditedOnPaymentTest`/`AffiliateCommissionCalculationTest`; `composer test:affiliate` 33 xanh. |
 | **B3** | **i18n validation tiếng Việt** — `resources/lang/vi/validation.php` (+ `attributes`) + `ZaloProductController` | **PROD-02**, **PROD-03**, **PROD-01** (flash + race-id) | 1 file lang sửa message PROD-02/03; PROD-01 thêm: bỏ `max+1` (dùng auto-increment/transaction) + Việt hoá flash. |
 | **B4** | **Guard & validate trạng thái/huỷ đơn** — `ZaloOrderController@update` + `ZaloApiController@updateStatus` + `cancelByCustomer` | **ORDPRO-04**, **ORDPRO-05**, **ORDPRO-11** | Code guard đã có (04/05) → chủ yếu **viết test**; ORDPRO-11 thêm rule BE `required_if:reason_code,other|min:5`. |
 | **B5** | **Refund** — `RefundService` + FE `cancel-modal.tsx`/`detail.tsx` (`REFUND_STATUS_LABEL`) | **ORDPRO-09**, **ORDPRO-10**, **ORDPRO-08** (phần refund) | Thống nhất nhãn theo `payment_method`; bỏ con số cứng "2–7 ngày" cho mọi method; test nhánh ZALOPAY/MOMO/BANK. |
@@ -120,7 +120,7 @@ Gộp các case động vào cùng file/lớp để sửa + viết test 1 lần 
 
 ## Tổng quan ưu tiên
 
-- **Cao (sửa trước):** ORDER-06 + ORDER-04 (B1), ROLE-04 (B7), AFF-03 (B2). → rủi ro tiền/kho/bảo mật & sẽ sai khi lên production.
+- **Cao (sửa trước):** ~~ORDER-06 + ORDER-04 (B1)~~ ✅, ~~ROLE-04 (B7)~~ ✅, ~~AFF-03 (B2)~~ ✅. → rủi ro tiền/kho/bảo mật & sẽ sai khi lên production.
 - **Trung bình:** AUTH-01 (B10), ORDER-10 (B9), ORDPRO-08/09/10 (B5/B6), STOCK-06 (B6), STOCK-02 (B12), HUB-01 (B14), PROD-01 (B3), PACK-07 (B15), AFF-02, ORDER-08 (B17).
 - **Thấp:** PROD-02/03 (B3), ROLE-01/02/05 (B8), ORDPRO-04/05/11 (B4), ORDER-03/16, STOCK-04 + PROD-04/05 (B13), AFF-04/05 (B11), AUTH-03 (B10).
 
