@@ -124,7 +124,7 @@ Không cho đặt / nút đặt mờ.
 ---
 
 ## ORDER-08
-- **Vai trò:** Khách | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+- **Vai trò:** Khách | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** 🟢 (B17 — `composer test:zalo` 52 xanh)
 
 **Ngữ cảnh & các bước:**
 Dùng KH-1. 1) Ở bước đặt hàng, bấm nút đặt 2 lần thật nhanh (double tap).
@@ -135,9 +135,9 @@ Chỉ tạo 1 đơn, không bị nhân đôi.
 **Đối chiếu code (Claude Code điền):**
 - [x] File/route/màn hình liên quan:
   - FE: `useCheckout:546,553-557,1075-1077` (`inFlightRef` — bỏ qua click khi luồng checkout đang chạy, reset ở `finally`); `pay.tsx:22,47-51` (`paying` state disable nút khi đang gọi).
-  - BE: `ZaloApiController:175-206` (idempotency key `md5(customer_id + items(id:qty sorted) + total + payment_method + delivery_type)`; `Cache::get` hit → trả lại `orderId` cũ kèm `duplicated:true`, vẫn 201); `:448 Cache::put(..., 90s)`.
-- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Khớp (🟢) — 2 lớp chống trùng.** *Lưu ý TOCTOU:* BE chỉ `Cache::put` SAU khi tạo đơn xong (:448) → 2 request gần như đồng thời (trước khi đơn đầu commit) về lý thuyết vẫn có thể lọt 2 đơn; nhưng `inFlightRef` phía FE đã chặn double-tap từ cùng client. Defense-in-depth đủ cho double-tap thực tế.
-- [x] Test coverage: **🔴 Thiếu** — không test nào gửi 2 `/checkout` trùng để khẳng định chỉ tạo 1 đơn (idempotency cache + `duplicated:true`). (`test_duplicate_webhook...` là dedupe webhook, không phải checkout.)
+  - BE: `ZaloApiController::store` (idempotency key `md5(customer_id + items(id:qty sorted) + total + payment_method + delivery_type)`; `Cache::get` hit → `respondDuplicatedOrder()` trả lại `orderId` cũ kèm `duplicated:true`, vẫn 201; `Cache::put(..., 90s)` sau khi tạo đơn). **B17:** critical section (re-check → tạo đơn → `Cache::put`) bọc trong **database lock** `Cache::store('database')->lock($lockKey,10)->block(3)` (release ở `finally`); migration `2026_06_12_000001_create_cache_locks_table`.
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Khớp (🟢) — TOCTOU đã đóng (B17).** 3 lớp: FE `inFlightRef` chặn double-tap cùng client; BE fast-path `Cache::get` ngoài lock; **atomic lock** serialize 2 request đồng thời thật → request 2 đợi lock, RE-CHECK cache thấy `orderId` → trả `duplicated` thay vì tạo đơn 2. *Lưu ý hạ tầng:* production `CACHE_STORE=file` không hỗ trợ lock → cố tình trỏ lock vào `database` store (bảng `cache_locks`); nếu lock timeout 3s thì đi tiếp idempotency-an-toàn (re-check 1 lần, miss thì tạo — thà hiếm khi lọt hơn kẹt khách).
+- [x] Test coverage: **🟢** — `tests/Feature/CheckoutIdempotencyTest` (3, đăng ký suite `Zalo`): 2× `/checkout` trùng → 1 đơn + lần 2 `duplicated:true` + `orderId` cũ; orderId đã cache short-circuit trước khi tạo đơn (thứ-tự add-trước/đọc-sau); payload khác (qty khác) → key khác → 2 đơn riêng. `composer test:zalo` 52 xanh.
 
 ---
 

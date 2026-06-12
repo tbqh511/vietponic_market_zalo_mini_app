@@ -54,7 +54,7 @@ Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 - **ORDER-05** — 🟢 Đạt (thiếu test MoMo) — Khách — Cơ bản — ✅ audit
 - **ORDER-06** — 🟢 Đã sửa (B1 — auto-cancel + hoàn kho, chặn default-success, race guard) — Khách — Nâng cao — ✅ fixed
 - **ORDER-07** — 🟢 Đạt — Khách — Cơ bản — ✅ audit
-- **ORDER-08** — 🟡 Thiếu test idempotency (phát hiện khi audit) — Khách — Nâng cao — ✅ audit
+- **ORDER-08** — 🟢 Đã sửa (B17 — fix TOCTOU bằng database lock + migration `cache_locks` + test `CheckoutIdempotencyTest`) — Khách — Nâng cao — ✅ fixed
 - **ORDER-09** — 🟢 Đạt (phủ test tốt) — Khách — Cơ bản — ✅ audit
 - **ORDER-10** — 🟢 Đạt (B9 — đã seed `GIAM20K` qua `VoucherSeeder` + test `VoucherSeederTest`) — Khách — Cơ bản — ✅ fixed
 - **ORDER-11** — 🟢 Đạt (phủ test tốt) — Khách — Cơ bản — ✅ audit
