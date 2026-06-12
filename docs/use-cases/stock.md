@@ -19,7 +19,7 @@ Tồn kho mỗi mặt hàng tăng đúng số vừa nhập.
 ---
 
 ## STOCK-02
-- **Vai trò:** Farm Owner | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+- **Vai trò:** Farm Owner | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ✅ Đã sửa FE (B12)
 
 **Ngữ cảnh & các bước:**
 Dùng OWNER-A. 1) Nhập 1 lô có chọn HẠN SỬ DỤNG. 2) Xem lại lô vừa nhập.
@@ -33,6 +33,7 @@ Lô hiển thị đúng ngày hết hạn đã nhập.
   - FE (thiếu): `stock-in.tsx:98-105` CHỈ gửi `{product_id, quantity}` — **không có date picker**; ô "Hạn sử dụng (tươi)" (`:344-353`) là **read-only** hiển thị `suggested_expire_date` (giá trị gợi ý, chưa lưu). `import-sheet.tsx:39` chỉ gửi `{quantity, note}` → lô KHÔNG hạn. Không màn nào gọi `inventory?view=batches`; `inventory-list.tsx`/`movements.tsx` **không** hiển thị `expire_date`.
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **🟡 Không khớp ở FE.** Người dùng **không thể "chọn hạn sử dụng"** ở bất kỳ màn nhập nào (BE có nhận `expire_date` nhưng FE không expose). Và sau khi nhập, **không có màn nào hiển thị `expire_date` của lô đã lưu** (list/movements đều là SKU-aggregate). Kỳ vọng "chọn hạn → lô hiển thị đúng hạn" chưa thực thi. Cần: thêm date picker ở `stock-in`/`import-sheet` + màn xem lô (view=batches) show `expire_date`.
 - [x] Test coverage: `test_stock_in_batch_creates_multiple_batches` (:769-773) assert `expire_date = batch_date + 5` — chỉ phủ **nhánh AUTO**, KHÔNG phủ nhánh user truyền `expire_date` thủ công. **Thiếu** test importBatch/import với `expire_date` do client gửi.
+- **✅ Đã sửa FE (B12):** (1) **Date picker hạn sử dụng** (`zmp-ui` `DatePicker`, **optional**) ở cả 2 màn nhập — `startDate`=hôm nay (chặn chọn quá khứ), hiển thị `dd/mm/yyyy`, gửi BE đúng `YYYY-MM-DD`. `stock-in.tsx`: picker **từng dòng**, mặc định giá trị gợi ý `suggested_expire_date` (vẫn sửa được); bỏ trống → không gửi field → BE auto `batch_date + 5`. `import-sheet.tsx`: field "Hạn sử dụng (tùy chọn)"; bỏ trống → lô không hạn (BE `null`). (2) **Màn xem lô**: thêm tab **"Lô hàng"** trong trang `/farm/movements/:id` dùng hook **`useFarmBatches`** (`usePolling` `view=batches&product_id=X`, KHÔNG useState+useEffect) — hiện `expire_date` từng lô (dd/MM/yyyy, "Không hạn" nếu null) + **cảnh báo màu**: `daysUntil<0` → badge đỏ "Đã hết hạn"; `0–6` (<7 ngày) → badge cam "Sắp hết hạn · còn N ngày". Helper `toYmd`/`formatYmdDisplay`/`daysUntil` (`farm-api.ts`) + type `InventoryBatch`. (3) **Bug đã sửa luôn:** `import-sheet.tsx` gọi sai route `POST /farm/inventory/{id}/import` (405 — route thực `POST /farm/inventory/import`, `product_id` trong body) → đã đổi đúng. **Test BE +3** phủ nhánh client-supplied `expire_date` (importBatch / import per-SKU có & không hạn / `view=batches` trả đúng `expire_date`) → `FarmHubTest` **40 passed**; `tsc --noEmit` sạch. **BE không đổi code** (đã hỗ trợ sẵn).
 
 ---
 
@@ -55,7 +56,7 @@ Tồn kho còn 7kg (giảm đúng 3kg).
 ---
 
 ## STOCK-04
-- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ✅ Đã sửa FE (B13)
 
 **Ngữ cảnh & các bước:**
 Dùng KH-1. 1) Chọn SP Y chỉ còn 2kg. 2) Thử đặt 5kg.
@@ -69,6 +70,7 @@ Bị chặn: 'Một số sản phẩm không đủ số lượng tồn kho'.
   - FE: `hooks.ts:774-784` (`useCheckout`) — nếu 422 + `shortages` → tạo Error message chi tiết `'Một số sản phẩm không đủ tồn kho:\n• {tên}: chỉ còn {available} (bạn đặt {requested})'`; product-detail (`product-detail.tsx`) **KHÔNG** giới hạn số lượng theo tồn (nút `+` chỉ tăng, không cap theo `stockAvailable`).
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Khớp (🟢) — chặn ở server.** Đặt 5kg/2kg → 422 message gốc đúng kỳ vọng. *Sai lệch:* (1) FE **không chặn sớm** ở bước chọn số lượng/thêm giỏ — khách thêm thừa rồi mới bị chặn ở checkout (UX); (2) FE **viết lại** message (thêm chi tiết "chỉ còn X / bạn đặt Y"), không hiện đúng nguyên văn chuỗi BE — nội dung hữu ích hơn nhưng khác từ ngữ. Cân nhắc thêm cap số lượng client-side theo `stockAvailable`.
 - [x] Test coverage: `test_check_availability_returns_shortage_when_insufficient` (FarmHubTest:542) ✅ + `test_check_availability_returns_true_when_sufficient` (:574) ✅ (mức service). **Thiếu** feature test `POST /checkout` thực tế trả 422 + assert message/`shortages`.
+- **✅ Đã sửa FE (B13):** (1) **Cap số lượng client theo `stockAvailable`** — `components/quantity-input.tsx` thêm prop `maxValue`: clamp giá trị (− / + / nhập tay), **disable nút "+"** khi đạt max và hiện **"Còn lại X"** (token `text-subtitle`, không hardcode màu). `ProductItem` truyền `maxValue={product.stockAvailable}`. Trang detail (`product-detail.tsx`) stepper riêng cũng cap: disable "+" + "Còn lại X" khi `quantity >= stockAvailable`. `maxValue === undefined` (mock/offline) → **không cap** (giữ behaviour cũ). (2) **Giữ NGUYÊN chốt chặn BE 422** — không đụng BE. (3) Khi BE trả 422 tồn kho, FE **không viết lại** message: dùng **nguyên văn `parsed.message`** của BE làm dòng đầu, rồi liệt kê `shortages` dưới dạng **dữ liệu thô** (`• {tên} — còn {available} / đặt {requested}`), không diễn giải lại câu chữ (`hooks.ts` `useCheckout`). **Chỉ sửa FE.** Kiểm: `tsc --noEmit` pass.
 
 ---
 

@@ -20,6 +20,15 @@ export default function ProductDetailPage() {
   const unitLabel = product.unit?.unitLabel;
   const outOfStock = isOutOfStock(product);
 
+  // STOCK-04: cap số lượng client theo tồn kho. undefined = không biết tồn
+  // (mock/offline) → không cap (giữ behaviour cũ); chốt chặn thật vẫn ở BE 422.
+  const maxQty =
+    typeof product.stockAvailable === "number" &&
+    Number.isFinite(product.stockAvailable)
+      ? product.stockAvailable
+      : undefined;
+  const atMax = maxQty !== undefined && quantity >= maxQty;
+
   return (
     <div className="w-full h-full flex flex-col">
       <div className="flex-1 overflow-y-auto">
@@ -53,29 +62,41 @@ export default function ProductDetailPage() {
             <div className="text-sm mt-1">{product.name}</div>
           </div>
           {!outOfStock && (
-            <div className="flex items-center justify-between bg-background rounded-lg px-3 py-2">
-              <div className="text-sm">
-                <div className="text-subtitle text-2xs mb-0.5">Số lượng</div>
-                <div className="font-medium">{formatQuantityWithUnit(quantity, product.unit)}</div>
+            <div className="bg-background rounded-lg px-3 py-2">
+              <div className="flex items-center justify-between">
+                <div className="text-sm">
+                  <div className="text-subtitle text-2xs mb-0.5">Số lượng</div>
+                  <div className="font-medium">{formatQuantityWithUnit(quantity, product.unit)}</div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button
+                    aria-label="Giảm số lượng"
+                    className="w-8 h-8 rounded-full bg-white border border-black/10 text-lg disabled:opacity-40"
+                    disabled={quantity <= 1}
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  >
+                    −
+                  </button>
+                  <div className="w-8 text-center font-medium">{quantity}</div>
+                  <button
+                    aria-label="Tăng số lượng"
+                    className="w-8 h-8 rounded-full bg-white border border-black/10 text-lg disabled:opacity-40"
+                    disabled={atMax}
+                    onClick={() =>
+                      setQuantity((q) =>
+                        maxQty !== undefined ? Math.min(maxQty, q + 1) : q + 1
+                      )
+                    }
+                  >
+                    +
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <button
-                  aria-label="Giảm số lượng"
-                  className="w-8 h-8 rounded-full bg-white border border-black/10 text-lg disabled:opacity-40"
-                  disabled={quantity <= 1}
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                >
-                  −
-                </button>
-                <div className="w-8 text-center font-medium">{quantity}</div>
-                <button
-                  aria-label="Tăng số lượng"
-                  className="w-8 h-8 rounded-full bg-white border border-black/10 text-lg"
-                  onClick={() => setQuantity((q) => q + 1)}
-                >
-                  +
-                </button>
-              </div>
+              {atMax && (
+                <div className="text-2xs text-subtitle mt-1 text-right">
+                  Còn lại {maxQty}
+                </div>
+              )}
             </div>
           )}
           {unitLabel && (

@@ -378,16 +378,21 @@ export const allProductsState = atom(async (get) => {
   }));
 });
 
-// Sản phẩm hiển thị cho khách: ẩn item đã hết hàng (stockAvailable === 0).
+// Danh sách "chỉ còn hàng" — ẩn item đã hết hàng (stockAvailable === 0).
 // Item có stockAvailable === undefined (mock/offline) coi như còn hàng → vẫn hiển thị.
+// LƯU Ý (PROD-05/B13): các surface duyệt/tìm (home/category/search) đã đổi sang
+// `allProductsState` để VẪN HIỆN item hết hàng kèm badge "Hết hàng" (thay vì ẩn).
+// `productsState` vẫn giữ cho nơi cần danh sách đã-lọc (vd lookup normalized
+// trong useAddToCart) và phòng khi cần lại sau này.
 export const productsState = atom(async (get) => {
   const all = await get(allProductsState);
   return all.filter((p) => !isOutOfStock(p));
 });
 
-export const flashSaleProductsState = atom((get) => get(productsState));
+// Home/Search hiển thị CẢ item hết hàng (badge "Hết hàng") → dùng allProductsState.
+export const flashSaleProductsState = atom((get) => get(allProductsState));
 
-export const recommendedProductsState = atom((get) => get(productsState));
+export const recommendedProductsState = atom((get) => get(allProductsState));
 
 // Lookup theo id phải fall back qua `allProductsState` vì cart có thể giữ
 // item nay đã hết hàng — UI cart-item cần đọc được stock fresh để show badge.
@@ -429,7 +434,8 @@ export const keywordState = atom("");
 
 export const searchResultState = atom(async (get) => {
   const keyword = get(keywordState);
-  const products = await get(productsState);
+  // PROD-05/B13: tìm kiếm hiện CẢ item hết hàng (kèm badge) → allProductsState.
+  const products = await get(allProductsState);
   await new Promise((resolve) => setTimeout(resolve, 1000));
   return products.filter((product) =>
     product.name.toLowerCase().includes(keyword.toLowerCase())
@@ -439,7 +445,8 @@ export const searchResultState = atom(async (get) => {
 export const productsByCategoryState = atomFamily((id: String) =>
   atom(async (get) => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    const products = await get(productsState);
+    // PROD-05/B13: danh mục hiện CẢ item hết hàng (kèm badge) → allProductsState.
+    const products = await get(allProductsState);
     return products.filter((product) => String(product.categoryId) === id);
   })
 );

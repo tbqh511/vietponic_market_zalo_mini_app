@@ -1,7 +1,8 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { Sheet, Input, Button } from "zmp-ui";
+import { Sheet, Input, Button, DatePicker } from "zmp-ui";
 import { request } from "@/utils/request";
+import { toYmd } from "@/utils/farm-api";
 import { InventoryProduct } from "@/types";
 
 interface Props {
@@ -13,6 +14,8 @@ interface Props {
 export default function ImportSheet({ product, onClose, onSuccess }: Props) {
   const [quantity, setQuantity] = useState("");
   const [note, setNote] = useState("");
+  // Hạn sử dụng (YYYY-MM-DD); "" = không chọn → lô không hạn (BE để null).
+  const [expireDate, setExpireDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
@@ -30,17 +33,25 @@ export default function ImportSheet({ product, onClose, onSuccess }: Props) {
 
     setSubmitting(true);
     try {
-      await request(`/farm/inventory/${product.id}/import`, {
+      // Route đúng: POST /farm/inventory/import — product_id nằm trong body
+      // (không còn nhận {id} trên URL). expire_date chỉ gửi khi owner đã chọn.
+      await request(`/farm/inventory/import`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ quantity: qty, note: note.trim() }),
+        body: JSON.stringify({
+          product_id: product.id,
+          quantity: qty,
+          note: note.trim(),
+          ...(expireDate ? { expire_date: expireDate } : {}),
+        }),
       });
       toast.success("Nhập kho thành công!");
       setQuantity("");
       setNote("");
+      setExpireDate("");
       onSuccess();
     } catch (e: any) {
       const msg = e?.body ? JSON.parse(e.body)?.message : null;
@@ -64,6 +75,21 @@ export default function ImportSheet({ product, onClose, onSuccess }: Props) {
             placeholder="Nhập số lượng..."
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
+          />
+        </div>
+        <div className="mb-3">
+          <label className="text-sm text-gray-600 mb-1 block">
+            Hạn sử dụng (tùy chọn)
+          </label>
+          <DatePicker
+            value={expireDate ? new Date(expireDate + "T00:00:00") : undefined}
+            startDate={new Date()}
+            dateFormat="dd/mm/yyyy"
+            columnsFormat="DD-MM-YYYY"
+            locale="vi-VN"
+            placeholder="Để trống nếu lô không có hạn"
+            title="Hạn sử dụng"
+            onChange={(d) => d && setExpireDate(toYmd(d))}
           />
         </div>
         <div className="mb-4">

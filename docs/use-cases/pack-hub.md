@@ -9,18 +9,22 @@ Dùng OWNER-A. 1) Mở 'Tổng quan'. 2) Đối chiếu doanh thu / đơn / SP b
 **Kết quả mong đợi:**
 Số liệu khớp với đơn đã tạo trong ngày.
 
-**Đối chiếu code (Claude Code điền):** 🟡 Lệch tiêu chí thống kê (dashboard tính theo đơn ĐÃ GIAO, không phải đơn vừa đặt)
+**Đối chiếu code (Claude Code điền):** 🟢 Đạt (B14) — **tách 2 chỉ số "Đã đặt hôm nay" / "Đã giao hôm nay"**, mỗi chỉ số tự nhất quán basis giữa card và list.
 - [x] File/route/màn hình liên quan:
-  - FE màn `src/pages/farm/index.tsx` (grid 2×2: Doanh thu / Đã bán / Lợi nhuận / AOV + list "Sản phẩm hôm nay"); hook `useFarmOverview("today")` + `useFarmProductsToday()` trong `src/utils/farm-api.ts`.
-  - BE `routes/api.php:96` `GET /farm/dashboard` → `FarmHubController@overview`; `:98` `GET /farm/products/today` → `productsToday`.
-  - BE `FarmDashboardService::getOverview()` + `itemsBaseQuery()` (gốc số liệu card).
-- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
-  - **Lệch định nghĩa "hôm nay":** card overview (`itemsBaseQuery`) chỉ tính `status='delivered'` lọc theo `delivered_at` trong ngày. Đơn **vừa đặt (pending) KHÔNG xuất hiện** trên dashboard cho tới khi giao xong → kỳ vọng "khớp với đơn đã tạo trong ngày" không thoả với đơn chưa giao. Card phụ ghi đúng "đơn đã giao" nên bản thân nó tự nhất quán.
-  - **Hai nguồn số khác basis:** card "Đã bán hôm nay" = `items_sold` (delivered + `delivered_at`), còn list "Sản phẩm hôm nay" (`productsToday`) tính `sold` theo `status IN (delivering,delivered)` lọc `created_at` → cùng 1 màn nhưng 2 con số "đã bán" có thể lệch nhau.
-  - Money/sellthrough/AI hint: logic đầy đủ, UTC-range thay CONVERT_TZ (tương thích sqlite test).
-- [x] Test coverage:
-  - BE `FarmHubTest`: `test_farm_partner_can_access_dashboard_overview`, `test_overview_counts_only_delivered_orders` (XÁC NHẬN chủ đích chỉ tính delivered), `test_products_today_*` (sellthrough/sentinel 999/restock hint). Phủ tốt nhưng **chính các test này khẳng định sai lệch với use case** (đơn vừa đặt không vào số).
-  - Thiếu test FE. Cần product owner chốt: dashboard "hôm nay" = doanh thu ĐÃ GIAO (hiện tại) hay gồm cả đơn mới đặt.
+  - FE màn `src/pages/farm/index.tsx` (2 tab Đặt/Giao → grid 2×2 + list "Sản phẩm hôm nay" cùng basis); hook `useFarmOverview("today")` + `useFarmProductsToday()` trong `src/utils/farm-api.ts`. Types `FarmOverview.placed/delivered` + `FarmProductsTodayResponse.products_placed/products_delivered` (`src/types.d.ts`).
+  - BE `routes/api.php` `GET /farm/dashboard` → `FarmHubController@overview`; `GET /farm/products/today` → `productsToday`.
+  - BE `FarmDashboardService::getOverview()` + `placedBaseQuery()`/`itemsBaseQuery()` (2 basis) + `aggregateMetrics()`.
+- [x] Sai lệch cũ (đã sửa ở B14):
+  - **Cũ:** card overview chỉ tính `status='delivered'` lọc `delivered_at` → đơn vừa đặt không hiện cho tới khi giao xong; list "Sản phẩm hôm nay" lại tính `sold` theo `delivering+delivered` + `created_at` → cùng 1 màn 2 con số "đã bán" lệch nhau.
+  - **Đã chốt & sửa:** tách thành 2 chỉ số song song, **mỗi chỉ số tự nhất quán basis** giữa card và list (không trộn):
+    - **Đã đặt hôm nay** (`placed`): đơn `created_at` = hôm nay, **mọi status trừ `cancelled`**; gồm cả đơn chưa giao.
+    - **Đã giao hôm nay** (`delivered`): đơn `status='delivered'`, `delivered_at` = hôm nay.
+  - Scope theo `zalo_order_items.farm_id` (không lẫn farm khác); **không** lọc `payment_status` (giữ policy COD). Timezone "hôm nay" = **Asia/Ho_Chi_Minh** (`config/app.php`); range VN-tz → UTC để khớp timestamp lưu UTC (giữ convention sẵn có, tương thích sqlite test).
+  - Field top-level cũ của `getOverview` **giữ nguyên** (= basis "đã giao") cho backward-compat (`analytics`/timeseries/payout không đổi).
+  - AI hint tính trên nhóm `placed` (nhịp bán trong ngày, gồm đơn mới).
+- [x] Test coverage (B14):
+  - BE `FarmHubTest`: `test_overview_placed_includes_today_orders_all_statuses_except_cancelled`, `test_overview_delivered_does_not_leak_into_placed`, `test_overview_placed_scoped_to_current_farm`, `test_products_today_splits_placed_and_delivered`, `test_products_today_cancelled_excluded_from_placed`. Giữ xanh `test_overview_counts_only_delivered_orders` (top-level = delivered) + các `test_products_today_*` cũ (đổi sang key `products_placed`). **37 passed.**
+  - FE: chưa có hạ tầng test → checklist tay (đổi tab Đặt/Giao card+list đổi đồng bộ; đơn vừa đặt hiện ngay ở tab "Đã đặt"); `tsc --noEmit` sạch.
 
 ---
 

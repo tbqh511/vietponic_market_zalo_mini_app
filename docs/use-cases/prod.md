@@ -57,7 +57,7 @@ Bị chặn, báo lỗi ảnh không hợp lệ.
 ---
 
 ## PROD-04
-- **Vai trò:** Admin | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+- **Vai trò:** Admin | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ✅ Đã ghi chú (B13 — giữ nguyên logic)
 
 **Ngữ cảnh & các bước:**
 Cần phối hợp Admin + Khách. 1) Admin tạo SP và gắn vào farm. 2) Dùng KH-1 mở mini app, tìm SP đó.
@@ -72,11 +72,12 @@ Khách NHÌN THẤY sản phẩm mới trong app.
   - FE: `state.ts:336 allProductsState` (`/products`) → `state.ts:383 productsState` lọc bỏ hết hàng; hiển thị ở home/category/search.
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **🟡 Khớp CÓ điều kiện.** Khách thấy SP **không phải do "gắn farm"** mà do **có tồn kho**: API không lọc theo farm nên SP hiện ngay khi tồn > 0, kể cả chưa gắn farm nào; ngược lại SP **mới tạo + đã gắn farm nhưng CHƯA nhập kho** → `stock_available=0` → bị `productsState` ẩn → **khách KHÔNG thấy**. Vậy chuỗi đủ để khách thấy là: tạo SP → gắn farm → farm **nhập lô hàng (batch active)**. Bước "gắn farm" một mình KHÔNG đủ. (Liên quan trực tiếp PROD-05.)
 - [x] Test coverage: **Thiếu** — không có test cho `GET /api/products` (shape, `stock_available`, có/không lọc farm). `attachProduct` cũng chưa thấy Feature test.
+- **✅ Ghi chú (B13 — KHÔNG đổi logic API):** Chốt **giữ nguyên** hành vi: visibility = **tồn > 0** (API `/products` không lọc farm). Điều kiện đầy đủ để khách thấy SP mới = **tạo SP → gắn farm → farm nhập lô (batch `status='active'`, `quantity_remaining > 0`)** → khi đó `stock_available = SUM(...) > 0`. Riêng bước "gắn farm" **một mình KHÔNG đủ**: SP đã gắn farm nhưng chưa nhập kho → `stock_available = 0`. Sau B13 (PROD-05), SP `stock_available = 0` **không còn bị ẩn** khỏi list nữa mà hiện kèm badge "Hết hàng" — nên khách vẫn *thấy* SP nhưng chưa mua được tới khi có lô active. *(Chỉ ghi chú; không sửa code BE/FE cho case này.)*
 
 ---
 
 ## PROD-05
-- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+- **Vai trò:** Khách | **Độ ưu tiên:** Cơ bản | **Kết quả test gần nhất:** ✅ Đã sửa FE (B13)
 
 **Ngữ cảnh & các bước:**
 Dùng KH-1. 1) Tìm 1 sản phẩm CHƯA nhập kho (chưa có lô hàng nào).
@@ -90,5 +91,6 @@ Hiển thị 'Hết hàng', không thêm vào giỏ được.
   - FE: `state.ts:43 isOutOfStock` (= `stockAvailable` là number && `<= 0`); `state.ts:383 productsState` **lọc bỏ** item hết hàng → áp dụng cho MỌI surface duyệt/tìm: `flashSaleProductsState` (home), `productsByCategoryState:442` (danh mục), `searchResultState:430` + `recommendedProductsState` (tìm kiếm/gợi ý). Trang chi tiết `pages/catalog/product-detail.tsx:21,55,107-130` dùng `productState`→`allProductsState` (KHÔNG lọc): hiện "Sản phẩm đang hết hàng", nút "Hết hàng" `disabled`, ẩn bộ chọn số lượng. `cart-item.tsx:19` badge hết hàng; `state.ts:407 payableCartState` loại item hết hàng khỏi thanh toán.
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **🟡 Khớp một phần.** Vế "**không thêm vào giỏ được**" ✅ đúng (nút disabled ở detail; payableCartState loại khỏi checkout). Vế "**hiển thị 'Hết hàng'**" KHÔNG khớp khi *tìm kiếm*: SP chưa nhập kho bị **ẩn hoàn toàn** khỏi list/search/category/home (do `productsState` filter) → khách **không tìm thấy** để thấy nhãn "Hết hàng"; chỉ khi vào **thẳng trang detail** (link share / item cũ trong giỏ) mới thấy "Hết hàng". Đây là **quyết định thiết kế** (ẩn hẳn thay vì badge "Hết hàng" trong list). Cần chốt với product owner: kỳ vọng "thấy nhãn Hết hàng" hay "ẩn"; nếu muốn thấy nhãn thì list phải đổi sang dùng `allProductsState` + badge thay vì `productsState`.
 - [x] Test coverage: **Thiếu** — BE chưa unit-test `getStockAvailableAttribute`/`isAvailable` cho trường hợp 0 batch; FE chưa test `isOutOfStock`/`productsState` filter và trạng thái disabled ở product-detail. (`FarmHubTest:212 test_products_today_empty_when_no_batches` chỉ phủ phía farm.)
+- **✅ Đã sửa FE (B13):** Chốt thiết kế = **hiện trong list kèm badge "Hết hàng"** (thay vì ẩn). Các surface duyệt/tìm đổi nguồn từ `productsState` (đã lọc) sang **`allProductsState`** (không lọc): `flashSaleProductsState` (home `flash-sales.tsx`), `recommendedProductsState` + `searchResultState` (search `search/index.tsx`), `productsByCategoryState` (category `category-detail.tsx`). `productsState` **giữ nguyên** để nơi khác còn dùng (lookup normalized trong `useAddToCart` đổi sang `allProductsState` để item hết hàng vẫn resolve được stock fresh). `RelatedProducts` ("Sản phẩm khác") **giữ `productsState`** (không nằm trong phạm vi chốt). UI `components/product-item.tsx`: ảnh `opacity-50 grayscale` + badge **"Hết hàng"** (token `bg-danger`/`text-white`, không hardcode màu); nút "Thêm vào giỏ" thay bằng nút **disabled "Hết hàng"** khi `isOutOfStock`. Trang detail giữ nguyên (đã có "Sản phẩm đang hết hàng" + nút disabled). **Chỉ sửa FE.** Kiểm: `tsc --noEmit` pass + review thủ công (chưa có harness test FE).
 
 ---

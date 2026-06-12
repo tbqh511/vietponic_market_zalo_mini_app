@@ -13,6 +13,7 @@ import {
   FarmStaffMember,
   PackingActionResult,
   OrderActionResult,
+  InventoryBatch,
 } from "@/types";
 
 // Polling mặc định 30s cho mọi hook real-time (overview/productsToday/incoming).
@@ -113,6 +114,33 @@ function usePolling<T>(
   return { ...state, refresh };
 }
 
+// ─── Helper ngày (dùng cho expire_date nhập kho / xem lô) ──────────────────────
+
+// Date → "YYYY-MM-DD" theo giờ local. KHÔNG dùng toISOString() (UTC) vì có thể
+// lệch 1 ngày khi qua nửa đêm theo múi giờ VN.
+export function toYmd(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// "YYYY-MM-DD" → "dd/MM/yyyy" để hiển thị cho người dùng VN.
+export function formatYmdDisplay(ymd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd);
+  if (!m) return ymd;
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+// Số ngày từ hôm nay đến ymd (âm = đã quá hạn). So sánh theo nửa đêm local.
+export function daysUntil(ymd: string): number {
+  const target = new Date(ymd + "T00:00:00");
+  if (isNaN(target.getTime())) return NaN;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}
+
 // ─── Public hooks ────────────────────────────────────────────────────────────
 
 /**
@@ -199,6 +227,18 @@ export function useFarmIncomingOrders(enabled: boolean = true) {
  */
 export function useFarmStaff(enabled: boolean = true) {
   return usePolling<FarmStaffMember[]>("/farm/staff", enabled, /* no poll */ 0);
+}
+
+/**
+ * GET /farm/inventory?view=batches&product_id=X — danh sách lô (batch) active
+ * của một SKU, kèm expire_date từng lô (indexBatches trả mảng đã unwrap).
+ * Poll 30s để phản ánh lô mới sau khi owner nhập kho.
+ */
+export function useFarmBatches(productId: number | null, enabled: boolean = true) {
+  return usePolling<InventoryBatch[]>(
+    `/farm/inventory?view=batches&status=active&product_id=${productId}`,
+    enabled && productId != null
+  );
 }
 
 // POST chung cho các action đóng gói — tự đính JWT, unwrap { error, data }.

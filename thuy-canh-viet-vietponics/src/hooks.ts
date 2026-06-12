@@ -11,7 +11,7 @@ import {
   payableCartState,
   userInfoKeyState,
   userInfoState,
-  productsState,
+  allProductsState,
   shippingAddressState,
   selectedShippingServiceState,
   selectedStationState,
@@ -109,8 +109,10 @@ export function useRequestInformation() {
 export function useAddToCart(product: Product) {
   const [cart, setCart] = useAtom(cartState);
 
-   // prefer normalized product object from productsState when available
-  const normalizedProducts = useAtomValue(productsState);
+   // Ưu tiên object đã normalize. Dùng allProductsState (KHÔNG lọc hết hàng) để
+   // item hết hàng vẫn lookup được stockAvailable fresh — phục vụ cap số lượng
+   // client (STOCK-04) và badge "Hết hàng" (PROD-05).
+  const normalizedProducts = useAtomValue(allProductsState);
   const normalizedProduct =
     normalizedProducts.find((p) => p.id === product.id) ?? product;
 
@@ -800,16 +802,16 @@ export function useCheckout() {
           throw err;
         }
 
-        // 422 với danh sách shortages → hiện đúng tên sản phẩm hết hàng
+        // 422 tồn kho (STOCK-04): hiện NGUYÊN VĂN message BE, không viết lại.
+        // Bên dưới chỉ liệt kê shortages dưới dạng DỮ LIỆU THÔ từ BE
+        // (tên / available / requested) — không diễn giải lại câu chữ.
         if (finalOrderResponse.status === 422 && Array.isArray(parsed?.shortages) && parsed.shortages.length > 0) {
           const lines = parsed.shortages.map((s: any) => {
             const name = s?.product_name ?? `Sản phẩm #${s?.product_id ?? "?"}`;
-            const available = Number(s?.available ?? 0);
-            const requested = Number(s?.requested ?? 0);
-            if (available <= 0) return `• ${name}: đã hết hàng`;
-            return `• ${name}: chỉ còn ${available} (bạn đặt ${requested})`;
+            return `• ${name} — còn ${Number(s?.available ?? 0)} / đặt ${Number(s?.requested ?? 0)}`;
           });
-          const err = new Error(`Một số sản phẩm không đủ tồn kho:\n${lines.join("\n")}`);
+          const header = parsed?.message || "Một số sản phẩm không đủ số lượng tồn kho";
+          const err = new Error(`${header}\n${lines.join("\n")}`);
           (err as any).status = 422;
           throw err;
         }

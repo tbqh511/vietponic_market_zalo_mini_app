@@ -1,14 +1,18 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { DatePicker } from "zmp-ui";
 import { useStockInSuggestions } from "@/hooks";
 import { request } from "@/utils/request";
+import { toYmd } from "@/utils/farm-api";
 import { StockInSuggestion } from "@/types";
 
 // Mỗi dòng trong khai báo: số lượng nhập (kg) cho một SKU.
+// expire_date optional — bỏ trống thì BE tự tính batch_date + 5 ngày.
 interface DeclLine {
   product_id: number;
   quantity: number;
+  expire_date?: string;
 }
 
 const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
@@ -40,6 +44,8 @@ export default function StockInDeclaration() {
 
   // Số lượng nhập theo product_id. Mặc định chỉ thêm dòng khi user chạm vào.
   const [lines, setLines] = useState<Record<number, number>>({});
+  // Hạn sử dụng (YYYY-MM-DD) owner chọn riêng từng dòng — optional.
+  const [expires, setExpires] = useState<Record<number, string>>({});
   const [showPicker, setShowPicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -63,17 +69,32 @@ export default function StockInDeclaration() {
   const setQty = (id: number, q: number) =>
     setLines((prev) => ({ ...prev, [id]: Math.max(0, q) }));
 
+  const setExpire = (id: number, ymd: string) =>
+    setExpires((prev) => ({ ...prev, [id]: ymd }));
+
+  // Hạn đang chọn của dòng: ưu tiên giá trị owner chọn, fallback gợi ý từ BE.
+  const expireOf = (id: number) =>
+    expires[id] ?? byId[id]?.suggested_expire_date ?? "";
+
   const removeLine = (id: number) =>
     setLines((prev) => ({ ...prev, [id]: 0 }));
 
-  // Dòng có số lượng > 0 mới được gửi.
+  // Dòng có số lượng > 0 mới được gửi. Chỉ kèm expire_date khi đã có giá trị
+  // (gợi ý hoặc owner chọn) — để trống thì BE tự tính batch_date + 5 ngày.
   const payloadLines: DeclLine[] = useMemo(
     () =>
       activeIds
-        .map((id) => ({ product_id: id, quantity: qtyOf(id) }))
+        .map((id) => {
+          const exp = expireOf(id);
+          return {
+            product_id: id,
+            quantity: qtyOf(id),
+            ...(exp ? { expire_date: exp } : {}),
+          };
+        })
         .filter((l) => l.quantity > 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeIds, lines, byId]
+    [activeIds, lines, expires, byId]
   );
 
   const totalKg = payloadLines.reduce((s, l) => s + l.quantity, 0);
@@ -105,6 +126,7 @@ export default function StockInDeclaration() {
       });
       toast.success("Đã ghi nhận nhập kho");
       setLines({});
+      setExpires({});
       refresh();
       // Đóng modal khai báo, quay về Tổng quan farm.
       navigate("/farm", { viewTransition: true });
@@ -171,8 +193,10 @@ export default function StockInDeclaration() {
                     key={id}
                     item={it}
                     quantity={qtyOf(id)}
+                    expireIso={expireOf(id)}
                     todayIso={todayIso}
                     onChange={(q) => setQty(id, q)}
+                    onExpireChange={(ymd) => setExpire(id, ymd)}
                     onRemove={() => removeLine(id)}
                   />
                 );
@@ -251,17 +275,23 @@ export default function StockInDeclaration() {
 function DeclCard({
   item,
   quantity,
+  expireIso,
   todayIso,
   onChange,
+  onExpireChange,
   onRemove,
 }: {
   item: StockInSuggestion;
   quantity: number;
+  expireIso: string;
   todayIso: string;
   onChange: (q: number) => void;
+  onExpireChange: (ymd: string) => void;
   onRemove: () => void;
 }) {
   const danger = item.sold_out_yesterday;
+  const today = new Date(todayIso + "T00:00:00");
+  const expireValue = expireIso ? new Date(expireIso + "T00:00:00") : undefined;
 
   return (
     <div
@@ -341,15 +371,27 @@ function DeclCard({
         <span className="text-xs text-gray-500 w-6">kg</span>
       </div>
 
-      <div
-        className={`mt-2.5 flex justify-between text-[11px] ${
-          danger ? "text-red-600" : "text-gray-500"
-        }`}
-      >
-        <span>Hạn sử dụng (tươi)</span>
-        <span className="font-medium">
-          {formatExpiry(item.suggested_expire_date, todayIso)}
-        </span>
+      <div className="mt-2.5">
+        <div
+          className={`flex justify-between items-center text-[11px] mb-1 ${
+            danger ? "text-red-600" : "text-gray-500"
+          }`}
+        >
+          <span>Hạn sử dụng (tùy chọn)</span>
+          {expireIso && (
+            <span className="font-medium">{formatExpiry(expireIso, todayIso)}</span>
+          )}
+        </div>
+        <DatePicker
+          value={expireValue}
+          startDate={today}
+          dateFormat="dd/mm/yyyy"
+          columnsFormat="DD-MM-YYYY"
+          locale="vi-VN"
+          placeholder="Chọn hạn sử dụng"
+          title="Hạn sử dụng"
+          onChange={(d) => d && onExpireChange(toYmd(d))}
+        />
       </div>
     </div>
   );

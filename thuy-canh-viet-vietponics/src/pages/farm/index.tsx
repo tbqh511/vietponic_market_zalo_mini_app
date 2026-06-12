@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useFarmGuard, useEnsureJwt } from "@/hooks";
 import {
@@ -18,9 +18,14 @@ import ProductProgress from "@/components/farm/product-progress";
 //
 // Polling 30s (qua hooks farm-api). Dashboard chỉ cho farm partner — useFarmGuard
 // sẽ redirect customer thường về /. Inventory CRUD ở route riêng /farm/inventory.
+// HUB-01: 2 chỉ số tách basis. Mặc định "placed" (đã đặt) — đúng tinh thần use
+// case: owner đối chiếu đơn vừa tạo trong ngày.
+type DashboardBasis = "placed" | "delivered";
+
 export default function FarmDashboardPage() {
   const isFarm = useFarmGuard();
   const ensureJwt = useEnsureJwt();
+  const [basis, setBasis] = useState<DashboardBasis>("placed");
 
   // Đảm bảo có JWT trước khi gọi farm endpoints (re-auth nếu hết hạn).
   useEffect(() => {
@@ -63,8 +68,19 @@ export default function FarmDashboardPage() {
   }
 
   const ov = overview.data;
-  const products = productsToday.data?.products ?? [];
+  // Card + list LUÔN cùng basis (không trộn): cả 2 đọc theo tab đang chọn.
+  const metrics = ov ? ov[basis] : null;
+  const products =
+    (basis === "placed"
+      ? productsToday.data?.products_placed
+      : productsToday.data?.products_delivered) ?? [];
   const hint = productsToday.data?.hint ?? null;
+
+  // Nhãn động theo tab.
+  const isPlaced = basis === "placed";
+  const ordersSubtitle = metrics
+    ? `${metrics.orders_count} ${isPlaced ? "đơn đã đặt" : "đơn đã giao"}`
+    : undefined;
 
   // Format số tiền VND ngắn gọn — không kèm "đ" (chèn ngoài JSX).
   const fmtMoney = (n: number) => Math.round(n).toLocaleString("vi-VN");
@@ -95,29 +111,51 @@ export default function FarmDashboardPage() {
           </div>
         </div>
 
-        {/* 2x2 Metric grid */}
+        {/* HUB-01: tab tách basis "Đã đặt" / "Đã giao". Đổi tab → cả card lẫn
+            list "Sản phẩm hôm nay" đổi đồng bộ theo cùng basis. */}
+        <div className="flex gap-1.5 mt-3 p-0.5 bg-gray-100 rounded-md">
+          {([
+            ["placed", "Đã đặt hôm nay"],
+            ["delivered", "Đã giao hôm nay"],
+          ] as [DashboardBasis, string][]).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setBasis(key)}
+              className={`flex-1 text-[12px] py-1.5 rounded transition-colors ${
+                basis === key
+                  ? "bg-white font-medium text-gray-900 shadow-sm"
+                  : "text-gray-500"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* 2x2 Metric grid — đọc theo basis đang chọn */}
         <div className="grid grid-cols-2 gap-2 mt-3">
           <StatCard
-            label="Doanh thu hôm nay"
-            value={ov ? `${fmtMoney(ov.revenue)}đ` : "—"}
-            subtitle={ov ? `${ov.orders_count} đơn đã giao` : undefined}
+            label={isPlaced ? "Doanh thu (đã đặt)" : "Doanh thu (đã giao)"}
+            value={metrics ? `${fmtMoney(metrics.revenue)}đ` : "—"}
+            subtitle={ordersSubtitle}
             tone="success"
           />
           <StatCard
-            label="Đã bán hôm nay"
-            value={ov ? `${ov.items_sold}` : "—"}
+            label={isPlaced ? "Đã đặt hôm nay" : "Đã giao hôm nay"}
+            value={metrics ? `${metrics.items_sold}` : "—"}
             subtitle="kg/đơn vị"
             tone="muted"
           />
           <StatCard
             label="Lợi nhuận"
-            value={ov ? `${fmtMoney(ov.profit)}đ` : "—"}
-            subtitle={ov && ov.revenue > 0 ? `${Math.round((ov.profit / ov.revenue) * 100)}% biên` : undefined}
-            tone={ov && ov.profit >= 0 ? "success" : "danger"}
+            value={metrics ? `${fmtMoney(metrics.profit)}đ` : "—"}
+            subtitle={metrics && metrics.revenue > 0 ? `${Math.round((metrics.profit / metrics.revenue) * 100)}% biên` : undefined}
+            tone={metrics && metrics.profit >= 0 ? "success" : "danger"}
           />
           <StatCard
             label="AOV"
-            value={ov ? `${fmtMoney(ov.avg_order_value)}đ` : "—"}
+            value={metrics ? `${fmtMoney(metrics.avg_order_value)}đ` : "—"}
             subtitle="Giá trị đơn TB"
             tone="muted"
           />
@@ -131,7 +169,9 @@ export default function FarmDashboardPage() {
 
         {products.length === 0 ? (
           <div className="text-[12px] text-gray-400 text-center py-4">
-            Hôm nay chưa có hoạt động bán/nhập.
+            {isPlaced
+              ? "Hôm nay chưa có đơn đặt."
+              : "Hôm nay chưa có đơn giao."}
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">

@@ -21,14 +21,14 @@ Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 - **PROD-01** — 🟢 Đã sửa (B3 — lockForUpdate id race-safe + required danh mục/đơn vị/ảnh + flash VN) — Admin — Cơ bản — ✅ fixed
 - **PROD-02** — 🟢 Đã sửa (B3 — `lang/vi/validation.php` + attributes → "tên sản phẩm là bắt buộc") — Admin — Cơ bản — ✅ fixed
 - **PROD-03** — 🟢 Đã sửa (B3 — message ảnh tiếng Việt + try/catch processImage không-500) — Admin — Cơ bản — ✅ fixed
-- **PROD-04** — ⚪ Chưa kiểm tra — Admin — Cơ bản — ✅ audit
-- **PROD-05** — ⚪ Chưa kiểm tra — Khách — Cơ bản — ✅ audit
+- **PROD-04** — ✅ B13 — 🟢 Đã ghi chú (giữ nguyên logic: visibility = tồn>0; đủ ĐK = tạo→gắn farm→nhập lô active) — Admin — Cơ bản — ✅ audit
+- **PROD-05** — ✅ B13 — 🟢 Đã sửa FE (list/search/home/category dùng allProductsState + badge "Hết hàng", nút disabled) — Khách — Cơ bản — ✅ audit
 
 ## Quản lý kho (7 case) — `docs/use-cases/stock.md`
 - **STOCK-01** — ⚪ Chưa kiểm tra — Farm Owner — Cơ bản — ✅ audit
-- **STOCK-02** — 🟡 Sai lệch (phát hiện khi audit) — Farm Owner — Cơ bản — ✅ audit
+- **STOCK-02** — ✅ Đã sửa FE (B12) — Farm Owner — Cơ bản — date picker hạn dùng + tab "Lô hàng"
 - **STOCK-03** — ⚪ Chưa kiểm tra — Khách — Cơ bản — ✅ audit
-- **STOCK-04** — ⚪ Chưa kiểm tra — Khách — Cơ bản — ✅ audit
+- **STOCK-04** — ✅ B13 — 🟢 Đã sửa FE (cap số lượng client theo stockAvailable + "Còn lại X"; giữ BE 422; hiện nguyên văn message BE) — Khách — Cơ bản — ✅ audit
 - **STOCK-05** — ⚪ Chưa kiểm tra — Khách — Nâng cao — ✅ audit
 - **STOCK-06** — ✅ B6 — 🟢 Đạt + đã bổ sung test hoàn kho — Khách — Nâng cao — ✅ audit
 - **STOCK-07** — ⚪ Chưa kiểm tra — Farm Owner — Nâng cao — ✅ audit
@@ -72,7 +72,7 @@ Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 - **AFF-05** — 🟢 Đạt (thiếu test admin-web) — Admin — Cơ bản — ✅ audit
 
 ## Đóng gói & Hub (11 case) — `docs/use-cases/pack-hub.md`
-- **HUB-01** — 🟡 Dashboard tính theo đơn ĐÃ GIAO, không phải đơn vừa đặt + 2 nguồn số khác basis (phát hiện khi audit) — Farm Owner — Cơ bản — ✅ audit
+- **HUB-01** — 🟢 Đã sửa (B14): tách 2 chỉ số "Đã đặt hôm nay" / "Đã giao hôm nay", mỗi chỉ số tự nhất quán basis card+list — Farm Owner — Cơ bản — ✅ fixed
 - **HUB-02** — 🟢 Đạt (phủ test tốt) — Farm Owner — Nâng cao — ✅ audit
 - **PACK-01** — 🟢 Đạt — Farm Owner — Cơ bản — ✅ audit
 - **PACK-02** — 🟢 Đạt — Farm Owner — Cơ bản — ✅ audit

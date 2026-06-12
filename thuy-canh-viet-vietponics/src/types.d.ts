@@ -330,6 +330,23 @@ export interface InventoryProduct {
   is_out_of_stock: boolean;
 }
 
+// Một lô tồn (batch) — khớp shape GET /farm/inventory?view=batches (indexBatches).
+export interface InventoryBatch {
+  id: number;
+  product_id: number;
+  product_name: string | null;
+  product_image: string | null;
+  batch_date: string | null; // YYYY-MM-DD
+  expire_date: string | null; // YYYY-MM-DD; null = lô không hạn
+  quantity_in: number;
+  quantity_sold: number;
+  quantity_remaining: number;
+  cost_price: number;
+  status: string;
+  note: string | null;
+  created_at: string | null;
+}
+
 export type InventoryStockStatus = "all" | "low" | "out" | "in_stock";
 export type InventorySort = "name" | "stock_asc" | "stock_desc" | "low_first";
 
@@ -431,8 +448,19 @@ export interface FarmProfile {
 
 export type FarmDashboardRange = "today" | "7d" | "30d";
 
+// Bộ chỉ số doanh thu chung cho 1 basis (HUB-01: "đã đặt" / "đã giao").
+export interface FarmOverviewMetrics {
+  revenue: number;
+  cost: number;
+  profit: number;
+  orders_count: number;
+  items_sold: number;
+  avg_order_value: number;
+}
+
 export interface FarmOverview {
   range: { from: string; to: string; key: string };
+  // Field top-level = basis "đã giao" (giữ cho backward-compat: analytics, v.v.).
   revenue: number;
   cost: number;
   profit: number;
@@ -447,6 +475,11 @@ export interface FarmOverview {
         revenue: number;
       }
     | null;
+  // HUB-01: hai chỉ số tách basis, mỗi cái tự nhất quán với list cùng tab.
+  //   placed    = đơn ĐÃ ĐẶT hôm nay (mọi status trừ cancelled, theo created_at)
+  //   delivered = đơn ĐÃ GIAO hôm nay (status delivered, theo delivered_at)
+  placed: FarmOverviewMetrics;
+  delivered: FarmOverviewMetrics;
 }
 
 // Mỗi row "Sản phẩm hôm nay" trên dashboard. Backend tính status (good/warning/danger)
@@ -468,8 +501,12 @@ export interface FarmAiHint {
   message: string;
 }
 
+// HUB-01: 2 nhóm tách basis, mỗi nhóm khớp card overview cùng tab.
+//   products_placed    = sold theo đơn ĐÃ ĐẶT hôm nay (created_at, trừ cancelled)
+//   products_delivered = sold theo đơn ĐÃ GIAO hôm nay (delivered_at)
 export interface FarmProductsTodayResponse {
-  products: FarmProductToday[];
+  products_placed: FarmProductToday[];
+  products_delivered: FarmProductToday[];
   hint: FarmAiHint | null;
 }
 
