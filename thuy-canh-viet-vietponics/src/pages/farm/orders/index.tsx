@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSetAtom } from "jotai";
+import { useNavigate } from "react-router-dom";
 import { useFarmGuard, useEnsureJwt } from "@/hooks";
 import {
   useFarmIncomingOrders,
@@ -14,6 +15,17 @@ import {
 } from "@/utils/farm-api";
 import { farmPendingOrdersCountState } from "@/state";
 import { FarmIncomingOrder, PackingStatus } from "@/types";
+import {
+  fmtKg,
+  fmtTime,
+  shortenName,
+  staffLabel,
+  avatarInitials,
+  statusPill,
+  useAction,
+  recipientLocation,
+  TruckIcon,
+} from "./_shared";
 
 // Trang "Đơn đến" của Farm Partner (route /farm/orders) — kiêm khu vực ĐÓNG GÓI.
 // Hai giao diện theo vai trò (wireframe Màn 1 / Màn 2):
@@ -57,64 +69,6 @@ interface GroupedOrder {
 type OwnerFilter = "all" | "to_confirm" | "packing" | "packed";
 // Filter cho staff (Màn 2).
 type StaffFilter = "available" | "mine" | "locked";
-
-function fmtKg(n: number): string {
-  return Number.isInteger(n) ? `${n}kg` : `${n.toFixed(1)}kg`;
-}
-
-function fmtTime(raw: string | null): string {
-  if (!raw) return "";
-  const d = new Date(raw.includes("T") ? raw : raw.replace(" ", "T"));
-  if (isNaN(d.getTime())) return raw;
-  return d.toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
-
-// Tên rút gọn: "Nguyễn Văn A" → "N.V.A". Server đã che một phần; rút thêm
-// làm lớp phòng vệ thứ hai.
-function shortenName(name: string | null): string {
-  if (!name) return "Khách lẻ";
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 1) return name;
-  return parts.map((p) => p[0].toUpperCase()).join(".");
-}
-
-// Nhãn nhân viên: "Nguyễn Văn Tuấn" → "NV. Tuấn" (chữ cái đầu các tên + tên cuối).
-function staffLabel(name: string | null): string {
-  if (!name) return "Nhân viên";
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 1) return name;
-  const initials = parts.slice(0, -1).map((p) => p[0].toUpperCase()).join("");
-  return `${initials}. ${parts[parts.length - 1]}`;
-}
-
-// Initials cho avatar tròn: "A Farm" → "AF", "Nguyễn Tuấn" → "NT".
-function avatarInitials(name: string | null): string {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-// Pill trạng thái ĐƠN (góc phải card).
-function statusPill(status: FarmIncomingOrder["order_status"]): {
-  label: string;
-  className: string;
-} {
-  switch (status) {
-    case "delivering":
-      return { label: "Đang giao", className: "bg-green-50 text-green-700" };
-    case "pending":
-      return { label: "Chờ xác nhận", className: "bg-gray-100 text-gray-600" };
-    case "preparing":
-      return { label: "Đang chuẩn bị", className: "bg-amber-50 text-amber-700" };
-    default:
-      return { label: "Đã xác nhận", className: "bg-blue-50 text-blue-700" };
-  }
-}
 
 export default function FarmOrdersPage() {
   const isFarm = useFarmGuard();
@@ -383,6 +337,7 @@ function OwnerCard({
   staff: { id: number; name: string; farm_role: string | null }[];
   onChanged: () => void;
 }) {
+  const navigate = useNavigate();
   const pill = statusPill(order.order_status);
   const { busy, err, run } = useAction(onChanged);
   const [picking, setPicking] = useState(false);
@@ -397,20 +352,20 @@ function OwnerCard({
     (order.assigned_customer_id != null
       ? staff.find((s) => s.id === order.assigned_customer_id)?.name ?? null
       : null);
+  const recipient = recipientLocation(order);
 
   return (
-    <div className="p-3 border border-gray-200 rounded-xl">
+    <div
+      onClick={() => navigate(`/farm/orders/${order.order_id}`)}
+      className="p-3 border border-gray-200 rounded-xl cursor-pointer active:bg-gray-50"
+    >
       {/* Top: mã đơn + giờ·KH·địa chỉ | status pill */}
       <div className="flex justify-between items-start mb-2 gap-2">
         <div className="min-w-0">
           <div className="text-[13px] font-medium">#{order.order_id}</div>
           <div className="text-[11px] text-gray-500 mt-0.5 truncate">
             {shortenName(order.customer_name)}
-            {!order.is_pickup && order.delivery_address
-              ? ` · ${order.delivery_address}`
-              : order.is_pickup
-              ? " · Pickup"
-              : ""}
+            {recipient ? ` · ${recipient}` : ""}
           </div>
         </div>
         <div
@@ -460,6 +415,8 @@ function OwnerCard({
 
       {err && <div className="text-[11px] text-red-500 mt-1.5">{err}</div>}
 
+      {/* Khối thao tác: chặn bubble để bấm nút không mở màn chi tiết */}
+      <div onClick={(e) => e.stopPropagation()}>
       {/* Hành động owner */}
       <div className="mt-2.5 flex flex-wrap gap-1.5">
         {isPending && (
@@ -529,6 +486,7 @@ function OwnerCard({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -732,6 +690,7 @@ function StaffCard({
   myId: number | null;
   onChanged: () => void;
 }) {
+  const navigate = useNavigate();
   const { busy, err, run } = useAction(onChanged);
 
   const isMine = order.is_mine;
@@ -757,7 +716,8 @@ function StaffCard({
 
   return (
     <div
-      className={`p-3 border rounded-xl ${
+      onClick={() => navigate(`/farm/orders/${order.order_id}`)}
+      className={`p-3 border rounded-xl cursor-pointer active:bg-gray-50 ${
         isMinePacking
           ? "border-primary ring-1 ring-primary/30"
           : isLockedByOther
@@ -771,11 +731,7 @@ function StaffCard({
           <div className="text-[13px] font-medium">#{order.order_id}</div>
           <div className="text-[11px] text-gray-500 mt-0.5 truncate">
             {shortenName(order.customer_name)}
-            {!order.is_pickup && order.delivery_address
-              ? ` · ${order.delivery_address}`
-              : order.is_pickup
-              ? " · Pickup"
-              : ""}
+            {recipientLocation(order) ? ` · ${recipientLocation(order)}` : ""}
           </div>
         </div>
         <div
@@ -809,8 +765,8 @@ function StaffCard({
 
       {err && <div className="text-[11px] text-red-500 mt-1.5">{err}</div>}
 
-      {/* Hành động */}
-      <div className="mt-2.5">
+      {/* Hành động — chặn bubble để bấm nút không mở màn chi tiết */}
+      <div className="mt-2.5" onClick={(e) => e.stopPropagation()}>
         {isUnassigned && (
           <button
             disabled={busy}
@@ -850,48 +806,5 @@ function StaffCard({
         )}
       </div>
     </div>
-  );
-}
-
-// ─── Hook hành động dùng chung: chặn double-click, hiện lỗi, refresh ──────────
-
-function useAction(onChanged: () => void) {
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function run(fn: () => Promise<unknown>) {
-    if (busy) return;
-    setBusy(true);
-    setErr(null);
-    try {
-      await fn();
-      onChanged();
-    } catch (e: any) {
-      setErr(e?.message || "Thao tác thất bại");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return { busy, err, run };
-}
-
-function TruckIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="shrink-0"
-    >
-      <path d="M1 3h15v13H1zM16 8h4l3 3v5h-7" />
-      <circle cx="5.5" cy="18.5" r="2.5" />
-      <circle cx="18.5" cy="18.5" r="2.5" />
-    </svg>
   );
 }

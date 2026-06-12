@@ -330,9 +330,11 @@ export const categoriesStateUpwrapped = unwrap(
   (prev) => prev ?? []
 );
 
-// Tất cả sản phẩm (kể cả hết hàng) — chỉ dùng cho cart lookup fresh stock của item
-// đã add từ trước, hoặc khi truy cập product detail trực tiếp qua URL/share.
-// Mọi list UI phải dùng `productsState` (đã filter).
+// Tất cả sản phẩm (kể cả hết hàng). NGUỒN CHÍNH cho mọi list duyệt sau B13
+// (home/category/search/related) — các surface này hiện CẢ item hết hàng kèm
+// badge "Hết hàng" (xem PROD-05). Cũng dùng cho cart lookup fresh stock và
+// product detail trực tiếp qua URL/share. `productsState` (đã filter) chỉ còn
+// cho nơi cần danh sách đã-lọc.
 export const allProductsState = atom(async (get) => {
   const categories = await get(categoriesState);
   const res = await requestWithFallback<any>("/products", []);

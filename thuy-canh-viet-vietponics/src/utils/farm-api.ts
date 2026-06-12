@@ -7,6 +7,7 @@ import {
   FarmDashboardRange,
   FarmProductsTodayResponse,
   FarmIncomingOrder,
+  FarmOrderDetail,
   FarmPayout,
   FarmPayoutDetail,
   FarmAnalyticsResponse,
@@ -219,6 +220,18 @@ export function useFarmAnalytics(
  */
 export function useFarmIncomingOrders(enabled: boolean = true) {
   return usePolling<FarmIncomingOrder[]>("/farm/orders/incoming", enabled);
+}
+
+/**
+ * GET /farm/orders/:id — chi tiết một đơn cho khâu đóng gói (FarmPackingController@show).
+ * SĐT/địa chỉ đã che server-side; pickup hiện tên trạm. Poll 30s như incoming để
+ * trạng thái phiếu phản ánh thao tác từ thiết bị khác.
+ */
+export function useFarmOrderDetail(orderId: number | null, enabled: boolean = true) {
+  return usePolling<FarmOrderDetail>(
+    `/farm/orders/${orderId}`,
+    enabled && orderId != null
+  );
 }
 
 /**

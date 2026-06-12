@@ -573,6 +573,36 @@ export interface FarmIncomingOrder {
   read_only?: boolean;
 }
 
+// Chi tiết một đơn cho khâu đóng gói (GET /farm/orders/:id → show()).
+// SĐT/địa chỉ đã được server CHE; pickup → station_name + delivery_address đều
+// = tên trạm (không lộ địa chỉ giao).
+export interface FarmOrderDetail {
+  order_id: number;
+  order_status: "pending" | "confirmed" | "preparing" | "delivering";
+  order_created_at: string;
+  order_total: number;
+  assignment_status: PackingStatus;
+  assigned_customer_id: number | null;
+  assigned_customer_name: string | null;
+  packing_started_at: string | null;
+  packed_at: string | null;
+  is_mine: boolean;
+  // Farm thường = xem chỉ-đọc (đơn do Package Hub xử lý).
+  read_only: boolean;
+  is_pickup: boolean;
+  station_name: string | null;
+  customer_name: string | null;
+  customer_phone: string | null; // đã che
+  delivery_address: string | null; // đã che (pickup = station_name)
+  items: {
+    item_id: number;
+    product_id: number;
+    product_name: string;
+    quantity: number;
+    price: number;
+  }[];
+}
+
 // Thành viên farm có thể được gán đóng gói (GET /farm/staff).
 export interface FarmStaffMember {
   id: number;

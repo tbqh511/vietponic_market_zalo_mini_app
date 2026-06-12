@@ -80,6 +80,6 @@ Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 - **PACK-04** — 🟢 Đạt — Farm Staff — Cơ bản — ✅ audit
 - **PACK-05** — 🟢 Đạt (không auto-delivering, phủ test tốt) — Farm Staff — Cơ bản — ✅ audit
 - **PACK-06** — 🟢 Đạt — Farm Owner — Cơ bản — ✅ audit
-- **PACK-07** — 🟡 Che SĐT/địa chỉ đạt; FE hiện "Pickup" chứ chưa hiện tên trạm + chưa wire màn chi tiết (phát hiện khi audit) — Farm Staff — Nâng cao — ✅ audit
+- **PACK-07** — 🟢 Đạt (B15) — wire màn chi tiết `/farm/orders/:id`; list + detail hiện tên trạm cho đơn pickup; che SĐT/địa chỉ giữ nguyên — Farm Staff — Nâng cao — ✅ audit
 - **PACK-08** — 🟢 Đạt — Farm Owner — Nâng cao — ✅ audit
 - **PACK-09** — 🟢 Đạt — Farm Staff — Nâng cao — ✅ audit

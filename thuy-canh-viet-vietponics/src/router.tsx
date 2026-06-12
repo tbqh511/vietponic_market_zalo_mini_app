@@ -17,6 +17,7 @@ import AffiliatePage from "./pages/profile/affiliate";
 import FarmDashboardPage from "./pages/farm";
 import FarmAnalyticsPage from "./pages/farm/analytics";
 import FarmOrdersPage from "./pages/farm/orders";
+import FarmOrderDetailPage from "./pages/farm/orders/detail";
 import FarmPayoutsPage from "./pages/farm/payouts";
 import FarmPayoutDetailPage from "./pages/farm/payout-detail";
 import FarmInventoryPage from "./pages/farm/inventory";
@@ -158,6 +159,15 @@ const router = createBrowserRouter(
             farmTab: true,
             noFloatingCart: true,
             noBack: true,
+          },
+        },
+        {
+          path: "/farm/orders/:id",
+          element: <FarmOrderDetailPage />,
+          handle: {
+            title: "Chi tiết đơn",
+            space: "farm",
+            noFloatingCart: true,
           },
         },
         {

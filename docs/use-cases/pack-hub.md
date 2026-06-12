@@ -181,16 +181,19 @@ Dùng STAFF-A. 1) Mở chi tiết 1 đơn cần đóng. 2) Xem thông tin ngư�
 **Kết quả mong đợi:**
 SĐT và địa chỉ KH bị che bớt (vd 09xx*); đơn nhận-tại-trạm hiện tên trạm thay địa chỉ.
 
-**Đối chiếu code (Claude Code điền):** 🟡 Che SĐT/địa chỉ đạt (test tốt); FE list hiện "Pickup" chứ chưa hiện tên trạm + chưa có màn chi tiết đơn
+**Đối chiếu code (Claude Code điền):** 🟢 Đạt (B15) — wire màn chi tiết `/farm/orders/:id`; list + detail hiện **tên trạm** cho đơn pickup; che SĐT/địa chỉ GIỮ NGUYÊN (không nới lỏng).
 - [x] File/route/màn hình liên quan:
-  - BE `App\Support\ContactMasker::maskPhone()` (giữ 4 đầu + 3 cuối → "0937***739"), `maskAddress()` (rút còn 2 đoạn cuối, bỏ số nhà/đường). Áp **server-side** trong `FarmHubController@incomingOrders` (`:542-543`) và `FarmPackingController@show` (`:119-122`).
-  - FE `orders.tsx`: `StaffCard` hiển thị "SĐT: {customer_phone}" (đã che), tên rút `shortenName`. Pickup: render " · Pickup".
+  - BE `App\Support\ContactMasker::maskPhone()` (giữ 4 đầu + 3 cuối → "0937***739"), `maskAddress()` (rút còn 2 đoạn cuối, bỏ số nhà/đường). Áp **server-side** trong `FarmHubController@incomingOrders` (`:588-589`) và `FarmPackingController@show`.
+  - BE `routes/api.php:105` `GET /farm/orders/{orderId}` → `FarmPackingController@show` (đã có sẵn). B15 **enrich** payload: thêm `station_name` (key riêng), `order_total`, `assigned_customer_name`, `packing_started_at`, `packed_at` — giữ nguyên masking + pickup `delivery_address = station_name`.
+  - FE route mới `/farm/orders/:id` (`router.tsx`) → `src/pages/farm/orders/detail.tsx` (mới). List page chuyển vào `src/pages/farm/orders/index.tsx`; helper dùng chung tách ra `src/pages/farm/orders/_shared.tsx` (`recipientLocation`, `statusPill`, `useAction`, `staffLabel`, …). Hook `useFarmOrderDetail` + type `FarmOrderDetail`.
+  - FE list: card `OwnerCard`/`StaffCard` bấm vào → `navigate("/farm/orders/:id")` (không hardcode basename; nút thao tác `stopPropagation`). Dòng người nhận dùng `recipientLocation`: pickup hiện **tên trạm** (thay chuỗi cứng " · Pickup"), shipping hiện địa chỉ đã che.
+  - FE detail: hiển thị người nhận (SĐT đã che; pickup "Nhận tại trạm: {station_name}", shipping "Giao tới: {địa chỉ đã che}"), items + tổng kg, trạng thái đóng gói + người đóng, và **nút thao tác theo vai trò** (owner: xác nhận/phân công/bàn giao; staff: nhận/bắt đầu/hoàn tất). Farm thường (`read_only`) ẩn nút.
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch:
-  - **Che SĐT/địa chỉ: ĐẠT** và làm ở server (không lộ qua network/DevTools) — đúng tinh thần bảo mật.
-  - ⚠️ **Tên trạm:** endpoint chi tiết `show()` có set `delivery_address = station_name` cho đơn pickup, NHƯNG **FE không có route `/farm/orders/:id`** → `show()` chưa được wire vào màn nào. UI đóng gói chỉ là list `incomingOrders`; ở card list, pickup render chuỗi cứng " · Pickup" — `station_name` có trong data (`GroupedOrder.station_name`) nhưng **không được hiển thị** → chưa thoả "hiện tên trạm thay địa chỉ".
+  - **Che SĐT/địa chỉ: ĐẠT** và làm ở server (không lộ qua network/DevTools) — GIỮ NGUYÊN, không nới lỏng ở detail.
+  - **Tên trạm: ĐẠT** — list + detail hiện `station_name` cho đơn pickup; `show()` đã wire vào màn `/farm/orders/:id`.
 - [x] Test coverage:
-  - BE `OrderPackingTest`: `test_incoming_orders_mask_phone_and_address`, `test_contact_masker_phone`, `test_contact_masker_address`. Phủ tốt phần che.
-  - Thiếu test cho hiển thị tên trạm (pickup) + FE.
+  - BE `OrderPackingTest` (B15 mới): `test_show_returns_station_name_for_pickup_order`, `test_show_masks_phone_and_address_for_shipping_order`, `test_show_includes_packer_name_and_timestamps`, `test_staff_cannot_view_others_assignment_detail`. Giữ xanh `test_incoming_orders_mask_phone_and_address`, `test_contact_masker_*`. **26 passed.**
+  - FE: chưa có hạ tầng test → kiểm tay; `tsc --noEmit` sạch.
 
 ---
 

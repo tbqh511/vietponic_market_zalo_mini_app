@@ -14,7 +14,8 @@ export default function CartItem(props: CartItemProps) {
   const [quantity, setQuantity] = useState(props.quantity);
   const { addToCart } = useAddToCart(props.product);
 
-  // Đọc fresh stockAvailable từ productsState (snapshot trong cart có thể cũ).
+  // Đọc fresh stockAvailable từ productState (qua allProductsState, KHÔNG lọc
+  // hết hàng) — snapshot trong cart có thể cũ; item đã hết hàng vẫn lookup được.
   const freshProduct = useAtomValue(productState(props.product.id));
   const outOfStock = freshProduct ? isOutOfStock(freshProduct) : false;
 
