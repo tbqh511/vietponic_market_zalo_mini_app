@@ -72,7 +72,7 @@ Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 - **AFF-05** — 🟢 Đạt (thiếu test admin-web) — Admin — Cơ bản — ✅ audit
 
 ## Đóng gói & Hub (11 case) — `docs/use-cases/pack-hub.md`
-- **HUB-01** — 🟢 Đã sửa (B14): tách 2 chỉ số "Đã đặt hôm nay" / "Đã giao hôm nay", mỗi chỉ số tự nhất quán basis card+list — Farm Owner — Cơ bản — ✅ fixed
+- **HUB-01** — 🟢 Đã sửa (B14 + B18): tách 2 chỉ số "Đã đặt hôm nay" / "Đã giao hôm nay", mỗi chỉ số tự nhất quán basis card+list; **B18** sửa lỗi lệch 7h cửa sổ "hôm nay" (re-audit phát hiện: query so giờ VN trực tiếp, bỏ setTimezone UTC) — Farm Owner — Cơ bản — ✅ fixed
 - **HUB-02** — 🟢 Đạt (phủ test tốt) — Farm Owner — Nâng cao — ✅ audit
 - **PACK-01** — 🟢 Đạt — Farm Owner — Cơ bản — ✅ audit
 - **PACK-02** — 🟢 Đạt — Farm Owner — Cơ bản — ✅ audit

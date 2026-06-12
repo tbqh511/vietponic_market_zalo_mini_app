@@ -19,11 +19,15 @@ Số liệu khớp với đơn đã tạo trong ngày.
   - **Đã chốt & sửa:** tách thành 2 chỉ số song song, **mỗi chỉ số tự nhất quán basis** giữa card và list (không trộn):
     - **Đã đặt hôm nay** (`placed`): đơn `created_at` = hôm nay, **mọi status trừ `cancelled`**; gồm cả đơn chưa giao.
     - **Đã giao hôm nay** (`delivered`): đơn `status='delivered'`, `delivered_at` = hôm nay.
-  - Scope theo `zalo_order_items.farm_id` (không lẫn farm khác); **không** lọc `payment_status` (giữ policy COD). Timezone "hôm nay" = **Asia/Ho_Chi_Minh** (`config/app.php`); range VN-tz → UTC để khớp timestamp lưu UTC (giữ convention sẵn có, tương thích sqlite test).
+  - Scope theo `zalo_order_items.farm_id` (không lẫn farm khác); **không** lọc `payment_status` (giữ policy COD). Timezone "hôm nay" = **Asia/Ho_Chi_Minh** (`config/app.php`).
   - Field top-level cũ của `getOverview` **giữ nguyên** (= basis "đã giao") cho backward-compat (`analytics`/timeseries/payout không đổi).
   - AI hint tính trên nhóm `placed` (nhịp bán trong ngày, gồm đơn mới).
-- [x] Test coverage (B14):
-  - BE `FarmHubTest`: `test_overview_placed_includes_today_orders_all_statuses_except_cancelled`, `test_overview_delivered_does_not_leak_into_placed`, `test_overview_placed_scoped_to_current_farm`, `test_products_today_splits_placed_and_delivered`, `test_products_today_cancelled_excluded_from_placed`. Giữ xanh `test_overview_counts_only_delivered_orders` (top-level = delivered) + các `test_products_today_*` cũ (đổi sang key `products_placed`). **37 passed.**
+- [x] **TZ-fix (B18) — sửa lỗi lệch 7h "hôm nay":**
+  - **Phát hiện khi re-audit:** B14 (và code có sẵn) `whereBetween` sau khi `->setTimezone('UTC')` range vì **tưởng** `created_at`/`delivered_at` lưu UTC. Thực tế production lưu **giờ VN** (`app.timezone=Asia/Ho_Chi_Minh`, cột `dateTime` naive, `delivered_at=now()`, `created_at` từ FE gửi `+07:00`) → cửa sổ "hôm nay" lệch **-7h**: đơn đặt/giao sau ~07:00 sáng VN biến mất, đơn tối hôm qua lọt vào. Test B14 cũ **che bug** vì fixture ghi `Carbon::now('UTC')`.
+  - **Đã sửa:** bỏ `->setTimezone('UTC')` — so bound **giờ VN** trực tiếp với cột (lưu giờ VN) ở `FarmDashboardService::placedBaseQuery`+`itemsBaseQuery`+`getRevenueTimeseries` (bỏ `CONVERT_TZ`), `FarmHubController@productsToday`, **và** `FarmStockController@suggestions` (cùng pattern). FE không đổi (payload shape giữ nguyên).
+- [x] Test coverage (B14 + B18):
+  - BE `FarmHubTest`: `test_overview_placed_includes_today_orders_all_statuses_except_cancelled`, `test_overview_delivered_does_not_leak_into_placed`, `test_overview_placed_scoped_to_current_farm`, `test_products_today_splits_placed_and_delivered`, `test_products_today_cancelled_excluded_from_placed`. Giữ xanh `test_overview_counts_only_delivered_orders` (top-level = delivered) + các `test_products_today_*` cũ (đổi sang key `products_placed`).
+  - **B18 (TZ):** thêm `test_overview_today_counts_order_delivered_late_evening_vn` (giao 21:30 VN hôm nay → đếm) + `test_overview_today_excludes_order_placed_last_evening_vn` (đặt 22:00 VN hôm qua → KHÔNG đếm), freeze giờ bằng `Carbon::setTestNow`. **Chuyển toàn bộ fixture từ `Carbon::now('UTC')` → giờ VN (`now()`)** để phản ánh production (nếu không sẽ tiếp tục che bug). **42 passed.**
   - FE: chưa có hạ tầng test → checklist tay (đổi tab Đặt/Giao card+list đổi đồng bộ; đơn vừa đặt hiện ngay ở tab "Đã đặt"); `tsc --noEmit` sạch.
 
 ---
