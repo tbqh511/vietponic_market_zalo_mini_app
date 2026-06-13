@@ -2,6 +2,8 @@
 
 Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 
+> **Chốt sổ (2026-06-13):** 19/19 batch (B1–B19) hoàn tất. Test backend: **311 tests, 933 assertions, 1 error + 3 failures** — cả 4 đều ở `OrderCreationWithShippingTest` (**pre-existing**, không phải regression; coverage chưa đo được do thiếu PCOV/Xdebug). Còn treo: **ORDER-03** (nhãn trạng thái đơn — PO chốt nhưng chưa implement) + 11 case ⚪ "chưa test tay" + **AFF-02** chờ verify thiết bị. Checklist test tay: [`MANUAL-TEST.md`](MANUAL-TEST.md). Chi tiết: mục "Chốt sổ" trong [`FIX-PLAN.md`](FIX-PLAN.md). ⚠️ Backend repo: B11/B16 **chưa commit** (working tree).
+
 ## Xác thực (5 case) — `docs/use-cases/auth.md`
 - **AUTH-01** — 🟢 Đã sửa (B10) — Khách — Cơ bản — ✅ audit
 - **AUTH-02** — 🟢 Đạt — Khách — Cơ bản — ✅ audit
@@ -62,14 +64,14 @@ Tổng: 66 case. Trạng thái kiểm thử lấy từ CSV ngày 2026-06-10.
 - **ORDER-13** — 🟢 Đạt (phủ test tốt) — Khách — Cơ bản — ✅ audit
 - **ORDER-14** — 🟢 Đạt (thiếu test) — Khách — Cơ bản — ✅ audit
 - **ORDER-15** — 🟢 Đạt (phủ test tốt) — Khách — Cơ bản — ✅ audit
-- **ORDER-16** — 🟡 Thiếu test nhánh listener on-payment (phát hiện khi audit) — Khách — Nâng cao — ✅ audit
+- **ORDER-16** — 🟢 Đạt (B16 — 6 test nhánh listener CreateVtpOrderOnPayment) — Khách — Nâng cao — ✅ fixed
 
 ## Giới thiệu/CTV (5 case) — `docs/use-cases/aff.md`
 - **AFF-01** — 🟢 Đạt (phủ test tốt) — Khách — Cơ bản — ✅ audit
-- **AFF-02** — 🟡 Rủi ro Zalo giữ query ?ref= + thiếu test FE (phát hiện khi audit) — Khách — Nâng cao — ✅ audit
+- **AFF-02** — 🟢 Đã sửa (B19 — bắt mã từ getRouteParams() (nguồn chính ZMP) + fallback ?ref=, first-capture-wins, guard apply 1 lần/phiên; verify thiết bị thật) — Khách — Nâng cao — ✅ fixed
 - **AFF-03** — 🟢 Đã sửa (B2 — hoa hồng theo đơn GIAO THÀNH CÔNG/delivered, áp dụng cả COD, qua event OrderDelivered) — Khách — Nâng cao — ✅ fixed
-- **AFF-04** — 🟡 Thiếu test referrals/updateBank + updateBank "" ghi đè (phát hiện khi audit) — Khách — Cơ bản — ✅ audit
-- **AFF-05** — 🟢 Đạt (thiếu test admin-web) — Admin — Cơ bản — ✅ audit
+- **AFF-04** — 🟢 Đã sửa (B11 — fix updateBank array_key_exists; test 6 case: 3 nhánh bank + me shape + referrals mask + phân trang) — Khách — Cơ bản — ✅ fixed
+- **AFF-05** — 🟢 Đã sửa (B11 — bổ sung 10 Feature test: approve/reject/payout FIFO/toggle settings) — Admin — Cơ bản — ✅ fixed
 
 ## Đóng gói & Hub (11 case) — `docs/use-cases/pack-hub.md`
 - **HUB-01** — 🟢 Đã sửa (B14 + B18): tách 2 chỉ số "Đã đặt hôm nay" / "Đã giao hôm nay", mỗi chỉ số tự nhất quán basis card+list; **B18** sửa lỗi lệch 7h cửa sổ "hôm nay" (re-audit phát hiện: query so giờ VN trực tiếp, bỏ setTimezone UTC) — Farm Owner — Cơ bản — ✅ fixed

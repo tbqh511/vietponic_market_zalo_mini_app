@@ -268,7 +268,7 @@ Dùng KH-1. 1) Chọn nhận tại trạm + COD. 2) Đặt hàng.
 ---
 
 ## ORDER-16
-- **Vai trò:** Khách | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** ⚪ Chưa kiểm tra
+- **Vai trò:** Khách | **Độ ưu tiên:** Nâng cao | **Kết quả test gần nhất:** 🟢 Đạt (B16 — test 6 nhánh listener)
 
 **Ngữ cảnh & các bước:**
 Dùng KH-1 (queue worker phải chạy). 1) Đặt đơn GIAO HÀNG + thanh toán online (Bank/ZaloPay/MoMo Sandbox) thành công. 2) Đợi ~1 phút, mở chi tiết đơn.
@@ -281,7 +281,7 @@ Dùng KH-1 (queue worker phải chạy). 1) Đặt đơn GIAO HÀNG + thanh toá
   - BE: `Listeners/CreateVtpOrderOnPayment` (on `OrderPaymentSucceeded`: skip COD `:37-41` & non-shipping `:43-46`; idempotent guard `vtp_order_number` `:51-53` → `VtpOrderService::dispatchOrderToVtp`); đăng ký `EventServiceProvider:26-29`; event fire từ `notifySDK:1257` hoặc `CheckPaymentStatus:89`. (COD-shipping đã tạo VTP inline lúc checkout `:432`, listener skip.)
   - FE: `pages/orders/order-tracking.tsx` (render mã + hành trình khi `delivery.type==='shipping'` && `vtpOrderNumber`).
 - [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch: **Khớp logic (🟢).** Online (BANK/ZALOPAY/MOMO) shipping trả thành công → `OrderPaymentSucceeded` → `CreateVtpOrderOnPayment` tạo VTP → khách thấy mã vận đơn. *Lưu ý:* VTP fail không rollback (chỉ log; retry qua `artisan vtp:retry-create`).
-- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch (test): **🟡 Thiếu test cho nhánh listener** — `VtpCreateOrderTest::test_shipping_order_calls_vtp` chỉ phủ path **COD-inline** (payload helper KHÔNG gửi `payment_method` → default COD → VTP tạo trong `store()`). KHÔNG có test nào fire `OrderPaymentSucceeded` với đơn BANK/MOMO shipping để khẳng định VTP tạo qua listener, cũng không test guard skip-COD/skip-pickup của listener.
-- [x] Test coverage: **🟡** — như trên: phủ tốt COD-inline (`test_shipping_order_calls_vtp`, `test_vtp_failure_does_not_rollback_order`, `test_dispatch_throws_if_order_already_has_vtp_number`); **thiếu** test listener on-payment (ORDER-16 đúng nghĩa).
+- [x] Code hiện tại có khớp kết quả mong đợi không? Sai lệch (test): **🟢 Đã bổ sung (B16)** — `CreateVtpOrderOnPaymentListenerTest` (6 test): BANK/MOMO shipping → fire `OrderPaymentSucceeded` → VTP tạo + lưu `vtp_order_number`; pickup → skip; COD → skip; idempotent guard; VTP fail → listener bắt, không throw. Xác nhận B2 không xung đột (listener VTP vẫn đúng mốc `OrderPaymentSucceeded`; commission dùng `OrderDelivered` riêng biệt).
+- [x] Test coverage: **🟢** — `VtpCreateOrderTest` (4: COD-inline) + `CreateVtpOrderOnPaymentListenerTest` (6: nhánh listener on-payment). Suite `VtpOrder` 23 passed.
 
 ---

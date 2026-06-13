@@ -16,6 +16,9 @@ import "@/css/app.scss";
 // Expose app configuration
 import appConfig from "../app-config.json";
 
+// Affiliate referral capture
+import { captureRefCode } from "@/utils/affiliate";
+
 window.APP_CONFIG = {
   ...appConfig,
   ...(window.APP_CONFIG ?? {}),
@@ -26,15 +29,8 @@ window.APP_CONFIG = {
 };
 
 // Persist incoming affiliate referral code so it can be applied after JWT auth.
-try {
-  const params = new URLSearchParams(window.location.search);
-  const ref = params.get("ref");
-  if (ref) {
-    localStorage.setItem("pending_ref_code", ref.toUpperCase());
-  }
-} catch (e) {
-  // ignore — referral capture must never block app boot
-}
+// Reads both the official ZMP route params and the URL query (?ref=).
+captureRefCode();
 
 // Mount the app
 const root = createRoot(document.getElementById("app")!);
