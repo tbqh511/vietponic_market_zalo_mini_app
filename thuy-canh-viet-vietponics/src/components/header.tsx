@@ -4,7 +4,7 @@ import {
   categoriesStateUpwrapped,
   loadableUserInfoState,
 } from "@/state";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouteHandle } from "@/hooks";
 import { useFarmProfile } from "@/utils/farm-api";
 import { getConfig } from "@/utils/template";
@@ -14,6 +14,32 @@ import SearchBar from "./search-bar";
 import TransitionLink from "./transition-link";
 import { Icon } from "zmp-ui";
 import { DefaultUserAvatar } from "./vectors";
+
+// Avatar nhỏ trên header: dùng React state để reset khi URL thay đổi (URL Zalo
+// có thời hạn — useInitAuth ghi URL mới sau render đầu).
+function HeaderAvatar({ userInfo }: { userInfo: ReturnType<typeof useAtomValue<typeof loadableUserInfoState>> }) {
+  const avatar = userInfo.state === "hasData" ? (userInfo.data?.avatar ?? "") : "";
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [avatar]);
+
+  if (avatar && !failed) {
+    return (
+      <img
+        className="w-8 h-8 rounded-full object-cover"
+        src={avatar}
+        alt=""
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return (
+    <DefaultUserAvatar
+      width={32}
+      height={32}
+      className={userInfo.state === "loading" ? "animate-pulse" : ""}
+    />
+  );
+}
 
 export default function Header() {
   const categories = useAtomValue(categoriesStateUpwrapped);
@@ -91,18 +117,7 @@ export default function Header() {
             }}
           />
           <TransitionLink to="/profile">
-            {userInfo.state === "hasData" && userInfo.data ? (
-              <img
-                className="w-8 h-8 rounded-full"
-                src={userInfo.data.avatar}
-              />
-            ) : (
-              <DefaultUserAvatar
-                width={32}
-                height={32}
-                className={userInfo.state === "loading" ? "animate-pulse" : ""}
-              />
-            )}
+            <HeaderAvatar userInfo={userInfo} />
           </TransitionLink>
         </div>
       )}

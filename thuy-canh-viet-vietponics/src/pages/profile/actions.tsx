@@ -14,7 +14,7 @@ export default function ProfileActions() {
   };
 
   return (
-    <div className="bg-white rounded-lg p-4 grid grid-cols-3 gap-4 border-[0.5px] border-black/15">
+    <div className="bg-white rounded-lg p-4 grid grid-cols-3 gap-4 justify-items-center border-[0.5px] border-black/15">
       {[
         {
           label: "Đang xử lý",
