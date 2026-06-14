@@ -1,6 +1,7 @@
 import { UserInfoSkeleton } from "@/components/skeleton";
 import TransitionLink from "@/components/transition-link";
 import { customerProfileState, loadableUserInfoState } from "@/state";
+import logo from "@/static/logo.png";
 import { useAtomValue } from "jotai";
 import { PropsWithChildren } from "react";
 import { Icon } from "zmp-ui";
@@ -32,19 +33,18 @@ function UserInfo({ children }: PropsWithChildren) {
               src={avatar}
               alt={name}
               onError={(e) => {
-                // Ảnh Zalo lỗi/hết hạn URL → fallback chữ cái đầu thay vì ảnh vỡ.
+                // Ảnh Zalo lỗi/hết hạn URL → fallback logo Vietponics.
                 e.currentTarget.style.display = "none";
-                e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.removeProperty("display");
               }}
             />
           ) : null}
-          <div
-            className={`rounded-full h-10 w-10 flex-none flex items-center justify-center bg-primary/10 text-primary font-semibold ${
-              avatar ? "hidden" : ""
-            }`}
-          >
-            {(name?.trim()?.[0] ?? "?").toUpperCase()}
-          </div>
+          <img
+            src={logo}
+            alt="Vietponics"
+            style={avatar ? { display: "none" } : undefined}
+            className="rounded-full h-10 w-10 object-contain bg-primary/10 p-1 flex-none"
+          />
           <div className="space-y-0.5 flex-1 overflow-hidden">
             <div className="text-lg truncate">{name}</div>
             <div className="text-sm text-subtitle truncate">{phone}</div>
