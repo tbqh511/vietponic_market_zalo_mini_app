@@ -1,5 +1,6 @@
 import ProfileActions from "./actions";
 import AffiliateEntryCard from "./affiliate-entry-card";
+import DebugPanel from "./debug-panel";
 import FarmEntryCard from "./farm-entry-card";
 import FollowOA from "./follow-oa";
 import Points from "./points";
@@ -19,6 +20,7 @@ export default function ProfilePage() {
       <ZaloShortcuts />
       <FollowOA />
       <ProfileGate />
+      <DebugPanel />
     </div>
   );
 }
