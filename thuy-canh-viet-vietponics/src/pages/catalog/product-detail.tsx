@@ -8,20 +8,39 @@ import RelatedProducts from "./related-products";
 import { useAddToCart } from "@/hooks";
 import { Button } from "zmp-ui";
 import Section from "@/components/section";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import useEmblaCarousel from "embla-carousel-react";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const product = useAtomValue(productState(Number(id)))!;
   const [quantity, setQuantity] = useState(1);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const navigate = useNavigate();
   const { addToCart } = useAddToCart(product);
   const unitLabel = product.unit?.unitLabel;
   const outOfStock = isOutOfStock(product);
 
-  // STOCK-04: cap số lượng client theo tồn kho. undefined = không biết tồn
-  // (mock/offline) → không cap (giữ behaviour cũ); chốt chặn thật vẫn ở BE 422.
+  const images =
+    product.images && product.images.length > 0
+      ? product.images
+      : [product.image];
+  const hasMultiple = images.length > 1;
+
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false });
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setActiveIndex(emblaApi.selectedScrollSnap());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    emblaApi.on("select", onSelect);
+    return () => { emblaApi.off("select", onSelect); };
+  }, [emblaApi, onSelect]);
+
   const maxQty =
     typeof product.stockAvailable === "number" &&
     Number.isFinite(product.stockAvailable)
@@ -33,15 +52,76 @@ export default function ProductDetailPage() {
     <div className="w-full h-full flex flex-col">
       <div className="flex-1 overflow-y-auto">
         <div className="w-full p-4 pb-2 space-y-4 bg-section">
-          <img
-            key={product.id}
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-cover rounded-lg"
-            style={{
-              viewTransitionName: `product-image-${product.id}`,
-            }}
-          />
+
+          {/* ─── Image gallery ──────────────────────────────────────────── */}
+          <div>
+            {hasMultiple ? (
+              <>
+                <div className="overflow-hidden rounded-lg" ref={emblaRef}>
+                  <div className="flex">
+                    {images.map((src, i) => (
+                      <div
+                        key={i}
+                        className="flex-none w-full"
+                        style={{ viewTransitionName: i === 0 ? `product-image-${product.id}` : undefined }}
+                      >
+                        <img
+                          src={src}
+                          alt={`${product.name} - ảnh ${i + 1}`}
+                          className="w-full aspect-square object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dot indicators */}
+                <div className="flex justify-center gap-1.5 mt-2">
+                  {images.map((_, i) => (
+                    <button
+                      key={i}
+                      aria-label={`Ảnh ${i + 1}`}
+                      onClick={() => emblaApi?.scrollTo(i)}
+                      className={`rounded-full transition-all duration-200 ${
+                        i === activeIndex
+                          ? "w-4 h-2 bg-primary"
+                          : "w-2 h-2 bg-black/20"
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                {/* Thumbnail strip */}
+                <div className="flex gap-2 mt-2 overflow-x-auto pb-1 scrollbar-none">
+                  {images.map((src, i) => (
+                    <button
+                      key={i}
+                      onClick={() => emblaApi?.scrollTo(i)}
+                      className={`flex-none w-14 h-14 rounded-md overflow-hidden border-2 transition-colors ${
+                        i === activeIndex ? "border-primary" : "border-transparent"
+                      }`}
+                    >
+                      <img
+                        src={src}
+                        alt={`thumbnail ${i + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <img
+                key={product.id}
+                src={product.image}
+                alt={product.name}
+                className="w-full aspect-square object-cover rounded-lg"
+                style={{ viewTransitionName: `product-image-${product.id}` }}
+              />
+            )}
+          </div>
+          {/* ────────────────────────────────────────────────────────────── */}
+
           <div>
             <div className="text-xl font-bold text-primary">
               {formatPrice(product.price)}
@@ -61,6 +141,7 @@ export default function ProductDetailPage() {
             )}
             <div className="text-sm mt-1">{product.name}</div>
           </div>
+
           {!outOfStock && (
             <div className="bg-background rounded-lg px-3 py-2">
               <div className="flex items-center justify-between">
@@ -107,6 +188,7 @@ export default function ProductDetailPage() {
           )}
           <ShareButton product={product} />
         </div>
+
         {product.detail && (
           <>
             <div className="bg-background h-2 w-full"></div>

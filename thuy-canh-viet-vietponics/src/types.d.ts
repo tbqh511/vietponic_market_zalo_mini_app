@@ -21,6 +21,7 @@ export interface Product {
   price: number;
   originalPrice?: number;
   image: string;
+  images?: string[];   // tất cả ảnh sản phẩm (bao gồm cả image đại diện)
   category: Category;
   detail?: string;
   sizes?: Size[];

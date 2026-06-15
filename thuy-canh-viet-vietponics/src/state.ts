@@ -350,6 +350,16 @@ export const allProductsState = atom(async (get) => {
     const rawStock =
       p.stockAvailable ?? p.stock_available ?? p.available ?? p.stock;
     const stockNum = rawStock === undefined || rawStock === null ? undefined : Number(rawStock);
+
+    // Normalize images array: dùng p.images nếu có, fallback về [p.image]
+    const rawImages: unknown = p.images ?? p.product_images ?? p.gallery;
+    const imagesArr: string[] =
+      Array.isArray(rawImages) && rawImages.length > 0
+        ? (rawImages as string[])
+        : p.image
+        ? [p.image as string]
+        : [];
+
     return {
       // keep original fields but normalize id/categoryId
       ...p,
@@ -357,6 +367,7 @@ export const allProductsState = atom(async (get) => {
       categoryId: Number.isFinite(categoryId) ? categoryId : NaN,
       unit: normalizeUnit(p),
       stockAvailable: typeof stockNum === "number" && Number.isFinite(stockNum) ? stockNum : undefined,
+      images: imagesArr,
     } as Product & { categoryId: number };
   });
 
