@@ -561,6 +561,9 @@ export function useCheckout() {
   const requestInfo = useRequestInformation();
   const navigate = useNavigate();
   const refreshNewOrders = useSetAtom(ordersState("pending"));
+  // Làm mới stock sau khi đặt đơn (backend đã trừ kho FEFO ngay lúc tạo đơn) →
+  // product-detail / cart-item / payableCart phản ánh tồn thật ngay, tránh đặt vượt.
+  const refreshAllProducts = useSetAtom(allProductsState);
   const shippingAddress = useAtomValue(shippingAddressState);
   const selectedShippingService = useAtomValue(selectedShippingServiceState);
   const selectedStation = useAtomValue(selectedStationState);
@@ -645,6 +648,16 @@ export function useCheckout() {
         "Authorization": `Bearer ${jwtToken}`,
       };
 
+      // Validate địa chỉ và dịch vụ vận chuyển TRƯỚC khi mở popup thanh toán
+      if (deliveryMode === "shipping" && (!shippingAddress?.ward_id || !shippingAddress?.province_id)) {
+        toast.error("Vui lòng thêm địa chỉ nhận hàng trước khi thanh toán.");
+        return;
+      }
+      if (deliveryMode === "shipping" && !selectedShippingService) {
+        toast.error("Vui lòng chờ tính phí vận chuyển hoặc kiểm tra lại địa chỉ nhận hàng.");
+        return;
+      }
+
       // Chọn phương thức thanh toán
       const selectedMethod = await new Promise<{ method: string; isCustom?: boolean; logo?: string; displayName?: string; subMethod?: string }>((resolve, reject) => {
         Payment.selectPaymentMethod({
@@ -674,12 +687,6 @@ export function useCheckout() {
       const voucherDiscountShipping = appliedVoucher?.discount_shipping ?? 0;
       const voucherDiscountTotal = voucherDiscountSubtotal + voucherDiscountShipping;
       const finalTotal = Math.max(0, subtotal + shippingFee - voucherDiscountTotal);
-
-      // Validate: nếu mode shipping mà chưa chọn dịch vụ ship → báo lỗi
-      if (deliveryMode === "shipping" && !selectedShippingService) {
-        toast.error("Vui lòng chọn dịch vụ vận chuyển trước khi thanh toán.");
-        return;
-      }
 
       // Tên người nhận: backend validate delivery.name là required.
       // Tài khoản test kiểm duyệt Zalo có thể không cấp quyền scope.userInfo
@@ -995,6 +1002,7 @@ export function useCheckout() {
         setNote("");
         setAppliedVoucher(null);
         refreshNewOrders();
+        refreshAllProducts();
         // Bỏ viewTransition cho navigate sau thanh toán: trên Zalo WebView (device thật),
         // document.visibilityState chưa kịp restore khi sheet native đóng → startViewTransition
         // ném InvalidStateError. Đây là route push thường, không cần shared-element animation.

@@ -191,14 +191,23 @@ export function useShippingFee() {
     totalAmount,
   ]);
 
-  // Disable checkout khi cần thiết: shipping mode, có địa chỉ đầy đủ,
-  // không loading, và (có lỗi hoặc không có dịch vụ nào khả dụng).
-  const disableCheckout =
+  // Disable checkout khi:
+  // 1. Shipping mode mà chưa có địa chỉ (ward_id hoặc province_id trống)
+  // 2. Shipping mode, có địa chỉ, nhưng không loading và (có lỗi hoặc không có dịch vụ)
+  const noAddress =
+    deliveryMode === "shipping" &&
+    (!address?.ward_id || !address?.province_id);
+
+  const noService =
     deliveryMode === "shipping" &&
     !!address?.ward_id &&
     !!address?.province_id &&
     !loading &&
     (!!error || services.length === 0);
 
-  return { services, loading, error, disableCheckout };
+  const disableCheckout = noAddress || noService;
+
+  const addressError = noAddress ? "Vui lòng thêm địa chỉ nhận hàng trước khi thanh toán." : null;
+
+  return { services, loading, error: addressError ?? error, disableCheckout };
 }

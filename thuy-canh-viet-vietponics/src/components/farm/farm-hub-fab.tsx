@@ -4,6 +4,7 @@ import {
   isFarmPartnerState,
   appSpaceState,
   lastCustomerPathState,
+  cartTotalState,
 } from "@/state";
 import { useRouteHandle } from "@/hooks";
 import { PlantIcon } from "../vectors";
@@ -17,6 +18,7 @@ export default function FarmHubFab() {
   const space = useAtomValue(appSpaceState);
   const setSpace = useSetAtom(appSpaceState);
   const setLastCustomerPath = useSetAtom(lastCustomerPathState);
+  const { totalItems } = useAtomValue(cartTotalState);
   const [handle] = useRouteHandle();
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,6 +35,13 @@ export default function FarmHubFab() {
 
   if (!shouldShow) return null;
 
+  // Khi thanh "Đặt mua" đang hiện (giỏ hàng có hàng), nâng FAB lên thêm
+  // 56px (chiều cao thanh ~48px + khoảng cách 8px) để không chồng lên nhau.
+  const cartBarVisible = totalItems > 0 && !handle?.noFloatingCart;
+  const bottomOffset = cartBarVisible
+    ? "calc(var(--safe-bottom) + 120px)"
+    : "calc(var(--safe-bottom) + 64px)";
+
   const handleTap = () => {
     setLastCustomerPath(location.pathname); // nhớ chỗ đang đứng để quay lại
     setSpace("farm");
@@ -45,7 +54,7 @@ export default function FarmHubFab() {
       onClick={handleTap}
       aria-label="Vào Farm Hub"
       className="fixed left-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primaryForeground shadow-lg active:scale-95 transition-transform"
-      style={{ bottom: "calc(var(--safe-bottom) + 64px)" }}
+      style={{ bottom: bottomOffset }}
     >
       <PlantIcon className="w-5 h-5" />
     </button>
