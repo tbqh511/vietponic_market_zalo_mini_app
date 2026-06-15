@@ -4,15 +4,18 @@ import { Icon } from "zmp-ui";
 import { FarmIcon } from "@/components/vectors";
 import {
   appSpaceState,
+  farmPartnerStatusState,
   isFarmPartnerState,
   lastCustomerPathState,
 } from "@/state";
 
 // Card điều hướng Farm trong tab Cá nhân.
 // - Farm partner đã duyệt: "Chuyển sang Farm Hub" → set space=farm + nhớ path customer.
+// - Đang chờ duyệt ('requested'): hiển thị trạng thái chờ, không có action.
 // - Customer thường: "Trở thành đối tác Farm" → /farm/register.
 export default function FarmEntryCard() {
   const isFarmPartner = useAtomValue(isFarmPartnerState);
+  const farmPartnerStatus = useAtomValue(farmPartnerStatusState);
   const setSpace = useSetAtom(appSpaceState);
   const setLastCustomerPath = useSetAtom(lastCustomerPathState);
   const navigate = useNavigate();
@@ -41,6 +44,28 @@ export default function FarmEntryCard() {
           </div>
         </div>
         <Icon icon="zi-chevron-right" className="text-primary" />
+      </div>
+    );
+  }
+
+  // Đang chờ duyệt: hiển thị trạng thái, không điều hướng.
+  if (farmPartnerStatus === "requested") {
+    return (
+      <div className="bg-yellow-50 rounded-lg p-4 flex items-center space-x-4 border border-yellow-300">
+        <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+          <Icon icon="zi-clock-1" className="text-yellow-600" />
+        </div>
+        <div className="flex-1">
+          <div className="text-sm font-medium text-yellow-800">
+            Yêu cầu đang chờ duyệt
+          </div>
+          <div className="text-2xs text-yellow-700">
+            Vietponics sẽ liên hệ trong 1-3 ngày làm việc
+          </div>
+        </div>
+        <span className="text-2xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full font-medium">
+          Đang xét
+        </span>
       </div>
     );
   }

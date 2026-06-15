@@ -1,19 +1,19 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import toast from "react-hot-toast";
-import { customerProfileState } from "@/state";
+import { customerProfileState, farmPartnerStatusState } from "@/state";
 import { useEnsureJwt } from "@/hooks";
 import { requestFarmPartnership } from "@/utils/farm-api";
 
-// Form đăng ký trở thành Farm Partner. Endpoint hiện trả 501 (stub) — UI vẫn
-// gửi request để admin nắm được yêu cầu qua log. Sau khi BE hoàn thiện flow
-// approval, không cần đổi UI này.
-//
-// Nếu user đã là farm partner đã duyệt → redirect về /farm.
+// Form đăng ký trở thành Farm Partner.
+// - Đã approved → redirect /farm
+// - Đang chờ duyệt ('requested') → redirect /profile (FarmEntryCard sẽ hiện trạng thái chờ)
 export default function FarmRegisterPage() {
   const navigate = useNavigate();
   const profile = useAtomValue(customerProfileState);
+  const setProfile = useSetAtom(customerProfileState);
+  const farmPartnerStatus = useAtomValue(farmPartnerStatusState);
   const ensureJwt = useEnsureJwt();
 
   const [name, setName] = useState("");
@@ -25,12 +25,13 @@ export default function FarmRegisterPage() {
     ensureJwt();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Đã là farm partner → không cần đăng ký lại.
   useEffect(() => {
     if (profile?.is_farm_partner) {
       navigate("/farm", { replace: true });
+    } else if (farmPartnerStatus === "requested") {
+      navigate("/profile", { replace: true });
     }
-  }, [profile, navigate]);
+  }, [profile, farmPartnerStatus, navigate]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,28 +46,31 @@ export default function FarmRegisterPage() {
         address: address.trim(),
         description: description.trim() || undefined,
       });
-      // Endpoint hiện trả 501 — request() sẽ throw vì status !== 2xx.
-      // Khi BE implement xong, sẽ vào nhánh success này.
+      // Optimistic update: cập nhật profile atom ngay để FarmEntryCard hiện "Đang chờ duyệt".
+      if (profile) {
+        setProfile({ ...profile, farm_partner_status: "requested" });
+      }
       toast.success("Đã gửi yêu cầu. Vietponics sẽ liên hệ duyệt trong 1-3 ngày.", {
         duration: 5000,
       });
       navigate("/profile", { replace: true });
     } catch (err: any) {
-      // Stub 501: vẫn show thông báo thân thiện thay vì lỗi kỹ thuật.
-      const msg = err?.body
-        ? (() => {
-            try {
-              return JSON.parse(err.body).message;
-            } catch {
-              return null;
-            }
-          })()
-        : null;
-      toast(
-        msg ||
-          "Đã ghi nhận yêu cầu. Vui lòng liên hệ admin Vietponics qua Zalo OA để được duyệt.",
-        { icon: "ℹ️", duration: 6000 }
-      );
+      const status = err?.status;
+      // 409: đã gửi yêu cầu trước đó (guard BE)
+      if (status === 409) {
+        const msg = err?.body
+          ? (() => {
+              try { return JSON.parse(err.body).message; } catch { return null; }
+            })()
+          : null;
+        toast(msg || "Yêu cầu đã được gửi, đang chờ xét duyệt.", {
+          icon: "ℹ️",
+          duration: 5000,
+        });
+        navigate("/profile", { replace: true });
+        return;
+      }
+      toast.error("Gửi yêu cầu thất bại. Vui lòng thử lại sau.");
     } finally {
       setSubmitting(false);
     }
