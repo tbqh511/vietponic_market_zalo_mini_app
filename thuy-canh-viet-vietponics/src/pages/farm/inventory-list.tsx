@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAtomValue } from "jotai";
-import { categoriesStateUpwrapped } from "@/state";
+import { useAtomValue, useSetAtom } from "jotai";
+import { allProductsState, categoriesStateUpwrapped } from "@/state";
 import { useFarmInventory } from "@/hooks";
 import {
   InventoryProduct,
@@ -41,6 +41,8 @@ export default function InventoryList() {
     refresh,
   } = useFarmInventory();
 
+  const refreshAllProducts = useSetAtom(allProductsState);
+
   const [importTarget, setImportTarget] = useState<InventoryProduct | null>(null);
   const [exportTarget, setExportTarget] = useState<InventoryProduct | null>(null);
   const [showSort, setShowSort] = useState(false);
@@ -49,6 +51,7 @@ export default function InventoryList() {
     setImportTarget(null);
     setExportTarget(null);
     refresh();
+    refreshAllProducts(); // invalidate customer-facing product cache
   };
 
   // ── Infinite scroll sentinel ──────────────────────────────────────────

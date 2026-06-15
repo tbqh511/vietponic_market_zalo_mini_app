@@ -36,6 +36,8 @@ export default function ProductItem(props: ProductItemProps) {
             <div className="relative">
               <img
                 src={props.product.image}
+                loading="lazy"
+                decoding="async"
                 className={`w-full aspect-square object-cover rounded-lg ${
                   outOfStock ? "opacity-50 grayscale" : ""
                 }`}

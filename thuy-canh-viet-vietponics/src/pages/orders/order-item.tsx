@@ -6,7 +6,7 @@ function OrderItem(props: CartItem) {
   return (
     <List.Item
       prefix={
-        <img src={props.product.image} className="w-14 h-14 rounded-lg" />
+        <img src={props.product.image} loading="lazy" decoding="async" className="w-14 h-14 rounded-lg" />
       }
       suffix={
         <div className="text-sm font-medium flex items-center h-full text-right">

@@ -72,6 +72,8 @@ export default function CartItem(props: CartItemProps) {
       >
         <img
           src={props.product.image}
+          loading="lazy"
+          decoding="async"
           className={`w-14 h-14 rounded-lg ${outOfStock ? "opacity-50 grayscale" : ""}`}
         />
         <div className="flex-1 space-y-1">

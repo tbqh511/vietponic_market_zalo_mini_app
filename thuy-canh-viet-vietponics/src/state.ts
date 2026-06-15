@@ -335,7 +335,7 @@ export const categoriesStateUpwrapped = unwrap(
 // badge "Hết hàng" (xem PROD-05). Cũng dùng cho cart lookup fresh stock và
 // product detail trực tiếp qua URL/share. `productsState` (đã filter) chỉ còn
 // cho nơi cần danh sách đã-lọc.
-export const allProductsState = atom(async (get) => {
+export const allProductsState = atomWithRefresh(async (get) => {
   const categories = await get(categoriesState);
   const res = await requestWithFallback<any>("/products", []);
   // Extract and normalize product fields (coerce ids to numbers) to avoid type mismatch
