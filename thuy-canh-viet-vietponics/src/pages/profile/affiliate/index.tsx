@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import QRCode from "qrcode";
 import { Button, Icon } from "zmp-ui";
 import {
   AffiliateProfile,
@@ -11,7 +12,6 @@ import CommissionSummary from "./commission-summary";
 import CommissionList from "./commission-list";
 import ReferralsList from "./referrals-list";
 import BankInfoForm from "./bank-info-form";
-import InviteCard from "./invite-card";
 import CollapsibleSection from "./collapsible-section";
 import ReferralShareButton from "./referral-share-button";
 
@@ -21,6 +21,7 @@ export default function AffiliatePage() {
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +74,15 @@ export default function AffiliatePage() {
     }
   };
 
+  useEffect(() => {
+    if (!profile?.share_url) return;
+    let cancelled = false;
+    QRCode.toDataURL(profile.share_url, { width: 240, margin: 1 }).then((d) => {
+      if (!cancelled) setQrDataUrl(d);
+    });
+    return () => { cancelled = true; };
+  }, [profile?.share_url]);
+
   const copyLink = async () => {
     if (!profile?.share_url) return;
     try {
@@ -123,43 +133,50 @@ export default function AffiliatePage() {
     <div className="p-4 space-y-3 pb-8">
       {/* Hero card */}
       <div className="bg-section rounded-xl p-4 border border-black/10 shadow-sm space-y-3">
-        {/* Status + code row */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <span
-              className={
-                "inline-block text-2xs font-medium px-2 py-0.5 rounded-full " +
-                statusConfig.className
-              }
-            >
-              {statusConfig.label}
-            </span>
-            <div className="flex items-center gap-2 mt-1 min-w-0">
-              <span className="text-2xl font-bold tracking-widest text-primary truncate">
-                {profile.affiliate_code}
-              </span>
-              <button
-                type="button"
-                onClick={copyLink}
-                className="text-subtitle active:opacity-60 shrink-0"
-                title="Copy link giới thiệu"
-              >
-                <Icon icon="zi-copy" />
-              </button>
-            </div>
-          </div>
-          <div className="text-right text-xs text-subtitle shrink-0 pt-0.5">
-            <div className="font-semibold text-sm text-primary">
-              {profile.commission_rate}% hoa hồng
-            </div>
-            <div className="mt-0.5">{profile.referrals_count} khách đã giới thiệu</div>
+        {/* Status + commission row */}
+        <div className="flex items-center justify-between gap-2">
+          <span
+            className={
+              "inline-block text-2xs font-medium px-2 py-0.5 rounded-full " +
+              statusConfig.className
+            }
+          >
+            {statusConfig.label}
+          </span>
+          <div className="font-semibold text-sm text-primary">
+            {profile.commission_rate}% hoa hồng
           </div>
         </div>
 
-        {profile.locked && (
-          <p className="text-2xs text-yellow-800 bg-yellow-50 rounded-lg px-3 py-2 border border-yellow-200">
-            Thông tin đăng ký đã khoá. Liên hệ admin để thay đổi.
-          </p>
+        {/* Referral code row */}
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-2xl font-bold tracking-widest text-primary">
+            {profile.affiliate_code}
+          </span>
+          <button
+            type="button"
+            onClick={copyLink}
+            className="text-primary active:opacity-60 shrink-0 text-base leading-none"
+            title="Copy link giới thiệu"
+          >
+            <Icon icon="zi-copy" size={20} />
+          </button>
+        </div>
+
+        {/* QR code */}
+        {profile.share_url && (
+          <div className="flex flex-col items-center gap-1.5 py-1">
+            {qrDataUrl ? (
+              <img src={qrDataUrl} alt="QR giới thiệu" className="w-44 h-44" />
+            ) : (
+              <div className="w-44 h-44 bg-background rounded flex items-center justify-center text-subtitle text-xs">
+                Đang tạo...
+              </div>
+            )}
+            <p className="text-2xs text-subtitle text-center">
+              Khách quét mã sẽ vào mini app với mã của bạn được áp tự động.
+            </p>
+          </div>
         )}
 
         {/* Action buttons */}
@@ -183,18 +200,6 @@ export default function AffiliatePage() {
 
       {/* Commission summary */}
       <CommissionSummary stats={profile.commission_stats} />
-
-      {/* Invite section */}
-      {profile.share_url && (
-        <CollapsibleSection title="Mời bạn bè" defaultOpen={false}>
-          <div className="p-4">
-            <InviteCard
-              url={profile.share_url}
-              affiliateCode={profile.affiliate_code ?? ""}
-            />
-          </div>
-        </CollapsibleSection>
-      )}
 
       {/* Bank info */}
       <CollapsibleSection
