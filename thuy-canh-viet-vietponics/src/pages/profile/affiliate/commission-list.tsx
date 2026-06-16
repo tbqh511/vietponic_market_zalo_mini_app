@@ -50,15 +50,14 @@ export default function CommissionList() {
 
   if (rows.length === 0 && !loading) {
     return (
-      <div className="bg-section rounded-lg p-4 border-[0.5px] border-black/15 text-center text-subtitle text-sm">
+      <div className="text-center text-subtitle text-sm py-2">
         Chưa có hoa hồng nào
       </div>
     );
   }
 
   return (
-    <div className="bg-section rounded-lg p-4 border-[0.5px] border-black/15">
-      <div className="text-sm font-medium mb-3">Lịch sử hoa hồng</div>
+    <div>
       <div className="divide-y">
         {rows.map((row) => (
           <div key={row.id} className="py-2 flex items-center justify-between">

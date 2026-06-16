@@ -3,13 +3,14 @@ import toast from "react-hot-toast";
 import { Button, Input } from "zmp-ui";
 import { AffiliateProfile, updateAffiliateBank } from "@/utils/affiliate";
 
-export default function BankInfoForm({
-  initial,
-  onUpdated,
-}: {
+interface Props {
   initial: { bank_name: string; bank_account: string; bank_holder: string };
   onUpdated: (profile: AffiliateProfile) => void;
-}) {
+}
+
+export default function BankInfoForm({ initial, onUpdated }: Props) {
+  const hasBankInfo = !!(initial.bank_name && initial.bank_account);
+  const [editing, setEditing] = useState(!hasBankInfo);
   const [bankName, setBankName] = useState(initial.bank_name);
   const [bankAccount, setBankAccount] = useState(initial.bank_account);
   const [bankHolder, setBankHolder] = useState(initial.bank_holder);
@@ -27,6 +28,7 @@ export default function BankInfoForm({
       if (updated) {
         onUpdated(updated);
         toast.success("Đã cập nhật thông tin nhận tiền");
+        setEditing(false);
       }
     } catch (err: any) {
       toast.error(err?.message || "Cập nhật thất bại");
@@ -35,9 +37,34 @@ export default function BankInfoForm({
     }
   };
 
+  if (!editing) {
+    const maskedAccount =
+      bankAccount.length > 4
+        ? "****" + bankAccount.slice(-4)
+        : bankAccount;
+
+    return (
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm font-medium">{bankName}</div>
+          <div className="text-xs text-subtitle">
+            {maskedAccount}
+            {bankHolder ? ` · ${bankHolder}` : ""}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="text-xs text-primary underline ml-3 shrink-0"
+        >
+          Sửa
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={save} className="bg-section rounded-lg p-4 border-[0.5px] border-black/15 space-y-3">
-      <div className="text-sm font-medium">Thông tin nhận hoa hồng</div>
+    <form onSubmit={save} className="space-y-3">
       <Input
         label="Tên ngân hàng"
         value={bankName}
@@ -56,9 +83,25 @@ export default function BankInfoForm({
         onChange={(e) => setBankHolder(e.target.value)}
         placeholder="Họ tên chủ tài khoản"
       />
-      <Button htmlType="submit" fullWidth loading={saving} disabled={saving}>
-        Lưu thông tin
-      </Button>
+      <div className="flex gap-2">
+        {hasBankInfo && (
+          <Button
+            variant="secondary"
+            onClick={() => setEditing(false)}
+            className="flex-1"
+          >
+            Huỷ
+          </Button>
+        )}
+        <Button
+          htmlType="submit"
+          loading={saving}
+          disabled={saving}
+          className="flex-1"
+        >
+          Lưu
+        </Button>
+      </div>
     </form>
   );
 }

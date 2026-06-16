@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { Button } from "zmp-ui";
+import { Button, Icon } from "zmp-ui";
 import {
   AffiliateProfile,
   fetchAffiliateProfile,
   registerAffiliate,
 } from "@/utils/affiliate";
 import { useEnsureJwt } from "@/hooks";
-import ReferralLinkCard from "./referral-link-card";
-import ReferralQRCard from "./referral-qr-card";
 import CommissionSummary from "./commission-summary";
 import CommissionList from "./commission-list";
 import ReferralsList from "./referrals-list";
-import LockedInfoNotice from "./locked-info-notice";
 import BankInfoForm from "./bank-info-form";
+import InviteCard from "./invite-card";
+import CollapsibleSection from "./collapsible-section";
+import ReferralShareButton from "./referral-share-button";
 
 export default function AffiliatePage() {
   const ensureJwt = useEnsureJwt();
@@ -38,9 +38,8 @@ export default function AffiliatePage() {
         const data = await fetchAffiliateProfile();
         if (!cancelled) setProfile(data);
       } catch (e: any) {
-        if (!cancelled) {
+        if (!cancelled)
           setError(e?.message || "Không thể tải thông tin cộng tác viên.");
-        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -74,16 +73,22 @@ export default function AffiliatePage() {
     }
   };
 
+  const copyLink = async () => {
+    if (!profile?.share_url) return;
+    try {
+      await navigator.clipboard.writeText(profile.share_url);
+      toast.success("Đã copy link giới thiệu");
+    } catch {
+      toast.error("Không thể copy.");
+    }
+  };
+
   if (loading) {
-    return (
-      <div className="p-4 text-center text-subtitle">Đang tải...</div>
-    );
+    return <div className="p-4 text-center text-subtitle">Đang tải...</div>;
   }
 
   if (error) {
-    return (
-      <div className="p-4 text-center text-danger">{error}</div>
-    );
+    return <div className="p-4 text-center text-danger">{error}</div>;
   }
 
   if (!profile?.is_registered) {
@@ -111,57 +116,150 @@ export default function AffiliatePage() {
     );
   }
 
+  const statusConfig = statusMeta(profile.affiliate_status);
+  const hasBankInfo = !!(profile.bank_name && profile.bank_account);
+
   return (
-    <div className="p-4 space-y-4">
-      <div className="bg-section rounded-lg p-4 border-[0.5px] border-black/15">
-        <div className="text-sm text-subtitle">Mã giới thiệu</div>
-        <div className="text-2xl font-bold tracking-wider mt-1 text-primary">
-          {profile.affiliate_code}
+    <div className="p-4 space-y-3 pb-8">
+      {/* Hero card */}
+      <div className="bg-section rounded-lg p-4 border-[0.5px] border-black/15 space-y-3">
+        {/* Status + code row */}
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <span
+              className={
+                "inline-block text-2xs font-medium px-2 py-0.5 rounded-full " +
+                statusConfig.className
+              }
+            >
+              {statusConfig.label}
+            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-2xl font-bold tracking-wider text-primary">
+                {profile.affiliate_code}
+              </span>
+              <button
+                type="button"
+                onClick={copyLink}
+                className="text-subtitle active:opacity-60"
+              >
+                <Icon icon="zi-copy" />
+              </button>
+            </div>
+          </div>
+          <div className="text-right text-xs text-subtitle shrink-0">
+            <div className="font-medium text-sm text-primary">
+              {profile.commission_rate}% hoa hồng
+            </div>
+            <div>{profile.referrals_count} khách đã giới thiệu</div>
+          </div>
         </div>
-        <div className="text-xs text-subtitle mt-1">
-          Trạng thái:{" "}
-          <span className="font-medium">
-            {labelForStatus(profile.affiliate_status)}
-          </span>
-          {" · "}
-          {profile.referrals_count} khách đã giới thiệu
-        </div>
+
+        {profile.locked && (
+          <p className="text-2xs text-yellow-800 bg-yellow-50 rounded px-2 py-1.5 border border-yellow-200">
+            Thông tin đăng ký đã khoá. Liên hệ admin để thay đổi.
+          </p>
+        )}
+
+        {/* Action buttons */}
+        {profile.share_url && (
+          <div className="flex gap-2 pt-1">
+            <ReferralShareButton
+              code={profile.affiliate_code ?? ""}
+              refUrl={profile.share_url}
+            />
+            <button
+              type="button"
+              onClick={copyLink}
+              className="flex-1 flex items-center justify-center gap-1.5 border border-primary/30 text-primary rounded-lg py-2 text-sm font-medium active:opacity-70"
+            >
+              <Icon icon="zi-copy" />
+              Copy link
+            </button>
+          </div>
+        )}
       </div>
 
-      {profile.locked && <LockedInfoNotice />}
-
+      {/* Commission summary */}
       <CommissionSummary stats={profile.commission_stats} />
 
-      {profile.share_url && <ReferralLinkCard url={profile.share_url} />}
-      {profile.share_url && <ReferralQRCard url={profile.share_url} />}
+      {/* Invite section */}
+      {profile.share_url && (
+        <CollapsibleSection title="Mời bạn bè" defaultOpen={false}>
+          <div className="p-4">
+            <InviteCard
+              url={profile.share_url}
+              affiliateCode={profile.affiliate_code ?? ""}
+            />
+          </div>
+        </CollapsibleSection>
+      )}
 
-      <BankInfoForm
-        initial={{
-          bank_name: profile.bank_name ?? "",
-          bank_account: profile.bank_account ?? "",
-          bank_holder: profile.bank_holder ?? "",
-        }}
-        onUpdated={(p) => setProfile(p)}
-      />
+      {/* Bank info */}
+      <CollapsibleSection
+        title="Tài khoản nhận tiền"
+        subtitle={hasBankInfo ? undefined : "Chưa thiết lập"}
+        defaultOpen={!hasBankInfo}
+      >
+        <div className="p-4">
+          <BankInfoForm
+            initial={{
+              bank_name: profile.bank_name ?? "",
+              bank_account: profile.bank_account ?? "",
+              bank_holder: profile.bank_holder ?? "",
+            }}
+            onUpdated={(p) => setProfile(p)}
+          />
+        </div>
+      </CollapsibleSection>
 
-      <ReferralsList />
+      {/* Referrals */}
+      <CollapsibleSection
+        title="Khách đã giới thiệu"
+        subtitle={`${profile.referrals_count} người`}
+        defaultOpen={false}
+      >
+        <div className="p-4 pt-2">
+          <ReferralsList />
+        </div>
+      </CollapsibleSection>
 
-      <CommissionList />
+      {/* Commission history */}
+      <CollapsibleSection title="Lịch sử hoa hồng" defaultOpen={false}>
+        <div className="p-4 pt-2">
+          <CommissionList />
+        </div>
+      </CollapsibleSection>
     </div>
   );
 }
 
-function labelForStatus(status: string | null): string {
+function statusMeta(status: string | null): {
+  label: string;
+  className: string;
+} {
   switch (status) {
     case "approved":
-      return "Đã duyệt";
+      return {
+        label: "Đã duyệt",
+        className: "bg-green-100 text-green-800",
+      };
     case "pending":
-      return "Chờ duyệt";
+      return {
+        label: "Chờ duyệt",
+        className: "bg-yellow-100 text-yellow-800",
+      };
     case "suspended":
-      return "Tạm khoá";
+      return {
+        label: "Tạm khoá",
+        className: "bg-orange-100 text-orange-800",
+      };
     case "rejected":
-      return "Từ chối";
+      return {
+        label: "Từ chối",
+        className: "bg-red-100 text-red-800",
+      };
     default:
-      return "—";
+      return { label: "—", className: "bg-gray-100 text-gray-600" };
   }
 }

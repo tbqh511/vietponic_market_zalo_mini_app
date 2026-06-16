@@ -46,18 +46,14 @@ export default function ReferralsList() {
 
   if (rows.length === 0 && !loading) {
     return (
-      <div className="bg-section rounded-lg p-4 border-[0.5px] border-black/15 text-center text-subtitle text-sm">
+      <div className="text-center text-subtitle text-sm py-2">
         Chưa có khách hàng nào được giới thiệu
       </div>
     );
   }
 
   return (
-    <div className="bg-section rounded-lg p-4 border-[0.5px] border-black/15">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-medium">Khách đã giới thiệu</div>
-        <div className="text-2xs text-subtitle">{total} khách</div>
-      </div>
+    <div>
       <div className="divide-y">
         {rows.map((row) => (
           <div key={row.id} className="py-2.5">
