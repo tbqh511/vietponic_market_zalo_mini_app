@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Button } from "zmp-ui";
+import { Button, Icon } from "zmp-ui";
+import { openChat, openPhone } from "zmp-sdk/apis";
 import {
   AffiliateReferralRow,
   fetchAffiliateReferrals,
@@ -20,7 +21,6 @@ export default function ReferralsList() {
   const [rows, setRows] = useState<AffiliateReferralRow[]>([]);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -31,7 +31,6 @@ export default function ReferralsList() {
         if (cancelled) return;
         setRows((prev) => (page === 1 ? res.items : [...prev, ...res.items]));
         setLastPage(res.lastPage);
-        setTotal(res.total);
       })
       .catch(() => {
         // silent — list is non-critical
@@ -56,19 +55,16 @@ export default function ReferralsList() {
     <div>
       <div className="divide-y">
         {rows.map((row) => (
-          <div key={row.id} className="py-2.5">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0 flex-1 pr-2">
+          <div key={row.id} className="py-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium truncate">{row.name}</div>
-                <div className="text-2xs text-subtitle">
-                  {row.mobile_masked ? `${row.mobile_masked} · ` : ""}
+                <div className="text-2xs text-subtitle mt-0.5">
                   Tham gia {formatDate(row.joined_at)}
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-xs text-subtitle">
-                  {row.orders_count} đơn
-                </div>
+              <div className="text-right shrink-0">
+                <div className="text-xs text-subtitle">{row.orders_count} đơn</div>
                 <div className="text-sm font-semibold text-primary">
                   +{formatVnd(row.commission_total)}
                 </div>
@@ -77,6 +73,30 @@ export default function ReferralsList() {
             {row.orders_total > 0 && (
               <div className="text-2xs text-subtitle mt-1">
                 Tổng chi tiêu: {formatVnd(row.orders_total)}
+              </div>
+            )}
+            {(row.mobile || row.zalo_id) && (
+              <div className="flex gap-2 mt-2">
+                {row.mobile && (
+                  <button
+                    type="button"
+                    onClick={() => openPhone({ phoneNumber: row.mobile! })}
+                    className="flex items-center gap-1 text-xs text-primary border border-primary/30 rounded-lg px-3 py-1 active:opacity-70"
+                  >
+                    <Icon icon="zi-call" />
+                    Gọi Zalo
+                  </button>
+                )}
+                {row.zalo_id && (
+                  <button
+                    type="button"
+                    onClick={() => openChat({ type: "user", id: row.zalo_id! })}
+                    className="flex items-center gap-1 text-xs text-primary border border-primary/30 rounded-lg px-3 py-1 active:opacity-70"
+                  >
+                    <Icon icon="zi-chat" />
+                    Nhắn Zalo
+                  </button>
+                )}
               </div>
             )}
           </div>

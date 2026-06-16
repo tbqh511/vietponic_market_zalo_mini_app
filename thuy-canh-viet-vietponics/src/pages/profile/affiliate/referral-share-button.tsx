@@ -41,7 +41,7 @@ export default function ReferralShareButton({
     <button
       type="button"
       onClick={share}
-      className="flex-1 flex items-center justify-center gap-1.5 bg-primary text-white rounded-lg py-2 text-sm font-medium active:opacity-80"
+      className="flex-1 flex items-center justify-center gap-1.5 bg-primary text-white rounded-xl py-2.5 text-sm font-medium active:opacity-80"
     >
       <Icon icon="zi-share" />
       Chia sẻ Zalo

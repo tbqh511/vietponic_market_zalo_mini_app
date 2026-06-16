@@ -122,10 +122,10 @@ export default function AffiliatePage() {
   return (
     <div className="p-4 space-y-3 pb-8">
       {/* Hero card */}
-      <div className="bg-section rounded-lg p-4 border-[0.5px] border-black/15 space-y-3">
+      <div className="bg-section rounded-xl p-4 border border-black/10 shadow-sm space-y-3">
         {/* Status + code row */}
         <div className="flex items-start justify-between gap-2">
-          <div>
+          <div className="min-w-0">
             <span
               className={
                 "inline-block text-2xs font-medium px-2 py-0.5 rounded-full " +
@@ -134,36 +134,37 @@ export default function AffiliatePage() {
             >
               {statusConfig.label}
             </span>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-2xl font-bold tracking-wider text-primary">
+            <div className="flex items-center gap-2 mt-1 min-w-0">
+              <span className="text-2xl font-bold tracking-widest text-primary truncate">
                 {profile.affiliate_code}
               </span>
               <button
                 type="button"
                 onClick={copyLink}
-                className="text-subtitle active:opacity-60"
+                className="text-subtitle active:opacity-60 shrink-0"
+                title="Copy link giới thiệu"
               >
                 <Icon icon="zi-copy" />
               </button>
             </div>
           </div>
-          <div className="text-right text-xs text-subtitle shrink-0">
-            <div className="font-medium text-sm text-primary">
+          <div className="text-right text-xs text-subtitle shrink-0 pt-0.5">
+            <div className="font-semibold text-sm text-primary">
               {profile.commission_rate}% hoa hồng
             </div>
-            <div>{profile.referrals_count} khách đã giới thiệu</div>
+            <div className="mt-0.5">{profile.referrals_count} khách đã giới thiệu</div>
           </div>
         </div>
 
         {profile.locked && (
-          <p className="text-2xs text-yellow-800 bg-yellow-50 rounded px-2 py-1.5 border border-yellow-200">
+          <p className="text-2xs text-yellow-800 bg-yellow-50 rounded-lg px-3 py-2 border border-yellow-200">
             Thông tin đăng ký đã khoá. Liên hệ admin để thay đổi.
           </p>
         )}
 
         {/* Action buttons */}
         {profile.share_url && (
-          <div className="flex gap-2 pt-1">
+          <div className="flex gap-2">
             <ReferralShareButton
               code={profile.affiliate_code ?? ""}
               refUrl={profile.share_url}
@@ -171,7 +172,7 @@ export default function AffiliatePage() {
             <button
               type="button"
               onClick={copyLink}
-              className="flex-1 flex items-center justify-center gap-1.5 border border-primary/30 text-primary rounded-lg py-2 text-sm font-medium active:opacity-70"
+              className="flex-1 flex items-center justify-center gap-1.5 border border-primary/40 text-primary rounded-xl py-2.5 text-sm font-medium active:opacity-70"
             >
               <Icon icon="zi-copy" />
               Copy link

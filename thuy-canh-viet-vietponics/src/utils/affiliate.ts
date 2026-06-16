@@ -219,7 +219,8 @@ export async function fetchAffiliateCommissions(
 export interface AffiliateReferralRow {
   id: number;
   name: string;
-  mobile_masked: string | null;
+  mobile: string | null;
+  zalo_id: string | null;
   joined_at: string;
   orders_count: number;
   orders_total: number;
