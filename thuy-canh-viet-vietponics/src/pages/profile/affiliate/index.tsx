@@ -211,6 +211,7 @@ export default function AffiliatePage() {
           <BankInfoForm
             initial={{
               bank_name: profile.bank_name ?? "",
+              bank_bin: profile.bank_bin ?? "",
               bank_account: profile.bank_account ?? "",
               bank_holder: profile.bank_holder ?? "",
             }}

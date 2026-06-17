@@ -128,6 +128,7 @@ export interface AffiliateProfile {
   name: string | null;
   mobile: string | null;
   bank_name: string | null;
+  bank_bin: string | null;
   bank_account: string | null;
   bank_holder: string | null;
   commission_rate: number;
@@ -195,6 +196,7 @@ export async function registerAffiliate(): Promise<AffiliateProfile | null> {
 
 export async function updateAffiliateBank(payload: {
   bank_name?: string;
+  bank_bin?: string;
   bank_account?: string;
   bank_holder?: string;
 }): Promise<AffiliateProfile | null> {
