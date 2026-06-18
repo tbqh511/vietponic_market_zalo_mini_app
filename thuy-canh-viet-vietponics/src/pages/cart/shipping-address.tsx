@@ -305,6 +305,21 @@ function ShippingAddressPage() {
     };
 
     setAddress(newAddress);
+
+    // Đồng bộ địa chỉ lên backend (fire-and-forget) để restore trên thiết bị khác.
+    const token = localStorage.getItem("jwt_token");
+    if (token) {
+      request<unknown>("/customer/address", {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify(newAddress),
+      }).catch(() => {});
+    }
+
     setSelectedService(null);
     toast.success("Đã cập nhật địa chỉ");
     navigate(-1);

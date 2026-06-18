@@ -8,6 +8,7 @@ import {
 } from "jotai/utils";
 import {
   AppliedVoucher,
+  Voucher,
   BackendOrderStatus,
   Cart,
   CartItem,
@@ -664,16 +665,52 @@ export const vtpWardsState = atom<VtpLocation[]>([]);
 // Reset về null sau khi checkout thành công (xem useCheckout).
 export const appliedVoucherState = atom<AppliedVoucher | null>(null);
 
+// Tính lại discount từ type/value của voucher dựa trên subtotal + shippingFee
+// hiện tại — mirror logic VoucherService::breakdown() phía backend.
+// Dùng thay vì đọc discount_subtotal/discount_shipping đã được cache (stale khi
+// quantity hoặc phí ship thay đổi sau khi voucher đã được apply).
+export function recalculateVoucherDiscount(
+  voucher: Voucher,
+  subtotal: number,
+  shippingFee: number
+): { discount_subtotal: number; discount_shipping: number } {
+  switch (voucher.discount_type) {
+    case "free_shipping": {
+      // value=0 → miễn toàn bộ phí ship; value>0 → cap tối đa value VND
+      const cap = voucher.discount_value > 0 ? voucher.discount_value : shippingFee;
+      let d = Math.min(cap, shippingFee);
+      if (voucher.max_discount_amount != null)
+        d = Math.min(d, voucher.max_discount_amount);
+      return { discount_subtotal: 0, discount_shipping: Math.max(0, d) };
+    }
+    case "percent": {
+      let d = Math.round((subtotal * voucher.discount_value) / 100);
+      if (voucher.max_discount_amount != null)
+        d = Math.min(d, voucher.max_discount_amount);
+      return { discount_subtotal: Math.max(0, d), discount_shipping: 0 };
+    }
+    case "fixed": {
+      return {
+        discount_subtotal: Math.max(0, Math.min(voucher.discount_value, subtotal)),
+        discount_shipping: 0,
+      };
+    }
+    default:
+      return { discount_subtotal: 0, discount_shipping: 0 };
+  }
+}
+
 // Grand total đã trừ giảm: dùng chung cho cart-summary và pay để tránh
 // tính nhầm ở 2 chỗ. = totalAmount + shipping - discount, clamp >= 0.
 export const cartGrandTotalState = atom(async (get) => {
   const { totalAmount } = await get(cartTotalState);
   const mode = get(deliveryModeState);
   const svc = get(selectedShippingServiceState);
-  const voucher = get(appliedVoucherState);
+  const applied = get(appliedVoucherState);
 
   const shippingFee = mode === "shipping" ? svc?.total_fee ?? 0 : 0;
-  const discount =
-    (voucher?.discount_subtotal ?? 0) + (voucher?.discount_shipping ?? 0);
-  return Math.max(0, totalAmount + shippingFee - discount);
+  const { discount_subtotal, discount_shipping } = applied
+    ? recalculateVoucherDiscount(applied.voucher, totalAmount, shippingFee)
+    : { discount_subtotal: 0, discount_shipping: 0 };
+  return Math.max(0, totalAmount + shippingFee - discount_subtotal - discount_shipping);
 });

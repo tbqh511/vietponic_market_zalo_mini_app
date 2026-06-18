@@ -4,6 +4,7 @@ import {
   cartGrandTotalState,
   cartTotalState,
   deliveryModeState,
+  recalculateVoucherDiscount,
   selectedShippingServiceState,
 } from "@/state";
 import { formatPrice } from "@/utils/format";
@@ -24,8 +25,9 @@ export default function CartSummary() {
 
   const isShipping = deliveryMode === "shipping";
   const shippingFeeRaw = isShipping ? (selectedService?.total_fee ?? null) : 0;
-  const shippingDiscount = applied?.discount_shipping ?? 0;
-  const subtotalDiscount = applied?.discount_subtotal ?? 0;
+  const { discount_subtotal: subtotalDiscount, discount_shipping: shippingDiscount } = applied
+    ? recalculateVoucherDiscount(applied.voucher, totalAmount, shippingFeeRaw ?? 0)
+    : { discount_subtotal: 0, discount_shipping: 0 };
   const totalDiscount = subtotalDiscount + shippingDiscount;
   const finalTotal =
     grandTotalState.state === "hasData"

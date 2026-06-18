@@ -24,6 +24,7 @@ import {
   shortcutPromptedAtom,
   oaFollowPromptedAtom,
   writeZaloSdkProfile,
+  recalculateVoucherDiscount,
 } from "@/state";
 import { promptCreateShortcut, promptFollowOA } from "@/utils/zalo-prompts";
 import {
@@ -208,6 +209,8 @@ function isJwtExpired(token: string): boolean {
 
 export function useEnsureJwt() {
   const setCustomerProfile = useSetAtom(customerProfileState);
+  const setShippingAddress = useSetAtom(shippingAddressState);
+  const currentAddress = useAtomValue(shippingAddressState);
 
   return async (): Promise<string | null> => {
     let token = localStorage.getItem("jwt_token");
@@ -243,6 +246,11 @@ export function useEnsureJwt() {
         // Lưu customer profile (bao gồm is_farm_partner) vào state
         if (result.data?.user) {
           setCustomerProfile(result.data.user);
+          // Restore địa chỉ giao hàng đã lưu từ server nếu localStorage đang trống
+          // (đổi thiết bị, xóa cache) — localStorage là source of truth trong phiên.
+          if (result.data.user.saved_address && !currentAddress) {
+            setShippingAddress(result.data.user.saved_address);
+          }
         }
         applyPendingReferral(newToken);
         return newToken;
@@ -264,6 +272,8 @@ export function useEnsureJwt() {
 function useZaloAuthSync() {
   const setProfile = useSetAtom(customerProfileState);
   const setInfoKey = useSetAtom(userInfoKeyState);
+  const setShippingAddress = useSetAtom(shippingAddressState);
+  const currentAddress = useAtomValue(shippingAddressState);
 
   return useCallback(
     async (
@@ -320,6 +330,10 @@ function useZaloAuthSync() {
       if (isCancelled()) return null;
       if (result.data?.user) {
         setProfile(result.data.user);
+        // Restore địa chỉ giao hàng đã lưu từ server nếu localStorage đang trống.
+        if (result.data.user.saved_address && !currentAddress) {
+          setShippingAddress(result.data.user.saved_address);
+        }
         if (result.data.token) {
           localStorage.setItem("jwt_token", result.data.token);
           applyPendingReferral(result.data.token);
@@ -330,7 +344,7 @@ function useZaloAuthSync() {
       setInfoKey((key) => key + 1);
       return result.data?.user ?? null;
     },
-    [setProfile, setInfoKey]
+    [setProfile, setInfoKey, setShippingAddress, currentAddress]
   );
 }
 
@@ -752,8 +766,12 @@ export function useCheckout() {
       const shippingFee = deliveryMode === "shipping"
         ? (selectedShippingService?.total_fee ?? 0)
         : 0;
-      const voucherDiscountSubtotal = appliedVoucher?.discount_subtotal ?? 0;
-      const voucherDiscountShipping = appliedVoucher?.discount_shipping ?? 0;
+      // Tính lại discount từ voucher type/value theo phí ship hiện tại (tránh stale
+      // discount khi quantity thay đổi sau khi voucher đã được apply).
+      const { discount_subtotal: voucherDiscountSubtotal, discount_shipping: voucherDiscountShipping } =
+        appliedVoucher
+          ? recalculateVoucherDiscount(appliedVoucher.voucher, subtotal, shippingFee)
+          : { discount_subtotal: 0, discount_shipping: 0 };
       const voucherDiscountTotal = voucherDiscountSubtotal + voucherDiscountShipping;
       const finalTotal = Math.max(0, subtotal + shippingFee - voucherDiscountTotal);
 

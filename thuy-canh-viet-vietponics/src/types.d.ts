@@ -314,6 +314,9 @@ export interface CustomerProfile {
   // dừng", còn lại → "khu vực dành cho đối tác". Optional vì profile cached
   // cold-start (trước B8) chưa có field — re-auth lúc mount (useInitAuth) backfill.
   farm_partner_status?: "approved" | "requested" | "suspended" | "none";
+  // Địa chỉ giao hàng mặc định đã lưu trên server. Dùng để restore vào
+  // shippingAddressState khi localStorage trống (đổi thiết bị, xóa cache).
+  saved_address?: ShippingAddress | null;
 }
 
 // Tồn kho sản phẩm (dùng trong farm dashboard)

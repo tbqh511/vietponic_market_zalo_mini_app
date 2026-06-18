@@ -155,14 +155,7 @@ export async function authenticate(
   message: string;
   data: {
     token: string;
-    user: {
-      id: number;
-      name: string;
-      email: string;
-      profile: string | null;
-      mobile: string | null;
-      is_farm_partner: boolean;
-    };
+    user: import("@/types").CustomerProfile;
   };
 }> {
   console.log("[ZaloCheckout] /authenticate - access_token gửi:", accessToken);
@@ -189,14 +182,7 @@ export async function authenticate(
     code?: string;
     data: {
       token: string;
-      user: {
-        id: number;
-        name: string;
-        email: string;
-        profile: string | null;
-        mobile: string | null;
-        is_farm_partner: boolean;
-      };
+      user: import("@/types").CustomerProfile;
     };
   };
   // 403 + ACCOUNT_DISABLED đã được request() lõi chuyển thành AccountDisabledError
