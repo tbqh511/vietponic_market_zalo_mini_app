@@ -21,12 +21,11 @@ import {
   farmInventoryFiltersState,
   farmInventoryStatsState,
   farmInventoryRefreshTokenState,
-  shortcutPromptedAtom,
   oaFollowPromptedAtom,
   writeZaloSdkProfile,
   recalculateVoucherDiscount,
 } from "@/state";
-import { promptCreateShortcut, promptFollowOA } from "@/utils/zalo-prompts";
+import { promptFollowOA } from "@/utils/zalo-prompts";
 import {
   Product,
   CreateOrderRequest,
@@ -667,8 +666,6 @@ export function useCheckout() {
   const note = useAtomValue(noteState);
   const setNote = useSetAtom(noteState);
   const phone = useAtomValue(phoneState);
-  const shortcutPrompted = useAtomValue(shortcutPromptedAtom);
-  const setShortcutPrompted = useSetAtom(shortcutPromptedAtom);
   const oaFollowPrompted = useAtomValue(oaFollowPromptedAtom);
   const setOaFollowPrompted = useSetAtom(oaFollowPromptedAtom);
   const appliedVoucher = useAtomValue(appliedVoucherState);
@@ -1112,13 +1109,10 @@ export function useCheckout() {
         // Poll thêm để bắt update payment_status từ webhook /notify hoặc job fallback.
         setTimeout(() => refreshNewOrders(), 2500);
         setTimeout(() => refreshNewOrders(), 7000);
-        // Pop một lần các dialog Zalo native sau khi user đã thấy success.
-        // Set flag true bất kể accept/cancel để không spam đơn sau.
+        // Hỏi follow OA sau khi user thấy thành công (chỉ khi chưa follow).
+        // Bỏ createShortcut: Zalo không có API check "shortcut đã tồn tại", nên
+        // gọi khi shortcut đã có sẽ hiện native toast không kiểm soát được.
         setTimeout(async () => {
-          if (!shortcutPrompted) {
-            await promptCreateShortcut();
-            setShortcutPrompted(true);
-          }
           if (!oaFollowPrompted && oaId) {
             await promptFollowOA(oaId);
             setOaFollowPrompted(true);
