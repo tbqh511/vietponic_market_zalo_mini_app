@@ -487,7 +487,11 @@ export const stationsState = atom(async () => {
   const stations = extractArray<Station>(res);
   const stationsWithDistance = stations.map((station) => {
     // normalize possible location shapes and guard missing data
-    const rawLoc: any = station.location ?? (station as any).coords ?? (station as any).latlng ?? null;
+    const rawLoc: any =
+      station.location ??
+      (station as any).coords ??
+      (station as any).latlng ??
+      ((station as any).lat != null ? { lat: (station as any).lat, lng: (station as any).lng } : null);
     let lat: number | undefined;
     let lng: number | undefined;
     if (rawLoc) {
