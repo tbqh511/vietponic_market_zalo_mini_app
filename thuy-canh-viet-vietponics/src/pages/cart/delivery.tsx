@@ -74,6 +74,11 @@ function SelectedStationSummary() {
       title="Nhận hàng tại"
       subtitle={selectedStation.name}
       description={selectedStation.address}
+      extra={
+        selectedStation.distance && (
+          <span className="text-xs text-primary">{selectedStation.distance}</span>
+        )
+      }
       linkTo="/stations"
     />
   );

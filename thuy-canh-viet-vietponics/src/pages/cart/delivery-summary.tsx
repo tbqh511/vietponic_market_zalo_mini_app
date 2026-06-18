@@ -7,6 +7,7 @@ function DeliverySummary(props: {
   title: string;
   subtitle?: string;
   description?: string;
+  extra?: ReactNode;
   linkTo?: string;
 }) {
   return (
@@ -24,8 +25,9 @@ function DeliverySummary(props: {
       <div className="flex-1 flex flex-col space-y-0.5">
         {props.subtitle && <span className="text-sm">{props.subtitle}</span>}
         {props.description && (
-          <span className="text-xs text-inactive">{props.description}</span>
+          <span className="text-xs text-inactive line-clamp-2">{props.description}</span>
         )}
+        {props.extra}
       </div>
     </List.Item>
   );

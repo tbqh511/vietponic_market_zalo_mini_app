@@ -14,6 +14,7 @@ function OrdersPage() {
         className="h-full flex flex-col"
         activeKey={status}
         onChange={(status) => navigate(`/orders/${status}`)}
+        scrollable
       >
         <Tabs.Tab key="pending" label="Đang xử lý">
           <OrderList ordersState={ordersState("pending")} />
