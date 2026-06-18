@@ -365,6 +365,12 @@ export const allProductsState = atomWithRefresh(async (get) => {
       ...p,
       id: Number.isFinite(id) ? id : NaN,
       categoryId: Number.isFinite(categoryId) ? categoryId : NaN,
+      price: Number(p.price ?? 0),
+      originalPrice: p.original_price != null
+        ? Number(p.original_price)
+        : p.originalPrice != null
+          ? Number(p.originalPrice)
+          : undefined,
       unit: normalizeUnit(p),
       stockAvailable: typeof stockNum === "number" && Number.isFinite(stockNum) ? stockNum : undefined,
       images: imagesArr,

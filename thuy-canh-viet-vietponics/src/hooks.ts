@@ -1431,7 +1431,7 @@ export function useAvailableVouchers() {
     return () => clearTimeout(t);
   }, [fetchVouchers]);
 
-  return { vouchers, loading, error, refresh: fetchVouchers };
+  return { vouchers, loading, error, refresh: fetchVouchers, totalAmount };
 }
 
 /**
