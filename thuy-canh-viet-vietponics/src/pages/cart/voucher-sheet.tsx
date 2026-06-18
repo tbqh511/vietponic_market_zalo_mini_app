@@ -26,9 +26,9 @@ function describeDiscount(v: Voucher): string {
     case "fixed":
       return `Giảm ${formatPrice(Number(v.discount_value))}`;
     case "free_shipping":
-      return v.discount_value > 0
-        ? `Giảm phí ship tối đa ${formatPrice(Number(v.discount_value))}`
-        : "Miễn phí vận chuyển";
+      if (v.discount_value > 0) return `Giảm phí ship tối đa ${formatPrice(Number(v.discount_value))}`;
+      if (v.max_discount_amount) return `Miễn phí ship tối đa ${formatPrice(Number(v.max_discount_amount))}`;
+      return "Miễn phí vận chuyển";
   }
 }
 
