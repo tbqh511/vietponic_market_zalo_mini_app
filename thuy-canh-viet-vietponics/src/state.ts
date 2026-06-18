@@ -123,6 +123,8 @@ export function convertApiOrderToOrder(apiOrder: ApiOrder): Order {
       stationName: apiOrder.delivery.station_name || undefined,
       stationAddress: apiOrder.delivery.address || undefined,
       distanceKm: apiOrder.delivery.distance_km ?? undefined,
+      stationLat: apiOrder.delivery.lat ? parseFloat(apiOrder.delivery.lat) : undefined,
+      stationLng: apiOrder.delivery.lng ? parseFloat(apiOrder.delivery.lng) : undefined,
     };
   }
 

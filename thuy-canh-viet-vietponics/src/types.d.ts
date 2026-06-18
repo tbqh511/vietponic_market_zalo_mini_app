@@ -106,6 +106,8 @@ export type Delivery =
       stationName?: string;
       stationAddress?: string;
       distanceKm?: number;
+      stationLat?: number;
+      stationLng?: number;
     };
 
 export interface VtpTrackingEvent {

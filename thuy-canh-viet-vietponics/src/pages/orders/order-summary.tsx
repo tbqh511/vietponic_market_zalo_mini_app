@@ -59,7 +59,7 @@ function OrderSummary({ order, full }: { order: Order; full?: boolean }) {
 
   return (
     <div
-      className="bg-white rounded-xl overflow-hidden border border-black/10 mx-4 mb-3 cursor-pointer active:opacity-80 transition-opacity"
+      className={`bg-white rounded-xl overflow-hidden border border-black/10 cursor-pointer active:opacity-80 transition-opacity${full ? "" : " mx-4 mb-3"}`}
       onClick={handleCardClick}
     >
       {/* Header: delivery method + status badge */}
