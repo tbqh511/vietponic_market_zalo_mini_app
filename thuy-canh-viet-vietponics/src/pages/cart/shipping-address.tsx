@@ -319,8 +319,11 @@ function ShippingAddressPage() {
         },
         body: JSON.stringify(newAddress),
       }).catch((err) => {
-        console.warn("[shipping-address] PUT /customer/address thất bại:", err?.message ?? err);
-        toast.error("Không thể đồng bộ địa chỉ lên server. Địa chỉ chỉ lưu trên thiết bị này.", { duration: 4000 });
+        const status = (err as any)?.status;
+        const body = (err as any)?.body;
+        console.warn("[shipping-address] PUT /customer/address thất bại:", { message: err?.message, status, body });
+        const detail = status ? ` (HTTP ${status})` : ` (${err?.message ?? "network error"})`;
+        toast.error(`Lỗi đồng bộ địa chỉ${detail}`, { duration: 6000 });
       });
     }
 
