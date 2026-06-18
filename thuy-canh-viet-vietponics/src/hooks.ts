@@ -367,6 +367,75 @@ export function useInitAuth() {
   }, [syncAuth]);
 }
 
+// Đồng bộ giỏ hàng 2 chiều với backend:
+// - Restore: GET /api/cart khi app mở (nếu có JWT) → pre-fill cartState + appliedVoucherState
+// - Save: POST /api/cart (debounce 1.5s) mỗi khi cart hoặc voucher thay đổi
+// Backend tự xóa cart sau khi đơn được tạo thành công (ZaloApiController@store).
+export function useCartSync() {
+  const [cart, setCart] = useAtom(cartState);
+  const [appliedVoucher, setAppliedVoucher] = useAtom(appliedVoucherState);
+  const customerProfile = useAtomValue(customerProfileState);
+  const restoredRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const apiBase = getConfig((c) => c.template.apiUrl);
+
+  const doRestore = useCallback(async () => {
+    if (restoredRef.current) return;
+    const token = localStorage.getItem("jwt_token");
+    if (!token || !apiBase) return;
+    restoredRef.current = true;
+    try {
+      const res = await fetch(`${apiBase}/cart`, {
+        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (!json.data?.cart_data) return;
+      const { items, applied_voucher } = json.data.cart_data;
+      if (Array.isArray(items) && items.length > 0) setCart(items);
+      if (applied_voucher) setAppliedVoucher(applied_voucher as AppliedVoucher);
+    } catch {
+      // silent — restore là best-effort, không block UX
+    }
+  }, [apiBase, setCart, setAppliedVoucher]);
+
+  // Restore ngay khi mount nếu JWT đã có sẵn trong localStorage (returning user)
+  useEffect(() => { doRestore(); }, [doRestore]);
+
+  // Restore khi auth lần đầu hoàn tất (cold start — chưa có JWT trước khi mount)
+  useEffect(() => { if (customerProfile) doRestore(); }, [customerProfile, doRestore]);
+
+  // Debounced save mỗi khi cart hoặc voucher thay đổi
+  useEffect(() => {
+    if (!apiBase || !restoredRef.current || cart.length === 0) return;
+    const token = localStorage.getItem("jwt_token");
+    if (!token) return;
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      const t = localStorage.getItem("jwt_token");
+      if (!t) return;
+      try {
+        await fetch(`${apiBase}/cart`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${t}`,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: JSON.stringify({
+            cart_data: { items: cart, applied_voucher: appliedVoucher ?? null },
+          }),
+        });
+      } catch {
+        // silent
+      }
+    }, 1500);
+
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [cart, appliedVoucher, apiBase]);
+}
+
 export function useFarmGuard() {
   const navigate = useNavigate();
   const profile = useAtomValue(customerProfileState);

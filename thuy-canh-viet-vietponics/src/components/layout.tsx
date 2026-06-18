@@ -13,7 +13,7 @@ import AccountDisabledNotice from "./account-disabled-notice";
 import FarmAccessNotice, {
   FarmAccessVariant,
 } from "./farm/farm-access-notice";
-import { useAccountDisabledGate, useInitAuth, useRouteHandle } from "@/hooks";
+import { useAccountDisabledGate, useCartSync, useInitAuth, useRouteHandle } from "@/hooks";
 import { useAtom, useAtomValue } from "jotai";
 import {
   appSpaceState,
@@ -24,6 +24,7 @@ import {
 
 export default function Layout() {
   useInitAuth();
+  useCartSync();
   const accountDisabled = useAccountDisabledGate();
 
   const [handle] = useRouteHandle();
