@@ -1,12 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, Input, Button, Icon } from "zmp-ui";
 import { useAtomValue, useSetAtom } from "jotai";
 import toast from "react-hot-toast";
 import {
   appliedVoucherState,
-  cartTotalState,
-  selectedShippingServiceState,
-  deliveryModeState,
 } from "@/state";
 import { useAvailableVouchers, useValidateVoucher } from "@/hooks";
 import { formatPrice } from "@/utils/format";
@@ -38,14 +35,16 @@ function describeDiscount(v: Voucher): string {
 export default function VoucherSheet({ visible, onClose }: Props) {
   const setApplied = useSetAtom(appliedVoucherState);
   const applied = useAtomValue(appliedVoucherState);
-  const { totalAmount } = useAtomValue(cartTotalState);
-  const selectedShippingService = useAtomValue(selectedShippingServiceState);
-  const deliveryMode = useAtomValue(deliveryModeState);
-  const shippingFee =
-    deliveryMode === "shipping" ? selectedShippingService?.total_fee ?? 0 : 0;
 
-  const { vouchers, loading } = useAvailableVouchers();
+  const { vouchers, loading, error, refresh } = useAvailableVouchers();
   const validateVoucher = useValidateVoucher();
+
+  // Refresh khi sheet mở để đảm bảo data mới nhất,
+  // đặc biệt khi lần fetch đầu bị fail do JWT chưa sẵn sàng.
+  useEffect(() => {
+    if (visible) refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -136,13 +135,25 @@ export default function VoucherSheet({ visible, onClose }: Props) {
           </div>
         )}
 
-        {!loading && vouchers.length === 0 && (
+        {!loading && error && (
+          <div className="py-6 text-center space-y-2">
+            <div className="text-sm text-red-500">{error}</div>
+            <button
+              className="text-xs text-primary underline"
+              onClick={refresh}
+            >
+              Thử lại
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && vouchers.length === 0 && (
           <div className="text-sm text-gray-500 py-6 text-center">
             Hiện không có voucher khả dụng
           </div>
         )}
 
-        {!loading && vouchers.length > 0 && (
+        {!loading && !error && vouchers.length > 0 && (
           <div className="space-y-2">
             {vouchers.map((v) => {
               const usable = v.usable !== false;
