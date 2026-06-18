@@ -127,7 +127,7 @@ export type BackendOrderStatus =
   | "cancelled";
 
 // Frontend tab identifiers (dùng trong URL params và ordersState atom key)
-export type OrderStatus = "pending" | "shipping" | "completed" | "cancelled";
+export type OrderStatus = "confirming" | "packing" | "shipping" | "review" | "cancelled";
 // 'cod' = đơn thu tiền khi nhận (chưa thanh toán online); backend set khi
 // payment_method bắt đầu bằng 'COD'. 'pending' chỉ dùng cho đơn online chờ
 // webhook /notify xác nhận. Xem ZaloApiController.php (initialPaymentStatus).

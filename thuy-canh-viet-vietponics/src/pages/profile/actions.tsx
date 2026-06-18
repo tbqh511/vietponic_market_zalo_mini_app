@@ -1,9 +1,9 @@
 import {
-  OrderHistoryIcon,
   PackageIcon,
-  VoucherIcon,
+  ConfirmOrderIcon,
+  TruckDeliveryIcon,
+  StarIcon,
 } from "@/components/vectors";
-import { useToBeImplemented } from "@/hooks";
 import { OrderStatus } from "@/types";
 import { useNavigate } from "react-router-dom";
 
@@ -14,22 +14,27 @@ export default function ProfileActions() {
   };
 
   return (
-    <div className="bg-white rounded-lg p-4 grid grid-cols-3 gap-4 justify-items-center border-[0.5px] border-black/15">
+    <div className="bg-white rounded-lg p-4 grid grid-cols-4 gap-2 justify-items-center border-[0.5px] border-black/15">
       {[
         {
-          label: "Đang xử lý",
-          icon: VoucherIcon,
-          onClick: () => goToOrders("pending"),
+          label: "Chờ xác nhận",
+          icon: ConfirmOrderIcon,
+          onClick: () => goToOrders("confirming"),
         },
         {
-          label: "Đang giao",
-          icon: PackageIcon,
+          label: "Chờ lấy hàng",
+          icon: () => <PackageIcon active />,
+          onClick: () => goToOrders("packing"),
+        },
+        {
+          label: "Chờ giao hàng",
+          icon: TruckDeliveryIcon,
           onClick: () => goToOrders("shipping"),
         },
         {
-          label: "Lịch sử",
-          icon: OrderHistoryIcon,
-          onClick: () => goToOrders("completed"),
+          label: "Đánh giá",
+          icon: StarIcon,
+          onClick: () => goToOrders("review"),
         },
       ].map((action) => (
         <div
@@ -38,9 +43,9 @@ export default function ProfileActions() {
           onClick={action.onClick}
         >
           <div className="w-10 h-10 rounded-full bg-[#EBEFF7] flex items-center justify-center">
-            <action.icon active />
+            <action.icon />
           </div>
-          <div className="text-2xs text-center">{action.label}</div>
+          <div className="text-2xs text-center leading-tight">{action.label}</div>
         </div>
       ))}
     </div>

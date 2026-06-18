@@ -451,6 +451,62 @@ export function VoucherIcon() {
   );
 }
 
+export function ConfirmOrderIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        opacity="0.4"
+        d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21Z"
+        fill="var(--primary)"
+      />
+      <path
+        d="M12 7.5C11.5858 7.5 11.25 7.83579 11.25 8.25V12.25C11.25 12.4489 11.329 12.6397 11.4697 12.7803L13.9697 15.2803C14.2626 15.5732 14.7374 15.5732 15.0303 15.2803C15.3232 14.9874 15.3232 14.5126 15.0303 14.2197L12.75 11.9393V8.25C12.75 7.83579 12.4142 7.5 12 7.5Z"
+        fill="var(--primary)"
+      />
+    </svg>
+  );
+}
+
+export function TruckDeliveryIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        opacity="0.4"
+        d="M2 7C2 6.44772 2.44772 6 3 6H14C14.5523 6 15 6.44772 15 7V16H2V7Z"
+        fill="var(--primary)"
+      />
+      <path
+        d="M15 9.5H18.5858C18.851 9.5 19.1054 9.60536 19.2929 9.79289L21.7071 12.2071C21.8946 12.3946 22 12.649 22 12.9142V16H15V9.5Z"
+        fill="var(--primary)"
+      />
+      <path
+        d="M1 16.5H23V17C23 17.5523 22.5523 18 22 18H2C1.44772 18 1 17.5523 1 17V16.5Z"
+        fill="var(--primary)"
+      />
+      <circle cx="6.5" cy="18.5" r="1.5" fill="var(--primary)" />
+      <circle cx="17.5" cy="18.5" r="1.5" fill="var(--primary)" />
+    </svg>
+  );
+}
+
+export function StarIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        opacity="0.4"
+        d="M12 2L14.4 9.26H22L16.2 13.74L18.4 21L12 16.77L5.6 21L7.8 13.74L2 9.26H9.6L12 2Z"
+        fill="var(--primary)"
+      />
+      <path
+        d="M12 2L14.4 9.26H22L16.2 13.74L18.4 21L12 16.77L5.6 21L7.8 13.74L2 9.26H9.6L12 2Z"
+        stroke="var(--primary)"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function OrderHistoryIcon() {
   return (
     <svg

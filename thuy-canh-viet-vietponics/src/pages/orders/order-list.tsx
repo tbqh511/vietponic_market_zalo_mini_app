@@ -16,7 +16,7 @@ function OrderList(props: { ordersState: Atom<Promise<Order[]>> }) {
   }
 
   return (
-    <div className="space-y-2 p-4">
+    <div className="py-3">
       {orderList.state !== "hasData" ? (
         <>
           <OrderSummarySkeleton />

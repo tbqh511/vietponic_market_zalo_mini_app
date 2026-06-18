@@ -559,10 +559,11 @@ export const oaFollowPromptedAtom = atomWithStorage<boolean>(
 
 // Maps frontend tab key to the set of backend statuses it represents
 const ORDER_STATUS_MAP: Record<OrderStatus, BackendOrderStatus[]> = {
-  pending:   ["pending", "confirmed", "preparing"],
-  shipping:  ["delivering"],
-  completed: ["delivered"],
-  cancelled: ["cancelled"],
+  confirming: ["pending"],
+  packing:    ["confirmed", "preparing"],
+  shipping:   ["delivering"],
+  review:     ["delivered"],
+  cancelled:  ["cancelled"],
 };
 
 export const ordersState = atomFamily((status: OrderStatus) =>
