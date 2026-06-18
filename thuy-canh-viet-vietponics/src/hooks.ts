@@ -41,6 +41,7 @@ import {
   Order,
 } from "@/types";
 import { getConfig } from "@/utils/template";
+import CONFIG from "@/config";
 import { requestWithPost, request, requestWithFallback, authenticate, AccountDisabledError, isAccountDisabled } from "@/utils/request";
 import {
   notifyAccountDisabled,
@@ -246,9 +247,16 @@ export function useEnsureJwt() {
         // Lưu customer profile (bao gồm is_farm_partner) vào state
         if (result.data?.user) {
           setCustomerProfile(result.data.user);
-          // Restore địa chỉ giao hàng đã lưu từ server nếu localStorage đang trống
-          // (đổi thiết bị, xóa cache) — localStorage là source of truth trong phiên.
-          if (result.data.user.saved_address && !currentAddress) {
+          // Sync địa chỉ giao hàng theo account. Nếu user đổi tài khoản Zalo,
+          // phải reset về địa chỉ của tài khoản mới (hoặc null) để tránh leak.
+          // Nếu cùng tài khoản nhưng localStorage trống (xóa cache / đổi thiết bị),
+          // restore từ saved_address trên backend.
+          const storedCustomerId = localStorage.getItem(CONFIG.STORAGE_KEYS.AUTHED_CUSTOMER_ID);
+          const newCustomerId = String(result.data.user.id);
+          if (storedCustomerId !== newCustomerId) {
+            localStorage.setItem(CONFIG.STORAGE_KEYS.AUTHED_CUSTOMER_ID, newCustomerId);
+            setShippingAddress(result.data.user.saved_address ?? undefined);
+          } else if (!currentAddress && result.data.user.saved_address) {
             setShippingAddress(result.data.user.saved_address);
           }
         }
@@ -330,8 +338,13 @@ function useZaloAuthSync() {
       if (isCancelled()) return null;
       if (result.data?.user) {
         setProfile(result.data.user);
-        // Restore địa chỉ giao hàng đã lưu từ server nếu localStorage đang trống.
-        if (result.data.user.saved_address && !currentAddress) {
+        // Sync địa chỉ giao hàng theo account (xem useEnsureJwt cho giải thích).
+        const storedCustomerId = localStorage.getItem(CONFIG.STORAGE_KEYS.AUTHED_CUSTOMER_ID);
+        const newCustomerId = String(result.data.user.id);
+        if (storedCustomerId !== newCustomerId) {
+          localStorage.setItem(CONFIG.STORAGE_KEYS.AUTHED_CUSTOMER_ID, newCustomerId);
+          setShippingAddress(result.data.user.saved_address ?? undefined);
+        } else if (!currentAddress && result.data.user.saved_address) {
           setShippingAddress(result.data.user.saved_address);
         }
         if (result.data.token) {

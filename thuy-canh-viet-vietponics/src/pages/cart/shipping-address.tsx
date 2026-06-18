@@ -306,7 +306,7 @@ function ShippingAddressPage() {
 
     setAddress(newAddress);
 
-    // Đồng bộ địa chỉ lên backend (fire-and-forget) để restore trên thiết bị khác.
+    // Đồng bộ địa chỉ lên backend để restore khi đổi thiết bị / đổi tài khoản.
     const token = localStorage.getItem("jwt_token");
     if (token) {
       request<unknown>("/customer/address", {
@@ -315,9 +315,13 @@ function ShippingAddressPage() {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
           "Accept": "application/json",
+          "Origin": typeof window !== "undefined" ? window.location.origin : "",
         },
         body: JSON.stringify(newAddress),
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn("[shipping-address] PUT /customer/address thất bại:", err?.message ?? err);
+        toast.error("Không thể đồng bộ địa chỉ lên server. Địa chỉ chỉ lưu trên thiết bị này.", { duration: 4000 });
+      });
     }
 
     setSelectedService(null);
