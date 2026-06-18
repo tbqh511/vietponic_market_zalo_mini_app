@@ -86,6 +86,8 @@ export interface Station {
   image: string;
   address: string;
   location: Location;
+  distance?: string;
+  distanceKm?: number;
 }
 
 export type Delivery =
@@ -103,6 +105,7 @@ export type Delivery =
       stationId: number;
       stationName?: string;
       stationAddress?: string;
+      distanceKm?: number;
     };
 
 export interface VtpTrackingEvent {
@@ -229,6 +232,7 @@ export interface ApiDelivery {
   vtp_location?: string | null;
   vtp_status_at?: string | null;
   vtp_is_returning?: boolean | number | null;
+  distance_km?: number | null;
 }
 interface CreateOrderItem {
   product_id: string;
@@ -245,6 +249,7 @@ interface CreateOrderDelivery {
   name: string;
   phone: string;
   station_id?: string;
+  distance_km?: number;
   province_id?: number;
   district_id?: number;
   ward_id?: number;

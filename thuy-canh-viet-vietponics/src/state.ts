@@ -122,6 +122,7 @@ export function convertApiOrderToOrder(apiOrder: ApiOrder): Order {
       stationId: parseInt(apiOrder.delivery.station_id || '0'),
       stationName: apiOrder.delivery.station_name || undefined,
       stationAddress: apiOrder.delivery.address || undefined,
+      distanceKm: apiOrder.delivery.distance_km ?? undefined,
     };
   }
 
@@ -478,9 +479,21 @@ export const stationsState = atom(async () => {
     // Phía tích hợp làm theo hướng dẫn tại https://mini.zalo.me/documents/api/getLocation/ để chuyển đổi token thành thông tin vị trí người dùng ở server.
     if (token) {
       location = await decodeLocationToken(token);
+      if (location) {
+        localStorage.setItem(CONFIG.STORAGE_KEYS.USER_LOCATION, JSON.stringify(location));
+      }
     }
   } catch (error) {
     console.warn("Failed to get user location:", error);
+  }
+  // Fallback sang vị trí đã cache nếu SDK từ chối
+  if (!location) {
+    try {
+      const cached = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_LOCATION);
+      if (cached) location = JSON.parse(cached) as Location;
+    } catch {
+      // ignore parse error
+    }
   }
 
   const res = await requestWithFallback<any>("/stations", []);
@@ -517,16 +530,18 @@ export const stationsState = atom(async () => {
     //   /* ignore */
     // }
 
-    const distance =
+    const distanceKm =
       hasLoc && location
-        ? formatDistant(calculateDistance(location.lat, location.lng, lat!, lng!))
+        ? calculateDistance(location.lat, location.lng, lat!, lng!)
         : undefined;
+    const distance = distanceKm !== undefined ? formatDistant(distanceKm) : undefined;
 
     // ensure returned station has a normalized location when available
     const normalizedStation = hasLoc ? { ...station, location: { lat: lat!, lng: lng! } } : station;
     return {
       ...normalizedStation,
       distance,
+      distanceKm,
     };
   });
 

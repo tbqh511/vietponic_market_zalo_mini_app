@@ -815,6 +815,7 @@ export function useCheckout() {
             name: recipientName,
             phone: recipientPhone,
             station_id: selectedStation?.id.toString(),
+            distance_km: selectedStation?.distanceKm,
           };
       const mappedItems = payableCart.map((item) => ({
           product_id: item.product.id.toString(),

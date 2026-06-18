@@ -14,6 +14,7 @@ const CONFIG = {
     // ID của customer đang đăng nhập — dùng để phát hiện account switch và
     // reset shippingAddressState về đúng địa chỉ của tài khoản mới.
     AUTHED_CUSTOMER_ID: "authedCustomerId",
+    USER_LOCATION: "userLocation",
   },
 };
 

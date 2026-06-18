@@ -1,10 +1,9 @@
 import { Order, BackendOrderStatus, CartItem } from "@/types";
-import { formatPrice } from "@/utils/format";
+import { formatPrice, formatDistant } from "@/utils/format";
 import { useNavigate } from "react-router-dom";
 import { useSetAtom } from "jotai";
 import { cartState } from "@/state";
 import toast from "react-hot-toast";
-import { ShopIcon } from "@/components/vectors";
 
 const STATUS_CONFIG: Record<BackendOrderStatus, { label: string; badgeClass: string }> = {
   pending:    { label: "Chờ xác nhận",  badgeClass: "bg-yellow-100 text-yellow-700" },
@@ -63,14 +62,29 @@ function OrderSummary({ order, full }: { order: Order; full?: boolean }) {
       className="bg-white rounded-xl overflow-hidden border border-black/10 mx-4 mb-3 cursor-pointer active:opacity-80 transition-opacity"
       onClick={handleCardClick}
     >
-      {/* Header: shop name + status badge */}
+      {/* Header: delivery method + status badge */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-black/5">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
-            <ShopIcon className="w-3.5 h-3.5" />
+        {order.delivery.type === "pickup" ? (
+          <div className="flex items-center gap-1.5 text-orange-600">
+            <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/>
+            </svg>
+            <span className="text-xs font-medium">
+              Tự đến lấy
+              {order.delivery.distanceKm !== undefined && (
+                <span className="text-orange-400 font-normal"> · {formatDistant(order.delivery.distanceKm)}</span>
+              )}
+            </span>
           </div>
-          <span className="text-sm font-semibold text-gray-800">Vietponics</span>
-        </div>
+        ) : (
+          <div className="flex items-center gap-1.5 text-sky-600">
+            <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm7 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
+              <path d="M3 4a1 1 0 00-1 1v7h1.05A2.5 2.5 0 017 10.05V9h6v1.05A2.5 2.5 0 0115.95 12H17V9.586a1 1 0 00-.293-.707l-2-2A1 1 0 0014 6.586V5a1 1 0 00-1-1H3z"/>
+            </svg>
+            <span className="text-xs font-medium">Giao tận nhà</span>
+          </div>
+        )}
         <div className="flex flex-col items-end gap-0.5">
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusCfg.badgeClass}`}>
             {statusCfg.label}
@@ -107,9 +121,7 @@ function OrderSummary({ order, full }: { order: Order; full?: boolean }) {
       {/* Footer: total + Mua lại */}
       <div className="border-t border-black/5 px-4 py-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <span className="text-xs text-gray-500">
-            Tổng tiền ({itemCount} sản phẩm):{" "}
-          </span>
+          <span className="text-xs text-gray-500">Tổng tiền: </span>
           <span className="text-sm font-semibold text-gray-800">{formatPrice(order.total)}</span>
         </div>
         <button
