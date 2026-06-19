@@ -8,6 +8,7 @@ import {
   cartTotalState,
   customerProfileState,
   ordersState,
+  allOrdersAtom,
   payableCartState,
   userInfoKeyState,
   userInfoState,
@@ -655,7 +656,7 @@ export function useCheckout() {
   const payableCart = useAtomValue(payableCartState);
   const requestInfo = useRequestInformation();
   const navigate = useNavigate();
-  const refreshNewOrders = useSetAtom(ordersState("confirming"));
+  const refreshNewOrders = useSetAtom(allOrdersAtom);
   // Làm mới stock sau khi đặt đơn (backend đã trừ kho FEFO ngay lúc tạo đơn) →
   // product-detail / cart-item / payableCart phản ánh tồn thật ngay, tránh đặt vượt.
   const refreshAllProducts = useSetAtom(allProductsState);
@@ -1246,9 +1247,7 @@ export function useRouteHandle() {
  * Re-auth on 401 giống pattern useCheckout.
  */
 export function useCancelOrder() {
-  const refreshConfirming = useSetAtom(ordersState("confirming"));
-  const refreshPacking = useSetAtom(ordersState("packing"));
-  const refreshCancelled = useSetAtom(ordersState("cancelled"));
+  const refreshOrders = useSetAtom(allOrdersAtom);
 
   return useCallback(
     async (
@@ -1317,9 +1316,7 @@ export function useCancelOrder() {
       }
 
       const json = (await response.json()) as { error: boolean; data: ApiOrder };
-      refreshConfirming();
-      refreshPacking();
-      refreshCancelled();
+      refreshOrders();
 
       // Tái sử dụng converter từ state.ts để giữ shape Order nhất quán
       const apiOrder = json.data;
@@ -1342,7 +1339,7 @@ export function useCancelOrder() {
         refundedAt: apiOrder.refunded_at ? new Date(apiOrder.refunded_at) : undefined,
       };
     },
-    [refreshConfirming, refreshPacking, refreshCancelled]
+    [refreshOrders]
   );
 }
 
