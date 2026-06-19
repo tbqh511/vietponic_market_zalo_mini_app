@@ -65,7 +65,11 @@ function OrderInfo(props: { order: Order }) {
           icon={<LocationMarkerLineIcon />}
           title="Giao đến"
           subtitle={props.order.delivery.alias}
-          description={props.order.delivery.address}
+          description={[
+            props.order.delivery.address,
+            props.order.delivery.ward_name,
+            props.order.delivery.province_name,
+          ].filter(Boolean).join(", ")}
         />
       )}
       {props.order.note && (

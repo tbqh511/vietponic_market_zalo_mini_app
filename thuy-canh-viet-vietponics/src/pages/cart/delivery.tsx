@@ -44,7 +44,11 @@ function ShippingAddressSummary() {
       icon={<LocationMarkerLineIcon />}
       title="Địa chỉ nhận hàng"
       subtitle={shippingAddress.alias}
-      description={shippingAddress.address}
+      description={[
+        shippingAddress.address,
+        shippingAddress.ward_name,
+        shippingAddress.province_name,
+      ].filter(Boolean).join(", ")}
       linkTo="/shipping-address"
     />
   );
