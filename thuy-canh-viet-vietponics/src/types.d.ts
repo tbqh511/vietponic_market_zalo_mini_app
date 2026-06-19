@@ -122,6 +122,25 @@ export interface VtpTrackingEvent {
   status_at: string; // ISO datetime
 }
 
+// Action types trong "Hành trình đơn hàng" — do backend tổng hợp từ
+// created_at, packing_logs, cancelled_at, refunded_at.
+export type OrderHistoryAction =
+  | "order_placed"
+  | "confirmed"
+  | "preparing"
+  | "delivering"
+  | "delivered"
+  | "cancelled"
+  | "refunded";
+
+export interface OrderHistoryEvent {
+  action: OrderHistoryAction;
+  title: string;
+  description: string | null;
+  occurred_at: string; // ISO8601
+  meta: Record<string, string | null>;
+}
+
 // Statuses trả về từ backend (chính xác như trong DB)
 export type BackendOrderStatus =
   | "pending"
@@ -165,6 +184,7 @@ export interface Order {
   refundAmount?: number;
   refundedAt?: Date;
   trackingEvents?: VtpTrackingEvent[];
+  orderHistory?: OrderHistoryEvent[];
 }
 
 // Order interface từ API response
@@ -191,6 +211,7 @@ export interface ApiOrder {
   refunded_at?: string | null;
   refund_note?: string | null;
   tracking_events?: VtpTrackingEvent[];
+  order_history?: OrderHistoryEvent[];
 }
 
 export interface ApiOrderItem {

@@ -30,6 +30,7 @@ import {
   VtpLocation,
   ApiOrder,
   ApiOrderItem,
+  OrderHistoryEvent,
 } from "@/types";
 import { requestWithFallback, request, authenticate } from "@/utils/request";
 import { getAccessToken, decodeToken, decodeLocationToken } from "@/utils/zma";
@@ -148,6 +149,7 @@ export function convertApiOrderToOrder(apiOrder: ApiOrder): Order {
     refundAmount: apiOrder.refund_amount ? parseFloat(apiOrder.refund_amount) : undefined,
     refundedAt: apiOrder.refunded_at ? new Date(apiOrder.refunded_at) : undefined,
     trackingEvents: apiOrder.tracking_events ?? undefined,
+    orderHistory: apiOrder.order_history ?? undefined,
   };
 }
 export const userInfoKeyState = atom(0);
