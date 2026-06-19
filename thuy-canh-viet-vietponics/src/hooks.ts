@@ -1257,10 +1257,9 @@ export function useCancelOrder() {
     ): Promise<Order> => {
       const apiBase = getConfig((c) => c.template.apiUrl).replace(/\/+$/, "");
       const url = `${apiBase}/orders/${orderId}/cancel`;
-      const body = JSON.stringify({
-        reason_code: reasonCode,
-        reason: reasonText ?? "",
-      });
+      const payload: Record<string, string> = { reason_code: reasonCode };
+      if (reasonText) payload.reason = reasonText;
+      const body = JSON.stringify(payload);
 
       let token = localStorage.getItem("jwt_token") || "";
       const buildHeaders = (t: string): Record<string, string> => ({
