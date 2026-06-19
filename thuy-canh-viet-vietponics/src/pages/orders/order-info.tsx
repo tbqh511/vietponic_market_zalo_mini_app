@@ -1,5 +1,6 @@
 import { HomeIcon, LocationMarkerLineIcon } from "@/components/vectors";
 import { Order } from "@/types";
+import { openOutApp, openWebview } from "zmp-sdk/apis";
 import { Icon, List } from "zmp-ui";
 import DeliverySummary from "../cart/delivery-summary";
 
@@ -13,18 +14,17 @@ function buildMapsUrl(delivery: Extract<Order["delivery"], { type: "pickup" }>):
   return null;
 }
 
-function openMaps(url: string) {
+async function openMaps(url: string) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sdk = (window as any).zmp;
-    if (sdk?.openExternalLink) {
-      sdk.openExternalLink({ url });
-      return;
-    }
+    // openOutApp works for deep-link schemes; HTTPS falls through to webview
+    await openOutApp({ url });
   } catch {
-    // fall through
+    try {
+      await openWebview({ url, config: { style: "normal" } });
+    } catch {
+      // no-op in non-Zalo environments
+    }
   }
-  window.open(url, "_blank");
 }
 
 function DirectionButton({ delivery }: { delivery: Extract<Order["delivery"], { type: "pickup" }> }) {
@@ -32,7 +32,7 @@ function DirectionButton({ delivery }: { delivery: Extract<Order["delivery"], { 
   if (!url) return null;
   return (
     <button
-      className="mt-1.5 flex items-center gap-1 text-xs font-medium text-blue-600 active:opacity-60"
+      className="mt-1.5 flex items-center gap-1 text-xs font-medium text-primary active:opacity-60"
       onClick={() => openMaps(url)}
     >
       <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">

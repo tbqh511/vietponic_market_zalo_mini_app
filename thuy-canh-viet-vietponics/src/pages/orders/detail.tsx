@@ -101,7 +101,7 @@ function OrderDetailPage() {
                 refundInfo.tone === "ok"
                   ? "text-green-700"
                   : refundInfo.tone === "warn"
-                  ? "text-yellow-700"
+                  ? "text-green-700"
                   : "text-subtitle"
               }`}
             >

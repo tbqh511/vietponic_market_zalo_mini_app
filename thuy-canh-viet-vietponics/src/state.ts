@@ -95,7 +95,9 @@ function convertApiOrderItemToCartItem(item: ApiOrderItem): CartItem {
 export function convertApiOrderToOrder(apiOrder: ApiOrder): Order {
   let delivery: Delivery;
 
-  if (apiOrder.delivery.type === 'shipping') {
+  if (!apiOrder.delivery) {
+    delivery = { type: 'shipping', alias: '', address: '', name: '', phone: '' };
+  } else if (apiOrder.delivery.type === 'shipping') {
     const d = apiOrder.delivery;
     delivery = {
       type: 'shipping',
@@ -583,34 +585,29 @@ const ORDER_STATUS_MAP: Record<OrderStatus, BackendOrderStatus[]> = {
   cancelled:  ["cancelled"],
 };
 
+// Atom chung: fetch 1 lần, tất cả tab dùng chung — refresh 1 cái → cập nhật tất cả
+export const allOrdersAtom = atomWithRefresh(async (get) => {
+  try {
+    const userInfo = await get(userInfoState);
+    if (!userInfo?.id) return [];
+    const token = localStorage.getItem("jwt_token");
+    if (!token) return [];
+    const res = await request("/orders", {
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    const apiOrders = extractArray<ApiOrder>(res);
+    return apiOrders.map(convertApiOrderToOrder);
+  } catch {
+    return [];
+  }
+});
+
+// Derived atom: chỉ filter từ allOrdersAtom, không fetch riêng
 export const ordersState = atomFamily((status: OrderStatus) =>
-  atomWithRefresh(async (get) => {
-    try {
-      const userInfo = await get(userInfoState);
-      if (!userInfo || !userInfo.id) {
-        return [];
-      }
-
-      const token = localStorage.getItem("jwt_token");
-      if (!token) {
-        return [];
-      }
-
-      const res = await request("/orders", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
-      });
-
-      const apiOrders = extractArray<ApiOrder>(res);
-      const convertedOrders = apiOrders.map(convertApiOrderToOrder);
-
-      const allowedStatuses = ORDER_STATUS_MAP[status];
-      return convertedOrders.filter(order => allowedStatuses.includes(order.status));
-
-    } catch (error) {
-      return [];
-    }
+  atom(async (get) => {
+    const allOrders = await get(allOrdersAtom);
+    const allowedStatuses = ORDER_STATUS_MAP[status];
+    return allOrders.filter(order => allowedStatuses.includes(order.status));
   })
 );
 
