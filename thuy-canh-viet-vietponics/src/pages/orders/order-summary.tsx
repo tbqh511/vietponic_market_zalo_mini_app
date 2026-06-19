@@ -120,10 +120,34 @@ function OrderSummary({ order, full }: { order: Order; full?: boolean }) {
 
       {/* Footer: total + Mua lại */}
       <div className="border-t border-black/5 px-4 py-3 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <span className="text-xs text-gray-500">Tổng tiền: </span>
-          <span className="text-sm font-semibold text-gray-800">{formatPrice(order.total)}</span>
-        </div>
+        {(() => {
+          const shippingFee = (order.delivery.type === "shipping" && order.shippingFee && order.shippingFee > 0)
+            ? order.shippingFee
+            : 0;
+          const grandTotal = order.total + shippingFee;
+          return (
+            <div className="min-w-0 flex-1">
+              {full && shippingFee > 0 ? (
+                <table className="w-full text-xs text-gray-500 mb-1">
+                  <tbody>
+                    <tr>
+                      <td>Tiền hàng</td>
+                      <td className="text-right">{formatPrice(order.total)}</td>
+                    </tr>
+                    <tr>
+                      <td>Phí vận chuyển</td>
+                      <td className="text-right">{formatPrice(shippingFee)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              ) : null}
+              <div className={full && shippingFee > 0 ? "border-t border-black/5 pt-1" : ""}>
+                <span className="text-xs text-gray-500">Tổng {full && shippingFee > 0 ? "cộng" : "tiền"}: </span>
+                <span className="text-sm font-semibold text-gray-800">{formatPrice(grandTotal)}</span>
+              </div>
+            </div>
+          );
+        })()}
         <button
           className="flex-shrink-0 text-sm text-white bg-primary rounded-lg px-4 py-1.5 font-medium active:opacity-80"
           onClick={handleBuyAgain}

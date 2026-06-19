@@ -141,6 +141,7 @@ export function convertApiOrderToOrder(apiOrder: ApiOrder): Order {
     items: apiOrder.items.map(convertApiOrderItemToCartItem),
     delivery,
     total: parseFloat(apiOrder.total),
+    shippingFee: apiOrder.shipping_fee ? parseFloat(apiOrder.shipping_fee) : undefined,
     note: apiOrder.note,
     cancelledAt: apiOrder.cancelled_at ? new Date(apiOrder.cancelled_at) : undefined,
     cancelledBy: (apiOrder.cancelled_by as Order["cancelledBy"]) ?? undefined,
