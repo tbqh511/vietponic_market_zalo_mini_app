@@ -176,6 +176,7 @@ export interface Order {
   items: CartItem[];
   delivery: Delivery;
   total: number;
+  subtotal?: number;
   shippingFee?: number;
   note: string;
   cancelledAt?: Date;
@@ -198,6 +199,7 @@ export interface ApiOrder {
   created_at: string;
   received_at: string;
   total: string;
+  subtotal?: string | null;
   shipping_fee?: string | null;
   note: string;
   items: ApiOrderItem[];

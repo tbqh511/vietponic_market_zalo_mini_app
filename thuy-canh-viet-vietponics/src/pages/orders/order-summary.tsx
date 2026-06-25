@@ -124,7 +124,8 @@ function OrderSummary({ order, full }: { order: Order; full?: boolean }) {
           const shippingFee = (order.delivery.type === "shipping" && order.shippingFee && order.shippingFee > 0)
             ? order.shippingFee
             : 0;
-          const grandTotal = order.total + shippingFee;
+          const grandTotal = order.total;
+          const productTotal = order.subtotal ?? (order.total - shippingFee);
           return (
             <div className="min-w-0 flex-1">
               {full && shippingFee > 0 ? (
@@ -132,7 +133,7 @@ function OrderSummary({ order, full }: { order: Order; full?: boolean }) {
                   <tbody>
                     <tr>
                       <td>Tiền hàng</td>
-                      <td className="text-right">{formatPrice(order.total)}</td>
+                      <td className="text-right">{formatPrice(productTotal)}</td>
                     </tr>
                     <tr>
                       <td>Phí vận chuyển</td>
