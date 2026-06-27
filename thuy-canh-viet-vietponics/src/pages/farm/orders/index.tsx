@@ -12,16 +12,18 @@ import {
   confirmPacked,
   confirmOrder,
   handoffShip,
+  pickupOrder,
+  deliverOrder,
 } from "@/utils/farm-api";
 import { farmPendingOrdersCountState } from "@/state";
-import { FarmIncomingOrder, PackingStatus } from "@/types";
+import { FarmIncomingOrder, FarmMemberRole, PackingStatus } from "@/types";
 import {
   fmtKg,
   fmtTime,
   shortenName,
   staffLabel,
-  avatarInitials,
   statusPill,
+  assignmentPill,
   useAction,
   recipientLocation,
   TruckIcon,
@@ -69,6 +71,8 @@ interface GroupedOrder {
 type OwnerFilter = "all" | "to_confirm" | "packing" | "packed";
 // Filter cho staff (Màn 2).
 type StaffFilter = "available" | "mine" | "locked";
+// Filter cho shipper (Màn 3.1).
+type ShipperFilter = "to_pickup" | "delivering";
 
 export default function FarmOrdersPage() {
   const isFarm = useFarmGuard();
@@ -87,6 +91,9 @@ export default function FarmOrdersPage() {
   const isHub =
     viewer?.is_packing_hub ?? profile.data?.is_packing_hub ?? false;
   const myId = viewer?.customer_id ?? null;
+  const myRole = viewer?.farm_role ?? null;
+  // Shipper: farm_role "shipper" VÀ không phải owner.
+  const isShipper = myRole === "shipper" && !isOwner;
   // Owner CỦA HUB mới cần danh sách nhân viên (để dropdown phân công).
   const staffList = useFarmStaff(isFarm && isHub && isOwner);
 
@@ -148,68 +155,93 @@ export default function FarmOrdersPage() {
   }
 
   const isInitialLoading = (incoming.loading && !incoming.data) || !profile.data;
+  const farmName = profile.data?.name ?? "Farm";
+
+  // Accent color và label theo role
+  const accentColor = isShipper ? "#e07514" : "#1f8a4c";
+  const topTitle = isShipper ? "Đơn giao của tôi" : "Quản lý đơn hàng";
+  const topSubtitle = isShipper
+    ? `Chào, ${viewer?.name ?? "Shipper"}`
+    : farmName;
+  const rolePill = isShipper
+    ? "Giao hàng"
+    : !isHub
+    ? "Chỉ xem"
+    : isOwner
+    ? "Chủ farm"
+    : staffLabel(viewer?.name ?? null);
 
   return (
-    <div className="flex flex-col min-h-full bg-gray-100">
-      <div className="m-3 bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        {/* Header gradient: avatar + tên farm + badge vai trò */}
-        <div className="flex items-center gap-3 px-4 py-3 bg-primary text-white">
-          <div className="w-10 h-10 rounded-full bg-white/25 flex items-center justify-center text-sm font-semibold shrink-0">
-            {avatarInitials(profile.data?.name ?? null)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[15px] font-semibold truncate">
-              {profile.data?.name ?? "Farm"}
-            </div>
-            <div className="text-[11px] text-white/85">
-              {!isHub
-                ? "Đơn có hàng của bạn"
-                : isOwner
-                ? "Đơn đến"
-                : "Đơn cần đóng gói"}
-            </div>
-          </div>
-          <div className="px-2.5 py-1 text-[11px] font-medium rounded-full bg-white/20 whitespace-nowrap">
-            {!isHub
-              ? "Chỉ xem"
-              : isOwner
-              ? "Chủ farm"
-              : staffLabel(viewer?.name ?? null)}
-          </div>
-        </div>
+    <div className="flex flex-col min-h-full bg-[#fbfaf7]">
+      {/* RoleBar — dải accent mỏng, màu theo role */}
+      <div className="h-[5px]" style={{ backgroundColor: accentColor }} />
 
-        <div className="p-3.5">
-          {isInitialLoading ? (
-            <div className="py-16 text-center text-gray-400 text-sm">
-              Đang tải đơn hàng...
-            </div>
-          ) : incoming.error ? (
-            <div className="py-12 text-center text-red-500 text-sm">
-              {incoming.error}
-              <button
-                onClick={incoming.refresh}
-                className="ml-2 text-primary underline"
-              >
-                Thử lại
-              </button>
-            </div>
-          ) : !isHub ? (
-            <ReadOnlyView orders={orders} />
-          ) : isOwner ? (
-            <OwnerView
-              orders={orders}
-              staff={staffList.data ?? []}
-              onChanged={incoming.refresh}
-            />
-          ) : (
-            <StaffView
-              orders={orders}
-              myId={myId}
-              onChanged={incoming.refresh}
-            />
-          )}
+      {/* TopBar */}
+      <div className="px-4 py-3 bg-white border-b border-[#f0ede5]">
+        <div className="text-[18px] font-semibold text-[#1a1a1a]">
+          {topTitle}
+        </div>
+        <div className="flex items-center justify-between mt-0.5">
+          <div className="text-sm text-[#8a857c] truncate pr-2">{topSubtitle}</div>
+          <div
+            className="px-2.5 py-0.5 text-xs rounded-full whitespace-nowrap shrink-0"
+            style={{ backgroundColor: `${accentColor}26`, color: accentColor }}
+          >
+            {rolePill}
+          </div>
         </div>
       </div>
+
+      <div className="flex-1">
+        {isInitialLoading ? (
+          <LoadingSkeleton />
+        ) : incoming.error ? (
+          <div className="py-12 text-center text-red-500 text-sm px-4">
+            {incoming.error}
+            <button
+              onClick={incoming.refresh}
+              className="ml-2 text-primary underline"
+            >
+              Thử lại
+            </button>
+          </div>
+        ) : !isHub && !isShipper ? (
+          <ReadOnlyView orders={orders} />
+        ) : isOwner ? (
+          <OwnerView
+            orders={orders}
+            staff={staffList.data ?? []}
+            onChanged={incoming.refresh}
+          />
+        ) : isShipper ? (
+          <ShipperView
+            orders={orders}
+            myId={myId}
+            onChanged={incoming.refresh}
+          />
+        ) : (
+          <StaffView
+            orders={orders}
+            myId={myId}
+            onChanged={incoming.refresh}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Loading skeleton ──────────────────────────────────────────────────────────
+
+function LoadingSkeleton() {
+  return (
+    <div className="px-4 pt-4 flex flex-col gap-3">
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="h-[110px] bg-[#ede9e0] rounded-xl animate-pulse"
+        />
+      ))}
     </div>
   );
 }
@@ -222,7 +254,7 @@ function OwnerView({
   onChanged,
 }: {
   orders: GroupedOrder[];
-  staff: { id: number; name: string; farm_role: string | null }[];
+  staff: { id: number; name: string; farm_role: FarmMemberRole | null }[];
   onChanged: () => void;
 }) {
   const [filter, setFilter] = useState<OwnerFilter>("all");
@@ -275,29 +307,25 @@ function OwnerView({
 
   return (
     <>
-      {/* Card highlight: cần chuẩn bị hôm nay */}
-      <div className="p-3 bg-primary/10 rounded-xl">
-        <div className="text-[11px] text-primary">Cần chuẩn bị hôm nay</div>
-        <div className="flex items-baseline gap-1.5 mt-1">
-          <div className="text-[22px] font-semibold text-primary leading-none">
-            {fmtKg(summary.totalQty)}
-          </div>
-          <div className="text-xs text-primary">· {summary.count} đơn</div>
-        </div>
+      {/* Summary bar compact */}
+      <div className="px-4 py-2">
+        <p className="text-sm text-[#5a5a5a] italic">
+          {fmtKg(summary.totalQty)} · cần chuẩn bị hôm nay
+        </p>
       </div>
 
-      {/* Filter pills */}
-      <div className="flex gap-1.5 mt-3 overflow-x-auto -mx-0.5 px-0.5 pb-0.5">
+      {/* Filter tabs scrollable */}
+      <div className="flex gap-2 overflow-x-auto px-4 pb-2 border-b border-[#f0ede5]">
         {filters.map((f) => {
           const active = f.key === filter;
           return (
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className={`px-3 py-1.5 text-[11px] rounded-full whitespace-nowrap transition-colors ${
+              className={`px-3 py-1.5 text-[13px] rounded-full whitespace-nowrap transition-colors ${
                 active
-                  ? "bg-primary text-white font-medium"
-                  : "border border-gray-200 text-gray-500 active:bg-gray-50"
+                  ? "bg-[#1f8a4c] text-white font-medium"
+                  : "border border-[#d4d0c7] text-[#8a857c]"
               }`}
             >
               {f.label} · {f.count}
@@ -307,13 +335,17 @@ function OwnerView({
       </div>
 
       {visible.length === 0 ? (
-        <div className="py-16 text-center text-gray-400 text-sm">
-          {orders.length === 0
-            ? "Chưa có đơn nào đang đến."
-            : "Không có đơn trong mục này."}
+        <div className="py-20 text-center">
+          <div className="text-4xl mb-3">📦</div>
+          <div className="text-[15px] font-medium text-[#2a2a2a]">
+            Không có đơn nào
+          </div>
+          <div className="text-[13px] text-[#8a857c] mt-1">
+            Kéo xuống để làm mới
+          </div>
         </div>
       ) : (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="px-4 pt-3 pb-4 flex flex-col gap-3">
           {visible.map((o) => (
             <OwnerCard
               key={o.order_id}
@@ -334,11 +366,12 @@ function OwnerCard({
   onChanged,
 }: {
   order: GroupedOrder;
-  staff: { id: number; name: string; farm_role: string | null }[];
+  staff: { id: number; name: string; farm_role: FarmMemberRole | null }[];
   onChanged: () => void;
 }) {
   const navigate = useNavigate();
   const pill = statusPill(order.order_status);
+  const aPill = assignmentPill(order.assignment_status);
   const { busy, err, run } = useAction(onChanged);
   const [picking, setPicking] = useState(false);
 
@@ -347,145 +380,134 @@ function OwnerCard({
   const isPacked = order.assignment_status === "packed";
   // Có thể bàn giao ship khi đơn đã đóng xong (packed) mà chưa đang giao.
   const canHandoff = isPacked && !isDelivering;
-  const packerName =
-    order.assigned_customer_name ??
-    (order.assigned_customer_id != null
-      ? staff.find((s) => s.id === order.assigned_customer_id)?.name ?? null
-      : null);
   const recipient = recipientLocation(order);
 
   return (
     <div
       onClick={() => navigate(`/farm/orders/${order.order_id}`)}
-      className="p-3 border border-gray-200 rounded-xl cursor-pointer active:bg-gray-50"
+      className="bg-white rounded-xl shadow-sm border border-[#d4d0c7] p-3 active:bg-gray-50 cursor-pointer"
     >
-      {/* Top: mã đơn + giờ·KH·địa chỉ | status pill */}
-      <div className="flex justify-between items-start mb-2 gap-2">
-        <div className="min-w-0">
-          <div className="text-[13px] font-medium">#{order.order_id}</div>
-          <div className="text-[11px] text-gray-500 mt-0.5 truncate">
-            {shortenName(order.customer_name)}
-            {recipient ? ` · ${recipient}` : ""}
-          </div>
+      {/* Dòng 1: mã đơn + badge trạng thái */}
+      <div className="flex justify-between items-center gap-2">
+        <div className="text-[17px] font-semibold text-[#1a1a1a]">
+          #{order.order_id}
         </div>
         <div
-          className={`px-2 py-0.5 text-[10px] font-medium rounded-full shrink-0 ${pill.className}`}
+          className="px-2 py-0.5 text-[11px] font-medium rounded-full shrink-0"
+          style={{ backgroundColor: pill.bg, color: pill.color }}
         >
           {pill.label}
         </div>
       </div>
 
-      {/* Box xám: items của farm mình */}
-      <div className="p-2 bg-gray-50 rounded-md text-xs">
-        {order.items.map((it, i) => (
-          <div
-            key={it.item_id}
-            className={`flex justify-between ${i > 0 ? "mt-1" : ""}`}
-          >
-            <span className="text-gray-700 truncate pr-2">
-              {it.product_name}
-            </span>
-            <span className="font-medium shrink-0">×{fmtKg(it.quantity)}</span>
-          </div>
-        ))}
+      {/* Dòng 2: meta KH · địa chỉ · giờ */}
+      <div className="text-[12px] text-[#8a857c] mt-1 truncate">
+        {shortenName(order.customer_name)}
+        {recipient ? ` · ${recipient}` : ""}
+        {` · ${fmtTime(order.order_created_at)}`}
       </div>
 
-      {/* Dòng trạng thái đóng gói + người đóng */}
-      {isDelivering ? (
-        <div className="flex items-center gap-1.5 mt-2 text-[11px] text-green-700">
-          <TruckIcon />
-          <span>Đã bàn giao vận chuyển</span>
+      {/* Dòng 3: pill phân công + indicator giao hàng nếu có */}
+      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+        <div
+          className="px-2 py-0.5 text-[11px] font-medium rounded-full"
+          style={{ backgroundColor: aPill.bg, color: aPill.color }}
+        >
+          {aPill.label}
         </div>
-      ) : order.assignment_status === "packing" && packerName ? (
-        <div className="text-[11px] text-amber-700 mt-2">
-          ◐ Đang đóng: {staffLabel(packerName)}
-        </div>
-      ) : isPacked ? (
-        <div className="text-[11px] text-green-700 mt-2">
-          ✓ Đóng bởi: {staffLabel(packerName)}
-          {order.packed_at ? ` · ${fmtTime(order.packed_at)}` : ""}
-        </div>
-      ) : order.assignment_status === "assigned" && packerName ? (
-        <div className="text-[11px] text-blue-700 mt-2">
-          ⊙ Đã giao: {staffLabel(packerName)}
-        </div>
-      ) : (
-        <div className="text-[11px] text-gray-400 mt-2">Chưa phân công</div>
-      )}
+        {isDelivering && (
+          <div className="flex items-center gap-1 text-[11px] text-[#c4630f]">
+            <TruckIcon />
+            <span>Đã bàn giao vận chuyển</span>
+          </div>
+        )}
+      </div>
+
+      {/* Dòng 4: tóm tắt hàng */}
+      <div className="text-[12px] text-[#8a857c] mt-1.5">
+        {order.items.length} sản phẩm · {fmtKg(order.total_qty)}
+      </div>
 
       {err && <div className="text-[11px] text-red-500 mt-1.5">{err}</div>}
 
-      {/* Khối thao tác: chặn bubble để bấm nút không mở màn chi tiết */}
+      {/* Action bar — chặn bubble để bấm nút không mở màn chi tiết */}
       <div onClick={(e) => e.stopPropagation()}>
-      {/* Hành động owner */}
-      <div className="mt-2.5 flex flex-wrap gap-1.5">
-        {isPending && (
-          <button
-            disabled={busy}
-            onClick={() => run(() => confirmOrder(order.order_id))}
-            className="flex-1 min-w-[8rem] px-3 py-2 text-[12px] rounded-lg bg-primary text-white font-medium disabled:opacity-50"
-          >
-            Xác nhận đơn
-          </button>
-        )}
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {isPending && (
+            <button
+              disabled={busy}
+              onClick={() => run(() => confirmOrder(order.order_id))}
+              className="flex-1 min-w-[8rem] px-3 py-2.5 text-[13px] rounded-[10px] bg-[#2a5bd7] text-white font-medium disabled:bg-[#edebe5] disabled:text-[#a7a299]"
+            >
+              Xác nhận đơn
+            </button>
+          )}
 
-        {canHandoff && (
-          <button
-            disabled={busy}
-            onClick={() => run(() => handoffShip(order.order_id))}
-            className="flex-1 min-w-[8rem] px-3 py-2 text-[12px] rounded-lg bg-green-600 text-white font-medium disabled:opacity-50"
-          >
-            Bàn giao ship
-          </button>
-        )}
+          {canHandoff && (
+            <button
+              disabled={busy}
+              onClick={() => run(() => handoffShip(order.order_id))}
+              className="flex-1 min-w-[8rem] px-3 py-2.5 text-[13px] rounded-[10px] bg-[#e07514] text-white font-medium disabled:bg-[#edebe5] disabled:text-[#a7a299]"
+            >
+              Bàn giao giao hàng
+            </button>
+          )}
 
-        {/* Phân công / đổi người — ẩn khi đã đóng xong hoặc đang giao */}
-        {!isPending && !isPacked && !isDelivering && (
-          <button
-            onClick={() => setPicking((p) => !p)}
-            className="px-3 py-2 text-[12px] rounded-lg border border-primary text-primary active:bg-primary/5"
-          >
-            {order.assigned_customer_id ? "Đổi người" : "Phân công"}
-          </button>
-        )}
-      </div>
-
-      {/* Picker phân công */}
-      {picking && (
-        <div className="mt-2 p-2 bg-gray-50 rounded-lg">
-          <div className="text-[11px] text-gray-500 mb-1.5">
-            Chọn người đóng gói:
-          </div>
-          <div className="flex flex-col gap-1">
-            {staff.length === 0 ? (
-              <div className="text-[11px] text-gray-400">
-                Farm chưa có nhân viên.
-              </div>
-            ) : (
-              staff.map((s) => (
-                <button
-                  key={s.id}
-                  disabled={busy}
-                  onClick={() =>
-                    run(async () => {
-                      await assignPacker(order.order_id, s.id);
-                      setPicking(false);
-                    })
-                  }
-                  className={`text-left px-2.5 py-1.5 text-[11px] rounded-md border disabled:opacity-50 ${
-                    order.assigned_customer_id === s.id
-                      ? "border-primary text-primary bg-primary/5"
-                      : "border-gray-200 text-gray-700 active:bg-white"
-                  }`}
-                >
-                  {s.name}
-                  {s.farm_role === "owner" ? " (chủ farm)" : ""}
-                </button>
-              ))
-            )}
-          </div>
+          {/* Phân công / đổi người — ẩn khi đã đóng xong hoặc đang giao */}
+          {!isPending && !isPacked && !isDelivering && (
+            <button
+              onClick={() => setPicking((p) => !p)}
+              className="px-3 py-2.5 text-[13px] rounded-[10px] border border-primary text-primary active:bg-primary/5"
+            >
+              {order.assigned_customer_id ? "Đổi người" : "Phân công"}
+            </button>
+          )}
         </div>
-      )}
+
+        {/* Picker phân công */}
+        {picking && (
+          <div className="mt-2 p-2 bg-gray-50 rounded-lg">
+            <div className="text-[11px] text-[#8a857c] mb-1.5">
+              Chọn người đóng gói:
+            </div>
+            <div className="flex flex-col gap-1">
+              {staff.length === 0 ? (
+                <div className="text-[11px] text-gray-400">
+                  Farm chưa có nhân viên.
+                </div>
+              ) : (
+                staff.map((s) => (
+                  <button
+                    key={s.id}
+                    disabled={busy}
+                    onClick={() =>
+                      run(async () => {
+                        await assignPacker(order.order_id, s.id);
+                        setPicking(false);
+                      })
+                    }
+                    className={`text-left px-2.5 py-1.5 text-[11px] rounded-md border disabled:opacity-50 ${
+                      order.assigned_customer_id === s.id
+                        ? "border-primary text-primary bg-primary/5"
+                        : "border-[#d4d0c7] text-gray-700 active:bg-white"
+                    }`}
+                  >
+                    {s.name}
+                    {s.farm_role === "owner"
+                      ? " (chủ farm)"
+                      : s.farm_role === "admin"
+                      ? " (quản lý)"
+                      : s.farm_role === "packer"
+                      ? " (đóng gói)"
+                      : s.farm_role === "shipper"
+                      ? " (shipper)"
+                      : ""}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -505,7 +527,7 @@ function ReadOnlyView({ orders }: { orders: GroupedOrder[] }) {
   return (
     <>
       {/* Card thông báo: đơn do hub xử lý */}
-      <div className="p-3 bg-blue-50 rounded-xl">
+      <div className="mx-4 mt-3 p-3 bg-blue-50 rounded-xl">
         <div className="text-[11px] text-blue-700">
           Hàng của bạn trong đơn đang đến
         </div>
@@ -521,11 +543,17 @@ function ReadOnlyView({ orders }: { orders: GroupedOrder[] }) {
       </div>
 
       {orders.length === 0 ? (
-        <div className="py-16 text-center text-gray-400 text-sm">
-          Chưa có đơn nào chứa hàng của bạn.
+        <div className="py-20 text-center">
+          <div className="text-4xl mb-3">📦</div>
+          <div className="text-[15px] font-medium text-[#2a2a2a]">
+            Không có đơn nào
+          </div>
+          <div className="text-[13px] text-[#8a857c] mt-1">
+            Kéo xuống để làm mới
+          </div>
         </div>
       ) : (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="px-4 pt-3 pb-4 flex flex-col gap-3">
           {orders.map((o) => (
             <ReadOnlyCard key={o.order_id} order={o} />
           ))}
@@ -539,17 +567,18 @@ function ReadOnlyCard({ order }: { order: GroupedOrder }) {
   const pill = statusPill(order.order_status);
 
   return (
-    <div className="p-3 border border-gray-200 rounded-xl">
+    <div className="bg-white rounded-xl shadow-sm border border-[#d4d0c7] p-3">
       {/* Top: mã đơn + giờ | status pill */}
       <div className="flex justify-between items-start mb-2 gap-2">
         <div className="min-w-0">
           <div className="text-[13px] font-medium">#{order.order_id}</div>
-          <div className="text-[11px] text-gray-500 mt-0.5">
+          <div className="text-[11px] text-[#8a857c] mt-0.5">
             {fmtTime(order.order_created_at)}
           </div>
         </div>
         <div
-          className={`px-2 py-0.5 text-[10px] font-medium rounded-full shrink-0 ${pill.className}`}
+          className="px-2 py-0.5 text-[10px] font-medium rounded-full shrink-0"
+          style={{ backgroundColor: pill.bg, color: pill.color }}
         >
           {pill.label}
         </div>
@@ -570,7 +599,7 @@ function ReadOnlyCard({ order }: { order: GroupedOrder }) {
         ))}
       </div>
 
-      <div className="text-[11px] text-gray-400 mt-2">
+      <div className="text-[11px] text-[#8a857c] mt-2">
         Đang được xử lý bởi bộ phận đóng gói Vietponics
       </div>
     </div>
@@ -634,23 +663,23 @@ function StaffView({
 
   return (
     <>
-      <div className="text-[12px] text-gray-600 px-0.5">
+      <div className="px-4 py-2 text-[12px] text-gray-600">
         <span className="font-medium text-gray-800">{confirmedWaiting} đơn</span>{" "}
         đã xác nhận, chờ đóng gói
       </div>
 
-      {/* Filter pills */}
-      <div className="flex gap-1.5 mt-3 overflow-x-auto -mx-0.5 px-0.5 pb-0.5">
+      {/* Filter tabs scrollable */}
+      <div className="flex gap-2 overflow-x-auto px-4 pb-2 border-b border-[#f0ede5]">
         {filters.map((f) => {
           const active = f.key === filter;
           return (
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className={`px-3 py-1.5 text-[11px] rounded-full whitespace-nowrap transition-colors ${
+              className={`px-3 py-1.5 text-[13px] rounded-full whitespace-nowrap transition-colors ${
                 active
-                  ? "bg-primary text-white font-medium"
-                  : "border border-gray-200 text-gray-500 active:bg-gray-50"
+                  ? "bg-[#1f8a4c] text-white font-medium"
+                  : "border border-[#d4d0c7] text-[#8a857c]"
               }`}
             >
               {f.label} · {f.count}
@@ -660,13 +689,17 @@ function StaffView({
       </div>
 
       {visible.length === 0 ? (
-        <div className="py-16 text-center text-gray-400 text-sm">
-          {packable.length === 0
-            ? "Chưa có đơn nào cần đóng gói."
-            : "Không có đơn trong mục này."}
+        <div className="py-20 text-center">
+          <div className="text-4xl mb-3">📦</div>
+          <div className="text-[15px] font-medium text-[#2a2a2a]">
+            Không có đơn nào
+          </div>
+          <div className="text-[13px] text-[#8a857c] mt-1">
+            Kéo xuống để làm mới
+          </div>
         </div>
       ) : (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="px-4 pt-3 pb-4 flex flex-col gap-3">
           {visible.map((o) => (
             <StaffCard
               key={o.order_id}
@@ -705,37 +738,39 @@ function StaffCard({
     order.assigned_customer_id !== myId;
 
   const pillByState = isMinePacking
-    ? { label: "Bạn đang đóng", className: "bg-primary/10 text-primary" }
+    ? { label: "Bạn đang đóng", bg: "rgba(31,138,76,0.12)", color: "#1f8a4c" }
     : isMineAssigned
-    ? { label: "Của bạn", className: "bg-blue-50 text-blue-700" }
+    ? { label: "Của bạn", bg: "#dbe8ff", color: "#2a5bd7" }
     : isMinePacked
-    ? { label: "Đã đóng xong", className: "bg-green-100 text-green-700" }
+    ? { label: "Đã đóng xong", bg: "#d6f2dd", color: "#1f8a4c" }
     : isLockedByOther
-    ? { label: "Đang đóng gói", className: "bg-amber-50 text-amber-700" }
-    : { label: "Chờ đóng gói", className: "bg-blue-50 text-blue-700" };
+    ? { label: "Đang đóng gói", bg: "#fdf0c8", color: "#9a7b10" }
+    : { label: "Chờ đóng gói", bg: "#dbe8ff", color: "#2a5bd7" };
+  // pillByState dùng {bg, color} → phải render bằng inline style, không phải .className
 
   return (
     <div
       onClick={() => navigate(`/farm/orders/${order.order_id}`)}
-      className={`p-3 border rounded-xl cursor-pointer active:bg-gray-50 ${
+      className={`bg-white rounded-xl shadow-sm border cursor-pointer active:bg-gray-50 p-3 ${
         isMinePacking
           ? "border-primary ring-1 ring-primary/30"
           : isLockedByOther
-          ? "border-gray-200 bg-gray-50/60 opacity-70"
-          : "border-gray-200"
+          ? "border-[#d4d0c7] opacity-70"
+          : "border-[#d4d0c7]"
       }`}
     >
       {/* Top */}
       <div className="flex justify-between items-start mb-2 gap-2">
         <div className="min-w-0">
           <div className="text-[13px] font-medium">#{order.order_id}</div>
-          <div className="text-[11px] text-gray-500 mt-0.5 truncate">
+          <div className="text-[11px] text-[#8a857c] mt-0.5 truncate">
             {shortenName(order.customer_name)}
             {recipientLocation(order) ? ` · ${recipientLocation(order)}` : ""}
           </div>
         </div>
         <div
-          className={`px-2 py-0.5 text-[10px] font-medium rounded-full shrink-0 ${pillByState.className}`}
+          className="px-2 py-0.5 text-[10px] font-medium rounded-full shrink-0"
+          style={{ backgroundColor: pillByState.bg, color: pillByState.color }}
         >
           {pillByState.label}
         </div>
@@ -758,7 +793,7 @@ function StaffCard({
 
       {/* SĐT đã che (cần cho dán nhãn đóng gói) */}
       {order.customer_phone && (
-        <div className="text-[11px] text-gray-400 mt-1.5">
+        <div className="text-[11px] text-[#8a857c] mt-1.5">
           SĐT: {order.customer_phone}
         </div>
       )}
@@ -803,6 +838,201 @@ function StaffCard({
           <div className="text-center text-[11px] text-gray-400 py-1">
             {staffLabel(order.assigned_customer_name)} đang đóng — không thể nhận
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Màn 3.1: Shipper nội bộ ──────────────────────────────────────────────────
+
+const SHIPPER_ACCENT = "#e07514";
+
+function ShipperView({
+  orders,
+  myId,
+  onChanged,
+}: {
+  orders: GroupedOrder[];
+  myId: number | null;
+  onChanged: () => void;
+}) {
+  const [tab, setTab] = useState<ShipperFilter>("to_pickup");
+
+  // Đơn của shipper: delivering + is_mine. Phân biệt "cần lấy" vs "đang giao"
+  // bằng heuristic packed_at — khi backend thêm field pickup_at, đổi điều kiện lọc ở đây.
+  const myDelivering = useMemo(
+    () => orders.filter((o) => o.order_status === "delivering" && o.is_mine),
+    [orders]
+  );
+
+  const toPickup = useMemo(
+    () => myDelivering.filter((o) => o.packed_at != null),
+    [myDelivering]
+  );
+
+  const inDelivery = useMemo(
+    () => myDelivering.filter((o) => o.packed_at == null),
+    [myDelivering]
+  );
+
+  const tabs: { key: ShipperFilter; label: string; count: number }[] = [
+    { key: "to_pickup", label: "Cần lấy hàng", count: toPickup.length },
+    { key: "delivering", label: "Đang giao", count: inDelivery.length },
+  ];
+
+  const visible = tab === "to_pickup" ? toPickup : inDelivery;
+
+  return (
+    <>
+      {/* Tóm tắt số đơn */}
+      <div className="px-4 py-2">
+        <p className="text-sm text-[#5a5a5a] italic">
+          {myDelivering.length} đơn · {toPickup.length} chờ lấy hàng
+        </p>
+      </div>
+
+      {/* Filter tabs scrollable */}
+      <div className="flex gap-2 overflow-x-auto px-4 pb-2 border-b border-[#f0ede5]">
+        {tabs.map((t) => {
+          const active = t.key === tab;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className="px-3 py-1.5 text-[13px] rounded-full whitespace-nowrap transition-colors"
+              style={
+                active
+                  ? { backgroundColor: SHIPPER_ACCENT, color: "#fff", fontWeight: 500 }
+                  : { border: "1px solid #d4d0c7", color: "#8a857c" }
+              }
+            >
+              {t.label} · {t.count}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === "delivering" && inDelivery.length === 0 ? (
+        <div className="py-20 text-center">
+          <div className="text-4xl mb-3">🚗</div>
+          <div className="text-[15px] font-medium text-[#2a2a2a]">
+            Chưa có đơn đang giao
+          </div>
+          <div className="text-[13px] text-[#8a857c] mt-1">
+            Các đơn bạn đã lấy sẽ hiển thị ở đây
+          </div>
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="py-20 text-center">
+          <div className="text-4xl mb-3">📦</div>
+          <div className="text-[15px] font-medium text-[#2a2a2a]">
+            Không có đơn nào
+          </div>
+          <div className="text-[13px] text-[#8a857c] mt-1">
+            Kéo xuống để làm mới
+          </div>
+        </div>
+      ) : (
+        <div className="px-4 pt-3 pb-4 flex flex-col gap-3">
+          {visible.map((o) => (
+            <ShipperCard
+              key={o.order_id}
+              order={o}
+              isPickupTab={tab === "to_pickup"}
+              onChanged={onChanged}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function ShipperCard({
+  order,
+  isPickupTab,
+  onChanged,
+}: {
+  order: GroupedOrder;
+  isPickupTab: boolean;
+  onChanged: () => void;
+}) {
+  const { busy, err, run } = useAction(onChanged);
+  const recipient = recipientLocation(order);
+
+  const pill = isPickupTab
+    ? { label: "Chờ lấy", bg: "#ffe1cc", color: "#c4630f" }
+    : { label: "Đang giao", bg: "#ece1ff", color: "#6b3fc4" };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-[#d4d0c7] p-3">
+      {/* Top: mã đơn + badge */}
+      <div className="flex justify-between items-start mb-2 gap-2">
+        <div className="min-w-0">
+          <div className="text-[17px] font-semibold text-[#1a1a1a]">
+            #{order.order_id}
+          </div>
+          <div className="text-[12px] text-[#8a857c] mt-0.5 truncate">
+            {shortenName(order.customer_name)}
+            {recipient ? ` · ${recipient}` : ""}
+            {` · ${fmtTime(order.order_created_at)}`}
+          </div>
+        </div>
+        <div
+          className="px-2 py-0.5 text-[11px] font-medium rounded-full shrink-0"
+          style={{ backgroundColor: pill.bg, color: pill.color }}
+        >
+          {pill.label}
+        </div>
+      </div>
+
+      {/* Box xám: items */}
+      <div className="p-2 bg-gray-50 rounded-md text-xs mb-2">
+        {order.items.map((it, i) => (
+          <div key={it.item_id} className={`flex justify-between ${i > 0 ? "mt-1" : ""}`}>
+            <span className="text-gray-700 truncate pr-2">{it.product_name}</span>
+            <span className="font-medium shrink-0">×{fmtKg(it.quantity)}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* SĐT bấm-để-gọi — chỉ tab "Đang giao" */}
+      {!isPickupTab && order.customer_phone && (
+        <a
+          href={`tel:${order.customer_phone}`}
+          className="flex items-center gap-1.5 text-[12px] text-blue-600 mb-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.77 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.06 6.06l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+          </svg>
+          {order.customer_phone}
+        </a>
+      )}
+
+      {err && <div className="text-[11px] text-red-500 mb-1.5">{err}</div>}
+
+      {/* Hành động */}
+      <div onClick={(e) => e.stopPropagation()}>
+        {isPickupTab ? (
+          <button
+            disabled={busy}
+            onClick={() => run(() => pickupOrder(order.order_id))}
+            className="w-full px-3 py-2.5 text-[13px] rounded-[10px] text-white font-medium disabled:opacity-50"
+            style={{ backgroundColor: SHIPPER_ACCENT }}
+          >
+            {busy ? "Đang xử lý..." : "Tôi đã lấy hàng"}
+          </button>
+        ) : (
+          <button
+            disabled={busy}
+            onClick={() => run(() => deliverOrder(order.order_id))}
+            className="w-full px-3 py-2.5 text-[13px] rounded-[10px] text-white font-medium disabled:opacity-50"
+            style={{ backgroundColor: "#1f8a4c" }}
+          >
+            {busy ? "Đang xử lý..." : "Xác nhận đã giao"}
+          </button>
         )}
       </div>
     </div>

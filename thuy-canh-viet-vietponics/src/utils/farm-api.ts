@@ -322,6 +322,14 @@ export function handoffShip(orderId: number): Promise<OrderActionResult> {
   return farmPost<OrderActionResult>(`/farm/orders/${orderId}/handoff-ship`);
 }
 
+export function pickupOrder(orderId: number): Promise<PackingActionResult> {
+  return farmPost<PackingActionResult>(`/farm/orders/${orderId}/pickup`);
+}
+
+export function deliverOrder(orderId: number): Promise<PackingActionResult> {
+  return farmPost<PackingActionResult>(`/farm/orders/${orderId}/deliver`);
+}
+
 // Payouts poll chậm 60s — đợt draft "đang tích lũy" cập nhật theo cron daily,
 // nhưng vẫn poll để farm thấy số mới mà không cần thoát/vào lại trang.
 const PAYOUT_POLL_MS = 60_000;

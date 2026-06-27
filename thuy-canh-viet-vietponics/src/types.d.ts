@@ -457,6 +457,8 @@ export interface StockMovement {
 
 // ─── Farm Partner Hub (dashboard) ───────────────────────────────────────────
 
+export type FarmMemberRole = "owner" | "admin" | "packer" | "shipper";
+
 export interface FarmProfile {
   id: number;
   code: string;
@@ -475,7 +477,7 @@ export interface FarmProfile {
   viewer?: {
     customer_id: number;
     name: string;
-    farm_role: "owner" | "staff" | null;
+    farm_role: FarmMemberRole | null;
     is_owner: boolean;
     // Lặp lại ở cấp viewer để đọc gọn cùng chỗ với is_owner.
     is_packing_hub: boolean;
@@ -586,7 +588,7 @@ export interface FarmIncomingOrder {
   product_name: string;
   quantity: number;
   price: number;
-  order_status: "pending" | "confirmed" | "preparing" | "delivering";
+  order_status: "pending" | "confirmed" | "preparing" | "delivering" | "delivered" | "cancelled";
   order_created_at: string;
   order_total: number;
   is_pickup: boolean;
@@ -614,7 +616,7 @@ export interface FarmIncomingOrder {
 // = tên trạm (không lộ địa chỉ giao).
 export interface FarmOrderDetail {
   order_id: number;
-  order_status: "pending" | "confirmed" | "preparing" | "delivering";
+  order_status: "pending" | "confirmed" | "preparing" | "delivering" | "delivered" | "cancelled";
   order_created_at: string;
   order_total: number;
   assignment_status: PackingStatus;
@@ -643,7 +645,7 @@ export interface FarmOrderDetail {
 export interface FarmStaffMember {
   id: number;
   name: string;
-  farm_role: "owner" | "staff" | null;
+  farm_role: FarmMemberRole | null;
 }
 
 // Kết quả thao tác đóng gói cấp phiếu (claim/assign/start-packing/confirm-packed).

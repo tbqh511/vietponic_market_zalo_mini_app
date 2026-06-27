@@ -1,7 +1,7 @@
 // Helpers dùng chung cho khu đóng gói: list (orders.tsx) + chi tiết (detail.tsx).
 // Tách ra để hai màn không lặp logic format/nhãn/trạng thái và hook hành động.
 import { useState } from "react";
-import { FarmIncomingOrder } from "@/types";
+import { FarmIncomingOrder, PackingStatus } from "@/types";
 
 // Dòng "người nhận" hiển thị ở card/chi tiết. Đơn pickup hiện TÊN TRẠM (không lộ
 // địa chỉ giao); đơn shipping hiện địa chỉ ĐÃ CHE từ server. Trả chuỗi rỗng nếu
@@ -56,20 +56,48 @@ export function avatarInitials(name: string | null): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Pill trạng thái ĐƠN (góc phải card).
+// Pill trạng thái ĐƠN — trả object {label, bg, color} để render bằng inline style.
+// Dùng inline style thay Tailwind vì màu là design token chính xác theo pixel.
 export function statusPill(status: FarmIncomingOrder["order_status"]): {
   label: string;
-  className: string;
+  bg: string;
+  color: string;
 } {
   switch (status) {
-    case "delivering":
-      return { label: "Đang giao", className: "bg-green-50 text-green-700" };
     case "pending":
-      return { label: "Chờ xác nhận", className: "bg-gray-100 text-gray-600" };
+      return { label: "Chờ xác nhận", bg: "#ececec", color: "#5a5a5a" };
+    case "confirmed":
+      return { label: "Đã xác nhận", bg: "#dbe8ff", color: "#2a5bd7" };
     case "preparing":
-      return { label: "Đang chuẩn bị", className: "bg-amber-50 text-amber-700" };
+      return { label: "Đang chuẩn bị", bg: "#fdf0c8", color: "#9a7b10" };
+    case "delivering":
+      return { label: "Đang giao", bg: "#ffe1cc", color: "#c4630f" };
+    case "delivered":
+      return { label: "Đã giao", bg: "#d6f2dd", color: "#1f8a4c" };
+    case "cancelled":
+      return { label: "Đã huỷ", bg: "#ffdcdc", color: "#c43838" };
     default:
-      return { label: "Đã xác nhận", className: "bg-blue-50 text-blue-700" };
+      return { label: status, bg: "#ececec", color: "#5a5a5a" };
+  }
+}
+
+// Pill trạng thái PHÂN CÔNG (assignment_status) cho owner view.
+export function assignmentPill(status: PackingStatus): {
+  label: string;
+  bg: string;
+  color: string;
+} {
+  switch (status) {
+    case "unassigned":
+      return { label: "Chưa có người", bg: "#ececec", color: "#5a5a5a" };
+    case "assigned":
+      return { label: "Đã giao việc", bg: "#dbe8ff", color: "#2a5bd7" };
+    case "packing":
+      return { label: "Đang đóng", bg: "#fdf0c8", color: "#9a7b10" };
+    case "packed":
+      return { label: "Đã đóng xong", bg: "#d6f2dd", color: "#1f8a4c" };
+    default:
+      return { label: status, bg: "#ececec", color: "#5a5a5a" };
   }
 }
 
