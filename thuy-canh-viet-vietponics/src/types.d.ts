@@ -632,6 +632,7 @@ export interface FarmOrderDetail {
   customer_name: string | null;
   customer_phone: string | null; // đã che
   delivery_address: string | null; // đã che (pickup = station_name)
+  note: string | null;
   items: {
     item_id: number;
     product_id: number;

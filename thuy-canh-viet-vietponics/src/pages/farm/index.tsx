@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useFarmGuard, useEnsureJwt } from "@/hooks";
 import {
@@ -8,6 +8,7 @@ import {
 } from "@/utils/farm-api";
 import StatCard from "@/components/farm/stat-card";
 import ProductProgress from "@/components/farm/product-progress";
+import logo from "@/static/logo.png";
 
 // Dashboard chính của Farm Partner Hub (route /farm).
 // Layout theo wireframe:
@@ -37,15 +38,6 @@ export default function FarmDashboardPage() {
   const overview = useFarmOverview("today", isFarm);
   const productsToday = useFarmProductsToday(isFarm);
 
-  // Avatar farm = 2 ký tự đầu của tên (vd "Joiley Farm" → "JF").
-  const initials = useMemo(() => {
-    const name = profile.data?.name ?? "";
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return name.slice(0, 2).toUpperCase() || "—";
-  }, [profile.data?.name]);
 
   if (!isFarm) {
     return (
@@ -90,9 +82,7 @@ export default function FarmDashboardPage() {
       <div className="m-3 bg-white rounded-lg border border-gray-200 p-3.5">
         {/* Header farm */}
         <div className="flex items-center gap-2.5 pb-3 border-b border-gray-100">
-          <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-[13px] font-medium text-green-700">
-            {initials}
-          </div>
+          <img src={logo} className="w-9 h-9 rounded-full object-cover" alt="" />
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">{profile.data?.name ?? "—"}</div>
             <div className="text-[11px] text-gray-500 truncate">

@@ -27,6 +27,8 @@ import {
   useAction,
   recipientLocation,
   TruckIcon,
+  AssignPickerSheet,
+  HandoffMethodSheet,
 } from "./_shared";
 
 // Trang "Đơn đến" của Farm Partner (route /farm/orders) — kiêm khu vực ĐÓNG GÓI.
@@ -158,39 +160,18 @@ export default function FarmOrdersPage() {
   const farmName = profile.data?.name ?? "Farm";
 
   // Accent color và label theo role
-  const accentColor = isShipper ? "#e07514" : "#1f8a4c";
-  const topTitle = isShipper ? "Đơn giao của tôi" : "Quản lý đơn hàng";
-  const topSubtitle = isShipper
-    ? `Chào, ${viewer?.name ?? "Shipper"}`
-    : farmName;
-  const rolePill = isShipper
-    ? "Giao hàng"
-    : !isHub
-    ? "Chỉ xem"
-    : isOwner
-    ? "Chủ farm"
-    : staffLabel(viewer?.name ?? null);
-
+  const isReadOnly = !isHub && !isShipper;
+  // Packer = thành viên hub, không phải owner, không phải shipper.
+  const isPacker = isHub && !isOwner && !isShipper;
+  const accentColor = isShipper
+    ? "#e07514"
+    : isReadOnly
+    ? "#9a958c"
+    : isPacker
+    ? "#c79a12"
+    : "#1f8a4c";
   return (
-    <div className="flex flex-col min-h-full bg-[#fbfaf7]">
-      {/* RoleBar — dải accent mỏng, màu theo role */}
-      <div className="h-[5px]" style={{ backgroundColor: accentColor }} />
-
-      {/* TopBar */}
-      <div className="px-4 py-3 bg-white border-b border-[#f0ede5]">
-        <div className="text-[18px] font-semibold text-[#1a1a1a]">
-          {topTitle}
-        </div>
-        <div className="flex items-center justify-between mt-0.5">
-          <div className="text-sm text-[#8a857c] truncate pr-2">{topSubtitle}</div>
-          <div
-            className="px-2.5 py-0.5 text-xs rounded-full whitespace-nowrap shrink-0"
-            style={{ backgroundColor: `${accentColor}26`, color: accentColor }}
-          >
-            {rolePill}
-          </div>
-        </div>
-      </div>
+    <div className="flex flex-col min-h-full bg-gray-100">
 
       <div className="flex-1">
         {isInitialLoading ? (
@@ -223,6 +204,7 @@ export default function FarmOrdersPage() {
           <StaffView
             orders={orders}
             myId={myId}
+            accentColor={accentColor}
             onChanged={incoming.refresh}
           />
         )}
@@ -307,11 +289,19 @@ function OwnerView({
 
   return (
     <>
-      {/* Summary bar compact */}
-      <div className="px-4 py-2">
-        <p className="text-sm text-[#5a5a5a] italic">
-          {fmtKg(summary.totalQty)} · cần chuẩn bị hôm nay
-        </p>
+      {/* Summary row — số kg lớn nổi bật theo thiết kế */}
+      <div className="px-4 pt-3 pb-1">
+        <div className="flex items-baseline gap-2">
+          <span className="text-[26px] font-semibold" style={{ color: "#1f8a4c" }}>
+            {fmtKg(summary.totalQty)}
+          </span>
+          <span className="text-[15px]" style={{ color: "#8a857c" }}>
+            · cần chuẩn bị hôm nay
+          </span>
+        </div>
+        <div className="text-[13px] mt-0.5" style={{ color: "#8a857c" }}>
+          {summary.count} đơn
+        </div>
       </div>
 
       {/* Filter tabs scrollable */}
@@ -373,7 +363,8 @@ function OwnerCard({
   const pill = statusPill(order.order_status);
   const aPill = assignmentPill(order.assignment_status);
   const { busy, err, run } = useAction(onChanged);
-  const [picking, setPicking] = useState(false);
+  const [showAssignSheet, setShowAssignSheet] = useState(false);
+  const [showHandoffSheet, setShowHandoffSheet] = useState(false);
 
   const isDelivering = order.order_status === "delivering";
   const isPending = order.order_status === "pending";
@@ -446,7 +437,7 @@ function OwnerCard({
           {canHandoff && (
             <button
               disabled={busy}
-              onClick={() => run(() => handoffShip(order.order_id))}
+              onClick={() => setShowHandoffSheet(true)}
               className="flex-1 min-w-[8rem] px-3 py-2.5 text-[13px] rounded-[10px] bg-[#e07514] text-white font-medium disabled:bg-[#edebe5] disabled:text-[#a7a299]"
             >
               Bàn giao giao hàng
@@ -456,59 +447,44 @@ function OwnerCard({
           {/* Phân công / đổi người — ẩn khi đã đóng xong hoặc đang giao */}
           {!isPending && !isPacked && !isDelivering && (
             <button
-              onClick={() => setPicking((p) => !p)}
+              onClick={() => setShowAssignSheet(true)}
               className="px-3 py-2.5 text-[13px] rounded-[10px] border border-primary text-primary active:bg-primary/5"
             >
               {order.assigned_customer_id ? "Đổi người" : "Phân công"}
             </button>
           )}
         </div>
-
-        {/* Picker phân công */}
-        {picking && (
-          <div className="mt-2 p-2 bg-gray-50 rounded-lg">
-            <div className="text-[11px] text-[#8a857c] mb-1.5">
-              Chọn người đóng gói:
-            </div>
-            <div className="flex flex-col gap-1">
-              {staff.length === 0 ? (
-                <div className="text-[11px] text-gray-400">
-                  Farm chưa có nhân viên.
-                </div>
-              ) : (
-                staff.map((s) => (
-                  <button
-                    key={s.id}
-                    disabled={busy}
-                    onClick={() =>
-                      run(async () => {
-                        await assignPacker(order.order_id, s.id);
-                        setPicking(false);
-                      })
-                    }
-                    className={`text-left px-2.5 py-1.5 text-[11px] rounded-md border disabled:opacity-50 ${
-                      order.assigned_customer_id === s.id
-                        ? "border-primary text-primary bg-primary/5"
-                        : "border-[#d4d0c7] text-gray-700 active:bg-white"
-                    }`}
-                  >
-                    {s.name}
-                    {s.farm_role === "owner"
-                      ? " (chủ farm)"
-                      : s.farm_role === "admin"
-                      ? " (quản lý)"
-                      : s.farm_role === "packer"
-                      ? " (đóng gói)"
-                      : s.farm_role === "shipper"
-                      ? " (shipper)"
-                      : ""}
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Bottom sheet chọn người đóng gói */}
+      {showAssignSheet && (
+        <AssignPickerSheet
+          staff={staff}
+          currentPackerId={order.assigned_customer_id}
+          busy={busy}
+          onSelect={(staffId) =>
+            run(async () => {
+              await assignPacker(order.order_id, staffId);
+              setShowAssignSheet(false);
+            })
+          }
+          onClose={() => setShowAssignSheet(false)}
+        />
+      )}
+
+      {/* Bottom sheet chọn phương thức bàn giao */}
+      {showHandoffSheet && (
+        <HandoffMethodSheet
+          busy={busy}
+          onSelect={(_method) =>
+            run(async () => {
+              await handoffShip(order.order_id);
+              setShowHandoffSheet(false);
+            })
+          }
+          onClose={() => setShowHandoffSheet(false)}
+        />
+      )}
     </div>
   );
 }
@@ -524,22 +500,37 @@ function ReadOnlyView({ orders }: { orders: GroupedOrder[] }) {
     return { totalQty, count: orders.length };
   }, [orders]);
 
+  const READ_ONLY_ACCENT = "#9a958c";
+
   return (
     <>
-      {/* Card thông báo: đơn do hub xử lý */}
-      <div className="mx-4 mt-3 p-3 bg-blue-50 rounded-xl">
-        <div className="text-[11px] text-blue-700">
-          Hàng của bạn trong đơn đang đến
-        </div>
-        <div className="flex items-baseline gap-1.5 mt-1">
-          <div className="text-[22px] font-semibold text-blue-700 leading-none">
-            {fmtKg(summary.totalQty)}
+      {/* Banner chỉ xem */}
+      <div
+        className="mx-4 mt-3 p-3 rounded-xl flex items-start gap-2"
+        style={{ backgroundColor: "#f1efe9" }}
+      >
+        <span className="text-[15px] shrink-0">👁</span>
+        <div>
+          <div
+            className="text-[12px] font-medium"
+            style={{ color: READ_ONLY_ACCENT }}
+          >
+            Chế độ chỉ xem
           </div>
-          <div className="text-xs text-blue-700">· {summary.count} đơn</div>
+          <div className="text-[11px] mt-0.5" style={{ color: "#6a655c" }}>
+            Bạn chỉ thấy đơn có hàng của mình, không thao tác được.
+          </div>
         </div>
-        <div className="text-[11px] text-blue-600/80 mt-1.5">
-          Đơn được đóng gói bởi bộ phận đóng gói Vietponics.
-        </div>
+      </div>
+
+      {/* Tóm tắt số lượng */}
+      <div className="px-4 pt-2 pb-1">
+        <p className="text-sm" style={{ color: "#6a655c" }}>
+          <span className="font-semibold" style={{ color: "#2a2a2a" }}>
+            {fmtKg(summary.totalQty)}
+          </span>
+          {" · "}{summary.count} đơn đang đến
+        </p>
       </div>
 
       {orders.length === 0 ? (
@@ -568,13 +559,10 @@ function ReadOnlyCard({ order }: { order: GroupedOrder }) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-[#d4d0c7] p-3">
-      {/* Top: mã đơn + giờ | status pill */}
-      <div className="flex justify-between items-start mb-2 gap-2">
-        <div className="min-w-0">
-          <div className="text-[13px] font-medium">#{order.order_id}</div>
-          <div className="text-[11px] text-[#8a857c] mt-0.5">
-            {fmtTime(order.order_created_at)}
-          </div>
+      {/* Top: mã đơn + status pill */}
+      <div className="flex justify-between items-center mb-1.5 gap-2">
+        <div className="text-[15px] font-semibold text-[#1a1a1a]">
+          #{order.order_id}
         </div>
         <div
           className="px-2 py-0.5 text-[10px] font-medium rounded-full shrink-0"
@@ -584,23 +572,24 @@ function ReadOnlyCard({ order }: { order: GroupedOrder }) {
         </div>
       </div>
 
+      {/* Meta: giờ · số sản phẩm */}
+      <div className="text-[12px] text-[#8a857c] mb-2">
+        {fmtTime(order.order_created_at)} · {order.items.length} sản phẩm
+      </div>
+
       {/* Box xám: items của farm mình trong đơn */}
-      <div className="p-2 bg-gray-50 rounded-md text-xs">
+      <div className="p-2 bg-[#f1efe9] rounded-md text-xs">
         {order.items.map((it, i) => (
           <div
             key={it.item_id}
             className={`flex justify-between ${i > 0 ? "mt-1" : ""}`}
           >
-            <span className="text-gray-700 truncate pr-2">
+            <span className="text-[#2a2a2a] truncate pr-2">
               {it.product_name}
             </span>
-            <span className="font-medium shrink-0">×{fmtKg(it.quantity)}</span>
+            <span className="font-medium shrink-0 text-[#6a655c]">×{fmtKg(it.quantity)}</span>
           </div>
         ))}
-      </div>
-
-      <div className="text-[11px] text-[#8a857c] mt-2">
-        Đang được xử lý bởi bộ phận đóng gói Vietponics
       </div>
     </div>
   );
@@ -611,10 +600,12 @@ function ReadOnlyCard({ order }: { order: GroupedOrder }) {
 function StaffView({
   orders,
   myId,
+  accentColor,
   onChanged,
 }: {
   orders: GroupedOrder[];
   myId: number | null;
+  accentColor: string;
   onChanged: () => void;
 }) {
   const [filter, setFilter] = useState<StaffFilter>("available");
@@ -676,11 +667,12 @@ function StaffView({
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className={`px-3 py-1.5 text-[13px] rounded-full whitespace-nowrap transition-colors ${
+              className="px-3 py-1.5 text-[13px] rounded-full whitespace-nowrap transition-colors"
+              style={
                 active
-                  ? "bg-[#1f8a4c] text-white font-medium"
-                  : "border border-[#d4d0c7] text-[#8a857c]"
-              }`}
+                  ? { backgroundColor: accentColor, color: "#fff", fontWeight: 500 }
+                  : { border: "1px solid #d4d0c7", color: "#8a857c" }
+              }
             >
               {f.label} · {f.count}
             </button>

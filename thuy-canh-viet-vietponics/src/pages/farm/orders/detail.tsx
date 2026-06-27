@@ -25,6 +25,8 @@ import {
   useAction,
   recipientLocation,
   TruckIcon,
+  AssignPickerSheet,
+  HandoffMethodSheet,
 } from "./_shared";
 
 // Chi tiết một đơn cho khâu ĐÓNG GÓI (route /farm/orders/:id).
@@ -605,6 +607,23 @@ function PackerDetailView({
             </div>
           </div>
 
+          {/* Ghi chú của khách */}
+          {order.note && (
+            <div
+              className="bg-white rounded-xl border shadow-sm overflow-hidden"
+              style={{ borderColor: "#d4d0c7" }}
+            >
+              <div className="px-4 pt-3 pb-1">
+                <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                  Ghi chú của khách
+                </span>
+              </div>
+              <div className="px-4 pb-3">
+                <p className="text-[13px] text-gray-700 italic">"{order.note}"</p>
+              </div>
+            </div>
+          )}
+
           {/* Không phải đơn của mình → cảnh báo */}
           {!isMyOrder && order.assignment_status !== "unassigned" && (
             <div
@@ -688,7 +707,8 @@ function OrderDetailBody({
   onChanged: () => void;
 }) {
   const { busy, err, run } = useAction(onChanged);
-  const [picking, setPicking] = useState(false);
+  const [showAssignSheet, setShowAssignSheet] = useState(false);
+  const [showHandoffSheet, setShowHandoffSheet] = useState(false);
 
   const pill = statusPill(order.order_status);
   const isDelivering = order.order_status === "delivering";
@@ -814,62 +834,21 @@ function OrderDetailBody({
             {isOwner && canHandoff && (
               <button
                 disabled={busy}
-                onClick={() => run(() => handoffShip(order.order_id))}
-                className="w-full px-3 py-2.5 text-[13px] rounded-lg bg-green-600 text-white font-medium disabled:opacity-50"
+                onClick={() => setShowHandoffSheet(true)}
+                className="w-full px-3 py-2.5 text-[13px] rounded-lg text-white font-medium disabled:opacity-50"
+                style={{ backgroundColor: "#e07514" }}
               >
-                Bàn giao ship
+                Bàn giao giao hàng
               </button>
             )}
 
             {isOwner && !isPending && !isPacked && !isDelivering && (
               <button
-                onClick={() => setPicking((p) => !p)}
+                onClick={() => setShowAssignSheet(true)}
                 className="w-full px-3 py-2.5 text-[13px] rounded-lg border border-primary text-primary active:bg-primary/5"
               >
                 {order.assigned_customer_id ? "Đổi người đóng" : "Phân công"}
               </button>
-            )}
-
-            {isOwner && picking && (
-              <div className="p-2 bg-gray-50 rounded-lg">
-                <div className="text-[11px] text-gray-500 mb-1.5">
-                  Chọn người đóng gói:
-                </div>
-                <div className="flex flex-col gap-1">
-                  {staff.length === 0 ? (
-                    <div className="text-[11px] text-gray-400">
-                      Farm chưa có nhân viên.
-                    </div>
-                  ) : (
-                    staff.map((s) => (
-                      <button
-                        key={s.id}
-                        disabled={busy}
-                        onClick={() =>
-                          run(async () => {
-                            await assignPacker(order.order_id, s.id);
-                            setPicking(false);
-                          })
-                        }
-                        className={`text-left px-2.5 py-1.5 text-[12px] rounded-md border disabled:opacity-50 ${
-                          order.assigned_customer_id === s.id
-                            ? "border-primary text-primary bg-primary/5"
-                            : "border-gray-200 text-gray-700 active:bg-white"
-                        }`}
-                      >
-                        {s.name}
-                        {s.farm_role === "owner"
-                          ? " (chủ farm)"
-                          : s.farm_role === "packer"
-                          ? " (đóng gói)"
-                          : s.farm_role === "shipper"
-                          ? " (shipper)"
-                          : ""}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
             )}
 
             {!isPending && isUnassigned && (
@@ -902,6 +881,36 @@ function OrderDetailBody({
           </div>
         )}
       </div>
+
+      {/* Bottom sheet phân công nhân viên */}
+      {showAssignSheet && (
+        <AssignPickerSheet
+          staff={staff}
+          currentPackerId={order.assigned_customer_id}
+          busy={busy}
+          onSelect={(staffId) =>
+            run(async () => {
+              await assignPacker(order.order_id, staffId);
+              setShowAssignSheet(false);
+            })
+          }
+          onClose={() => setShowAssignSheet(false)}
+        />
+      )}
+
+      {/* Bottom sheet bàn giao giao hàng */}
+      {showHandoffSheet && (
+        <HandoffMethodSheet
+          busy={busy}
+          onSelect={(_method) =>
+            run(async () => {
+              await handoffShip(order.order_id);
+              setShowHandoffSheet(false);
+            })
+          }
+          onClose={() => setShowHandoffSheet(false)}
+        />
+      )}
     </div>
   );
 }

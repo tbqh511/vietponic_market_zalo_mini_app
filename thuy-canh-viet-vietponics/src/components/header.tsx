@@ -135,26 +135,16 @@ function FarmHeader(props: {
   const navigate = useNavigate();
   const farm = useFarmProfile();
 
-  // Avatar farm = 2 ký tự đầu của tên.
-  const initials = useMemo(() => {
-    const name = farm.data?.name ?? "";
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return name.slice(0, 2).toUpperCase() || "🌱";
-  }, [farm.data?.name]);
-
   return (
     <div
       className="w-full flex flex-col px-4 bg-primary text-primaryForeground pt-st overflow-hidden bg-no-repeat bg-right-top"
       style={{ backgroundImage: `url(${headerIllus})` }}
     >
       <div className="w-full min-h-12 flex py-2 space-x-2 items-center">
-        {/* Tab gốc farm: avatar + tên farm. Trang con: back + tiêu đề. */}
+        {/* Tab gốc farm: logo + tên farm. Trang con: back + tiêu đề. */}
         {props.noBack ? (
           <>
-            <div className="flex-none w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-[13px] font-medium">
-              {initials}
-            </div>
+            <img src={logo} className="flex-none w-8 h-8 rounded-full object-cover" alt="" />
             <div className="flex-1 min-w-0">
               <h1 className="text-base font-bold leading-tight truncate">
                 {farm.data?.name ?? "Farm Hub"}
