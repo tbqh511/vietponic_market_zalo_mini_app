@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+.wf,.wf *{box-sizing:border-box}
+.wf{font-family:'Patrick Hand',cursive;color:#2a2a2a;-webkit-font-smoothing:antialiased}
+.ttl{font-family:'Caveat',cursive;font-size:34px;font-weight:700;color:#3a362e}
+.sub{font-family:'Patrick Hand',cursive;font-size:16px;color:#6a655c;max-width:640px;line-height:1.4}
+.hdr{font-family:'Caveat',cursive;font-size:26px;font-weight:700;color:#3a362e}
+.flabel{position:absolute;top:-28px;font-family:'Caveat',cursive;font-size:19px;font-weight:600;color:#55504733;color:#5a554c;white-space:nowrap}
+.frame{position:absolute;width:390px}
+.card-shell{background:#fff;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.phone{position:relative;width:390px;height:824px;background:#fbfaf7;border:2px solid #2a2a2a;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 6px 22px rgba(0,0,0,.12)}
+.sb{height:30px;display:flex;justify-content:space-between;align-items:center;padding:0 18px;font-size:13px;color:#555;flex:none}
+.sb i{display:inline-block;width:4px;height:9px;background:#999;border-radius:1px;margin-left:2px;vertical-align:middle}
+.rolebar{height:5px;flex:none}
+.rolebar.owner{background:#1f8a4c}.rolebar.packer{background:#c79a12}.rolebar.shipper{background:#e07514}.rolebar.null{background:#9a958c}
+.topbar{padding:13px 16px;border-bottom:1.5px solid #e8e4da;display:flex;align-items:center;gap:10px;flex:none;background:#fff}
+.back{font-size:22px;line-height:1;color:#2a2a2a}
+.tt{font-weight:400;font-size:20px;flex:1;line-height:1.1}
+.tt small{display:block;font-size:13px;color:#8a857c}
+.rpill{font-size:13px;padding:4px 11px;border-radius:999px;border:1.5px solid;white-space:nowrap}
+.rpill.owner{color:#1f8a4c;border-color:#9fd6b3;background:#eef8f1}
+.rpill.packer{color:#9a7b10;border-color:#e6cf86;background:#fdf7e6}
+.rpill.shipper{color:#c4630f;border-color:#f0c39a;background:#fdf0e6}
+.rpill.null{color:#6a655c;border-color:#cfccc4;background:#f1efe9}
+.scr{flex:1;overflow:hidden;background:#fbfaf7}
+.pad{padding:14px}
+.ftabs{display:flex;gap:7px;overflow:hidden;padding:11px 14px;border-bottom:1.5px solid #efece4;background:#fff}
+.ftab{white-space:nowrap;padding:6px 12px;border:1.5px solid #d8d4cb;border-radius:999px;font-size:14px;color:#6a655c;flex:none}
+.ftab.on{background:#2a2a2a;color:#fff;border-color:#2a2a2a}
+.sumrow{padding:12px 14px 4px;display:flex;align-items:baseline;gap:8px}
+.sumrow b{font-size:26px;color:#1f8a4c;font-weight:400}
+.sumrow span{font-size:15px;color:#8a857c}
+.card{border:1.5px solid #d4d0c7;border-radius:12px;padding:12px 13px;margin-bottom:11px;background:#fff}
+.card.lock{background:#f1efe9;border-style:dashed;opacity:.7}
+.card.hl{border-color:#9fd6b3;border-width:2px}
+.crow{display:flex;justify-content:space-between;align-items:center}
+.oid{font-size:19px;font-weight:400}
+.price{font-size:16px}
+.meta{font-size:14px;color:#8a857c;margin-top:2px}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 6px}
+.bdg{font-size:13px;padding:3px 10px;border-radius:999px;line-height:1.3}
+.gray{background:#ececec;color:#5a5a5a}
+.blue{background:#dbe8ff;color:#2a5bd7}
+.yellow{background:#fdf0c8;color:#9a7b10}
+.orange{background:#ffe1cc;color:#c4630f}
+.purple{background:#ece1ff;color:#6b3fc4}
+.green{background:#d6f2dd;color:#1f8a4c}
+.red{background:#ffdcdc;color:#c43838}
+.btn{display:block;text-align:center;border:1.5px solid #2a2a2a;border-radius:10px;padding:10px;font-size:16px;background:#fff;color:#2a2a2a;margin-top:4px}
+.btn.blue{background:#2a5bd7;color:#fff;border-color:#2a5bd7}
+.btn.orange{background:#e07514;color:#fff;border-color:#e07514}
+.btn.green{background:#1f8a4c;color:#fff;border-color:#1f8a4c}
+.btn.dark{background:#2a2a2a;color:#fff}
+.btn.dis{background:#edebe5;color:#a7a299;border-color:#ddd9d0}
+.btn.sm{padding:8px;font-size:15px}
+.nav{height:62px;border-top:1.5px solid #e8e4da;display:flex;flex:none;background:#fff}
+.nav .ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:12px;color:#a7a299}
+.nav .ni.on{color:#1f8a4c}
+.nbox{width:19px;height:19px;border:1.8px solid #a7a299;border-radius:4px}
+.nav .on .nbox{border-color:#1f8a4c;background:#1f8a4c}
+.actionbar{padding:11px 14px;border-top:1.5px solid #e8e4da;background:#fff;flex:none}
+.sec{font-weight:400;font-size:16px;color:#7a756c;margin:15px 0 7px;letter-spacing:.3px}
+.li{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0ede5;font-size:16px}
+.li small{color:#8a857c;font-size:14px}
+.tot{display:flex;justify-content:space-between;padding:5px 0;font-size:16px;color:#5a554e}
+.tot.big{font-weight:400;font-size:19px;color:#2a2a2a;border-top:1.5px solid #e6e3da;margin-top:5px;padding-top:9px}
+.kv{font-size:16px;line-height:1.5}.kv b{font-weight:400}.kv .k{color:#8a857c;font-size:14px}
+.box{border:1.5px solid #d4d0c7;border-radius:12px;padding:13px;background:#fff}
+.dim{position:absolute;inset:0;background:rgba(25,22,18,.42)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:20px 20px 0 0;padding:18px 16px 18px;box-shadow:0 -4px 20px rgba(0,0,0,.18)}
+.grab{width:42px;height:5px;background:#d8d4cb;border-radius:99px;margin:0 auto 14px}
+.sht{font-size:20px;margin-bottom:12px}
+.srow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #f0ede5}
+.srow.on{}
+.av{width:38px;height:38px;border-radius:50%;background:#ece8df;border:1.5px solid #cfccc4;display:flex;align-items:center;justify-content:center;font-size:15px;color:#6a655c;flex:none}
+.snm{flex:1;font-size:16px}.snm small{display:block;font-size:13px;color:#8a857c}
+.radio{width:22px;height:22px;border-radius:50%;border:2px solid #c4c0b7;flex:none}
+.radio.on{border-color:#2a5bd7;box-shadow:inset 0 0 0 4px #fff,inset 0 0 0 7px #2a5bd7}
+.opt{border:1.5px solid #d4d0c7;border-radius:14px;padding:15px;margin-bottom:11px;display:flex;align-items:center;gap:13px}
+.opticon{width:42px;height:42px;border-radius:10px;border:1.5px solid #cfccc4;display:flex;align-items:center;justify-content:center;font-size:20px;color:#7a756c;flex:none}
+.opt b{font-weight:400;font-size:17px}.opt .meta{margin-top:1px}
+.cl{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #f0ede5;font-size:16px}
+.cbx{width:24px;height:24px;border:2px solid #c4c0b7;border-radius:7px;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px}
+.cbx.on{background:#1f8a4c;border-color:#1f8a4c}
+.cl .q{margin-left:auto;color:#8a857c;font-size:15px}
+.cl.done{color:#9a958c}
+.tl{margin-top:6px}
+.tlr{display:flex;gap:12px;padding-bottom:18px;position:relative}
+.tlr:before{content:"";position:absolute;left:10px;top:22px;bottom:-4px;width:2px;background:#e0dcd2}
+.tlr:last-child:before{display:none}
+.dot{width:22px;height:22px;border-radius:50%;border:2px solid #c4c0b7;background:#fff;flex:none;display:flex;align-items:center;justify-content:center;font-size:13px;z-index:1}
+.dot.done{background:#1f8a4c;border-color:#1f8a4c;color:#fff}
+.dot.now{border-color:#e07514;box-shadow:inset 0 0 0 4px #fff,inset 0 0 0 7px #e07514}
+.tlx b{font-weight:400;font-size:16px}.tlx .meta{margin-top:1px}
+.tlr.wait .tlx{color:#a7a299}
+.sk{height:13px;background:#e9e6df;border-radius:6px}
+.skc{border:1.5px solid #e4e0d6;border-radius:12px;padding:13px;margin-bottom:11px;background:#fff}
+.empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px;text-align:center;color:#9a958c}
+.eicon{width:74px;height:74px;border-radius:18px;border:2px dashed #cfccc4;display:flex;align-items:center;justify-content:center;font-size:30px;color:#c4c0b7}
+.banner{background:#f1efe9;border:1.5px solid #ddd9d0;border-radius:10px;padding:9px 12px;font-size:14px;color:#6a655c;margin:14px 14px 4px;display:flex;align-items:center;gap:8px}
+.toast{position:absolute;left:14px;right:14px;bottom:80px;background:#2a2a2a;color:#fff;border-radius:13px;padding:13px 15px;display:flex;align-items:center;gap:12px;font-size:15px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.toast .rt{margin-left:auto;color:#ffd28a;border:1.5px solid #ffd28a44;border-radius:8px;padding:5px 11px;font-size:14px;white-space:nowrap}
+.note{background:#fef4a8;padding:13px 14px;font-family:'Patrick Hand',cursive;font-size:14.5px;line-height:1.45;color:#5a4e1e;box-shadow:0 2px 6px rgba(0,0,0,.12);transform:rotate(-1deg);border-radius:2px}
+.note b{font-weight:400;color:#3f3712}
+.note .pin{font-family:'Caveat',cursive;font-size:17px;display:block;margin-bottom:3px}
+.legrow{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:14px;color:#5a554e}
+.legrow .bdg{flex:none}
+.legttl{font-family:'Caveat',cursive;font-size:21px;color:#3a362e;margin:14px 0 6px}
+.legttl:first-child{margin-top:0}
+.callbtn{margin-left:auto;border:1.5px solid #1f8a4c;color:#1f8a4c;border-radius:8px;padding:5px 12px;font-size:14px}
+.maplink{color:#2a5bd7;font-size:15px;margin-top:6px;display:inline-block;text-decoration:underline}
+</style>
+</helmet>
+<div class="wf" style="position:absolute;left:60px;top:18px;width:760px">
+<div class="ttl">Wireframe · Đơn đến — quản lý đơn theo role</div>
+<div class="sub">Mỗi nhóm role có giao diện riêng + dải màu nhận diện ở đầu màn hình (xanh = chủ/quản lý · vàng = đóng gói · cam = giao · xám = chỉ xem). Một nút hành động chính theo ngữ cảnh thay cho rừng nút như bản cũ.</div>
+</div>
+
+<div class="hdr" style="position:absolute;left:60px;top:118px">① Chủ farm / Quản lý  ·  owner · admin</div>
+
+<div class="frame" style="left:60px;top:172px">
+<div class="flabel" data-drags-parent="1">1.1 · Danh sách đơn</div>
+<div class="phone">
+<div class="sb"><span>8:56</span><span>5G<i></i><i style="height:11px"></i><i style="height:7px"></i>　78%</span></div>
+<div class="rolebar owner"></div>
+<div class="topbar"><div class="tt">Quản lý đơn hàng<small>Vietponics Farm</small></div><span class="rpill owner">Chủ farm</span></div>
+<div class="ftabs"><span class="ftab on">Tất cả · 115</span><span class="ftab">Chờ xác nhận · 89</span><span class="ftab">Đang đóng · 12</span><span class="ftab">Chờ giao</span></div>
+<div class="sumrow"><b>268kg</b><span>· cần chuẩn bị hôm nay</span></div>
+<div class="scr"><div class="pad" style="padding-top:8px">
+<div class="card"><div class="crow"><span class="oid">#403</span><span class="price">₫120.000</span></div><div class="meta">T.B.Q.H · Huệ 6 · 08:30</div><div class="badges"><span class="bdg blue">Đã xác nhận</span><span class="bdg red">Chưa phân công</span></div><div class="meta">3 sản phẩm · 6kg</div></div>
+<div class="card"><div class="crow"><span class="oid">#402</span><span class="price">₫64.000</span></div><div class="meta">T.B.Q.H · Huệ 6 · 08:12</div><div class="badges"><span class="bdg gray">Chờ xác nhận</span></div><div class="meta">2 sản phẩm · 4kg</div></div>
+<div class="card"><div class="crow"><span class="oid">#401</span><span class="price">₫208.000</span></div><div class="meta">Cô Lan · Quận 7 · 07:55</div><div class="badges"><span class="bdg yellow">Đang đóng gói</span><span class="bdg yellow">Đang đóng · Huệ</span></div><div class="meta">5 sản phẩm · 9kg</div></div>
+<div class="card"><div class="crow"><span class="oid">#400</span><span class="price">₫96.000</span></div><div class="meta">A. Minh · Quận 2 · 07:30</div><div class="badges"><span class="bdg orange">Chờ giao</span><span class="bdg green">Đã đóng xong</span></div><div class="meta">3 sản phẩm · 5kg</div></div>
+</div></div>
+<div class="nav"><span class="ni"><span class="nbox"></span>Tổng quan</span><span class="ni on"><span class="nbox"></span>Đơn hàng</span><span class="ni"><span class="nbox"></span>Phân tích</span><span class="ni"><span class="nbox"></span>Thu nhập</span></div>
+</div>
+</div>
+
+<div class="frame" style="left:540px;top:172px">
+<div class="flabel" data-drags-parent="1">1.2 · Chi tiết đơn</div>
+<div class="phone">
+<div class="sb"><span>8:56</span><span>5G<i></i><i style="height:11px"></i><i style="height:7px"></i>　78%</span></div>
+<div class="rolebar owner"></div>
+<div class="topbar"><span class="back">‹</span><div class="tt">#400<small>A. Minh · 07:30</small></div><span class="rpill owner">Chủ farm</span></div>
+<div class="scr"><div class="pad">
+<div class="badges"><span class="bdg orange">Chờ giao</span><span class="bdg green">Đã đóng xong</span></div>
+<div class="sec">Khách hàng</div>
+<div class="box kv"><div><b>Anh Minh</b></div><div class="k">0901 234 567</div><div class="k">123 Nguyễn Văn A, Quận 2, TP.HCM</div></div>
+<div class="sec">Sản phẩm</div>
+<div class="box"><div class="li"><span>Xà lách lolo xanh <small>×2kg</small></span><span>₫48.000</span></div><div class="li"><span>Cải ngọt <small>×2kg</small></span><span>₫32.000</span></div><div class="li" style="border:none"><span>Rau muống <small>×1kg</small></span><span>₫16.000</span></div></div>
+<div class="box" style="margin-top:10px"><div class="tot"><span>Tạm tính</span><span>₫96.000</span></div><div class="tot"><span>Phí giao</span><span>₫15.000</span></div><div class="tot big"><span>Tổng</span><span>₫111.000</span></div></div>
+<div class="sec">Đóng gói</div>
+<div class="box kv"><div><b>Huệ</b> — đã đóng xong <span class="bdg green" style="margin-left:4px">packed</span></div><div class="k">Xong lúc 08:05</div></div>
+</div></div>
+<div class="actionbar"><span class="btn orange">Bàn giao giao hàng ›</span></div>
+</div>
+</div>
+
+<div class="frame" style="left:1020px;top:172px">
+<div class="flabel" data-drags-parent="1">1.3 · Chọn người đóng gói (bottom sheet)</div>
+<div class="phone">
+<div class="sb"><span>8:56</span><span>5G<i></i><i style="height:11px"></i><i style="height:7px"></i>　78%</span></div>
+<div class="rolebar owner"></div>
+<div class="topbar"><span class="back">‹</span><div class="tt">#403<small>Gán người đóng gói</small></div></div>
+<div class="scr"><div class="pad" style="opacity:.5"><div class="box kv"><b>Anh Tú</b><div class="k">0902 …</div></div><div class="sec">Sản phẩm</div><div class="box"><div class="li" style="border:none"><span>Xà lách lolo xanh ×1kg</span><span>₫24.000</span></div></div></div></div>
+<div class="dim"></div>
+<div class="sheet"><div class="grab"></div><div class="sht">Chọn người đóng gói</div>
+<div class="srow"><span class="av">H</span><span class="snm">Huệ<small>packer · đang đóng 1 đơn</small></span><span class="radio on"></span></div>
+<div class="srow"><span class="av">L</span><span class="snm">Lan<small>packer · rảnh</small></span><span class="radio"></span></div>
+<div class="srow" style="border:none"><span class="av">M</span><span class="snm">Minh<small>packer · rảnh</small></span><span class="radio"></span></div>
+<span class="btn dark" style="margin-top:14px">Xác nhận</span>
+</div>
+</div>
+</div>
+
+<div class="frame" style="left:1500px;top:172px">
+<div class="flabel" data-drags-parent="1">1.4 · Bàn giao giao hàng (bottom sheet)</div>
+<div class="phone">
+<div class="sb"><span>8:56</span><span>5G<i></i><i style="height:11px"></i><i style="height:7px"></i>　78%</span></div>
+<div class="rolebar owner"></div>
+<div class="topbar"><span class="back">‹</span><div class="tt">#400<small>A. Minh · 07:30</small></div></div>
+<div class="scr"><div class="pad" style="opacity:.5"><div class="badges"><span class="bdg orange">Chờ giao</span><span class="bdg green">Đã đóng xong</span></div><div class="sec">Khách hàng</div><div class="box kv"><b>Anh Minh</b><div class="k">123 Nguyễn Văn A, Quận 2</div></div></div></div>
+<div class="dim"></div>
+<div class="sheet"><div class="grab"></div><div class="sht">Bàn giao đơn #400</div>
+<div class="opt"><span class="opticon">▦</span><div><b>Giao qua VTP</b><div class="meta">Đối tác vận chuyển · tự cập nhật trạng thái</div></div></div>
+<div class="opt"><span class="opticon">◎</span><div><b>Giao nội bộ</b><div class="meta">Chọn shipper của farm ›</div></div></div>
+<div class="meta" style="text-align:center;margin-top:4px">Chọn một hình thức để tiếp tục</div>
+</div>
+</div>
+</div>
+
+<div class="note" style="position:absolute;left:540px;top:1028px;width:300px"><span class="pin">Nút chính đổi theo trạng thái</span><b>Chờ xác nhận</b> → "Xác nhận đơn" (xanh dương)<br><b>Đã xác nhận + đã đóng</b> → "Bàn giao giao hàng" (cam)<br><b>Giao VTP</b> → "Chờ VTP cập nhật" (mờ)<br><b>Đang giao nội bộ</b> → hiện tên shipper<br><b>Đã giao</b> → "Hoàn thành" (xanh, mờ) · <b>Huỷ</b> → đỏ mờ</div>
+
+<div class="note" style="position:absolute;left:1020px;top:1028px;width:280px"><span class="pin">admin khác owner?</span>Giao diện y hệt owner, chỉ <b>ẩn tab "Thu nhập / payout"</b> ở thanh dưới và mục tài chính.</div>
+
+<div class="hdr" style="position:absolute;left:60px;top:1118px">② Nhân viên đóng gói  ·  packer</div>
+
+<div class="frame" style="left:60px;top:1172px">
+<div class="flabel" data-drags-parent="1">2.1 · Hàng chờ đóng gói (3 tab)</div>
+<div class="phone">
+<div class="sb"><span>8:56</span><span>5G<i></i><i style="height:11px"></i><i style="height:7px"></i>　78%</span></div>
+<div class="rolebar packer"></div>
+<div class="topbar"><div class="tt">Đơn đóng gói<small>Chào, Huệ</small></div><span class="rpill packer">Đóng gói</span></div>
+<div class="ftabs"><span class="ftab on">Có thể nhận · 3</span><span class="ftab">Của tôi · 2</span><span class="ftab">Người khác</span></div>
+<div class="scr"><div class="pad">
+<div class="card hl"><div class="crow"><span class="oid">#405</span><span class="price">₫88.000</span></div><div class="meta">4 sản phẩm · 6kg</div><div class="badges"><span class="bdg red">Chưa có người</span></div><span class="btn blue sm">Nhận đóng gói</span></div>
+<div class="card hl"><div class="crow"><span class="oid">#406</span><span class="price">₫150.000</span></div><div class="meta">6 sản phẩm · 10kg</div><div class="badges"><span class="bdg red">Chưa có người</span></div><span class="btn blue sm">Nhận đóng gói</span></div>
+<div class="card hl"><div class="crow"><span class="oid">#407</span><span class="price">₫42.000</span></div><div class="meta">2 sản phẩm · 3kg</div><div class="badges"><span class="bdg red">Chưa có người</span></div><span class="btn blue sm">Nhận đóng gói</span></div>
+</div></div>
+<div class="nav"><span class="ni"><span class="nbox"></span>Tổng quan</span><span class="ni on"><span class="nbox"></span>Đóng gói</span><span class="ni"><span class="nbox"></span>Kho</span><span class="ni"><span class="nbox"></span>Cá nhân</span></div>
+</div>
+</div>
+
+<div class="frame" style="left:540px;top:1172px">
+<div class="flabel" data-drags-parent="1">2.2 · Phiếu đóng gói (checklist)</div>
+<div class="phone">
+<div class="sb"><span>8:56</span><span>5G<i></i><i style="height:11px"></i><i style="height:7px"></i>　78%</span></div>
+<div class="rolebar packer"></div>
+<div class="topbar"><span class="back">‹</span><div class="tt">#405<small>Phiếu của tôi</small></div><span class="bdg yellow">Đang đóng</span></div>
+<div class="scr"><div class="pad">
+<div class="box kv"><b>Anh Tú</b><div class="k">456 Lê Lợi, Quận 1</div></div>
+<div class="sec">Soạn hàng <span style="float:right;color:#9a7b10">2 / 4</span></div>
+<div class="box">
+<div class="cl done"><span class="cbx on">✓</span>Xà lách lolo xanh<span class="q">×2kg</span></div>
+<div class="cl done"><span class="cbx on">✓</span>Cải ngọt<span class="q">×1kg</span></div>
+<div class="cl"><span class="cbx"></span>Rau muống<span class="q">×2kg</span></div>
+<div class="cl" style="border:none"><span class="cbx"></span>Cà chua<span class="q">×1kg</span></div>
+</div>
+<div class="sec">Ghi chú của khách</div>
+<div class="box" style="color:#7a756c">Gói riêng rau thơm, để túi giấy giúp em.</div>
+</div></div>
+<div class="actionbar"><span class="btn dis">Hoàn tất đóng gói  (còn 2 món)</span></div>
+</div>
+</div>
+
+<div class="note" style="position:absolute;left:1020px;top:1172px;width:285px"><span class="pin">Card theo từng tab</span><b>Có thể nhận:</b> pill đỏ "Chưa có người" + nút xanh "Nhận đóng gói".<br><b>Của tôi:</b> pill vàng "Đang đóng", nút "Xem chi tiết".<br><b>Người khác:</b> card xám, khoá, hiện tên packer, KHÔNG có nút.</div>
+
+<div class="note" style="position:absolute;left:1020px;top:1372px;width:285px"><span class="pin">Nút chính phiếu đóng gói</span><b>assigned</b> → "Bắt đầu đóng gói" (xanh)<br><b>packing</b> → "Hoàn tất đóng gói" (xanh lá) — chỉ bật khi tích đủ checklist<br><b>packed</b> → "Đã đóng xong" (mờ) + giờ hoàn tất</div>
+
+<div class="hdr" style="position:absolute;left:60px;top:2118px">③ Nhân viên giao (nội bộ)  ·  shipper</div>
+
+<div class="frame" style="left:60px;top:2172px">
+<div class="flabel" data-drags-parent="1">3.1 · Đơn giao của tôi (2 tab)</div>
+<div class="phone">
+<div class="sb"><span>8:56</span><span>5G<i></i><i style="height:11px"></i><i style="height:7px"></i>　78%</span></div>
+<div class="rolebar shipper"></div>
+<div class="topbar"><div class="tt">Đơn giao của tôi<small>Chào, Bình</small></div><span class="rpill shipper">Giao hàng</span></div>
+<div class="ftabs"><span class="ftab on">Cần lấy hàng · 2</span><span class="ftab">Đang giao · 1</span></div>
+<div class="scr"><div class="pad">
+<div class="card"><div class="crow"><span class="oid">#400</span><span class="bdg orange">Chờ lấy</span></div><div class="meta" style="margin-top:6px">Anh Minh</div><div class="meta">123 Nguyễn Văn A, Quận 2</div><span class="btn orange sm" style="margin-top:9px">Đã lấy hàng</span></div>
+<div class="card"><div class="crow"><span class="oid">#398</span><span class="bdg orange">Chờ lấy</span></div><div class="meta" style="margin-top:6px">Chị Hoa</div><div class="meta">88 Trần Hưng Đạo, Quận 5</div><span class="btn orange sm" style="margin-top:9px">Đã lấy hàng</span></div>
+</div></div>
+<div class="nav"><span class="ni"><span class="nbox"></span>Tổng quan</span><span class="ni on"><span class="nbox"></span>Giao hàng</span><span class="ni"><span class="nbox"></span>Lịch sử</span><span class="ni"><span class="nbox"></span>Cá nhân</span></div>
+</div>
+</div>
+
+<div class="frame" style="left:540px;top:2172px">
+<div class="flabel" data-drags-parent="1">3.2 · Chi tiết giao hàng</div>
+<div class="phone">
+<div class="sb"><span>8:56</span><span>5G<i></i><i style="height:11px"></i><i style="height:7px"></i>　78%</span></div>
+<div class="rolebar shipper"></div>
+<div class="topbar"><span class="back">‹</span><div class="tt">#400<small>Giao nội bộ</small></div><span class="bdg orange">Chờ lấy</span></div>
+<div class="scr"><div class="pad">
+<div class="sec">Khách hàng</div>
+<div class="box"><div class="kv"><b>Anh Minh</b><div class="crow" style="margin-top:2px"><span class="k">0901 234 567</span><span class="callbtn">Gọi</span></div><div class="k" style="margin-top:6px">123 Nguyễn Văn A, Quận 2, TP.HCM</div></div><a class="maplink">Mở bản đồ ↗</a></div>
+<div class="sec">Đơn hàng</div>
+<div class="box"><div class="li"><span>Xà lách lolo xanh ×2kg</span></div><div class="li"><span>Cải ngọt ×2kg</span></div><div class="li" style="border:none;font-weight:400"><span>Tổng thu hộ</span><span>₫111.000</span></div></div>
+<div class="sec">Tiến trình</div>
+<div class="box tl">
+<div class="tlr"><span class="dot done">✓</span><div class="tlx"><b>Đã đóng gói</b><div class="meta">08:05 hôm nay</div></div></div>
+<div class="tlr"><span class="dot now"></span><div class="tlx"><b>Đã lấy hàng</b><div class="meta">chưa</div></div></div>
+<div class="tlr wait"><span class="dot"></span><div class="tlx"><b>Đã giao khách</b><div class="meta">chưa</div></div></div>
+</div>
+</div></div>
+<div class="actionbar"><span class="btn orange">Tôi đã lấy hàng</span></div>
+</div>
+</div>
+
+<div class="note" style="position:absolute;left:1020px;top:2172px;width:285px"><span class="pin">Tab "Đang giao"</span>Badge tím "Đang giao", có SĐT bấm-để-gọi, nút xanh lá <b>"Xác nhận đã giao"</b>.<br><br><b>Nút chính:</b> delivering → "Tôi đã lấy hàng" (cam) · out_for_delivery → "Xác nhận giao thành công" (xanh) → hộp thoại "Xác nhận đơn #400 đã được giao?"</div>
+
+<div class="hdr" style="position:absolute;left:60px;top:3118px">④ Chung — chỉ xem & trạng thái hệ thống</div>
+
+<div class="frame" style="left:60px;top:3172px">
+<div class="flabel" data-drags-parent="1">4.1 · Farm thường (chỉ xem) · null</div>
+<div class="phone">
+<div class="sb"><span>8:56</span><span>5G<i></i><i style="height:11px"></i><i style="height:7px"></i>　78%</span></div>
+<div class="rolebar null"></div>
+<div class="topbar"><div class="tt">Đơn của tôi<small>Vietponics Farm</small></div><span class="rpill null">Chỉ xem</span></div>
+<div class="banner"><span>👁</span>Chế độ chỉ xem — bạn chỉ thấy đơn của mình, không thao tác.</div>
+<div class="scr"><div class="pad" style="padding-top:10px">
+<div class="card"><div class="crow"><span class="oid">#403</span><span class="price">₫120.000</span></div><div class="meta">08:30 · 3 sản phẩm</div><div class="badges"><span class="bdg blue">Đã xác nhận</span></div></div>
+<div class="card"><div class="crow"><span class="oid">#388</span><span class="price">₫64.000</span></div><div class="meta">Hôm qua · 2 sản phẩm</div><div class="badges"><span class="bdg green">Đã giao</span></div></div>
+<div class="card"><div class="crow"><span class="oid">#372</span><span class="price">₫98.000</span></div><div class="meta">23/06 · 4 sản phẩm</div><div class="badges"><span class="bdg green">Đã giao</span></div></div>
+</div></div>
+<div class="nav"><span class="ni on"><span class="nbox"></span>Đơn</span><span class="ni"><span class="nbox"></span>Kho</span><span class="ni"><span class="nbox"></span>Cá nhân</span></div>
+</div>
+</div>
+
+<div class="frame" style="left:540px;top:3172px">
+<div class="flabel" data-drags-parent="1">4.2 · Trạng thái rỗng</div>
+<div class="phone">
+<div class="sb"><span>8:56</span><span>5G<i></i><i style="height:11px"></i><i style="height:7px"></i>　78%</span></div>
+<div class="rolebar owner"></div>
+<div class="topbar"><div class="tt">Quản lý đơn hàng</div></div>
+<div class="ftabs"><span class="ftab">Tất cả</span><span class="ftab on">Chờ giao</span><span class="ftab">Đã giao</span></div>
+<div class="scr"><div class="empty"><div class="eicon">▢</div><div style="font-size:18px;color:#7a756c">Không có đơn nào</div><div style="font-size:15px">Kéo xuống để làm mới</div></div></div>
+<div class="nav"><span class="ni"><span class="nbox"></span>Tổng quan</span><span class="ni on"><span class="nbox"></span>Đơn hàng</span><span class="ni"><span class="nbox"></span>Phân tích</span><span class="ni"><span class="nbox"></span>Thu nhập</span></div>
+</div>
+</div>
+
+<div class="frame" style="left:1020px;top:3172px">
+<div class="flabel" data-drags-parent="1">4.3 · Đang tải (skeleton)</div>
+<div class="phone">
+<div class="sb"><span>8:56</span><span>5G<i></i><i style="height:11px"></i><i style="height:7px"></i>　78%</span></div>
+<div class="rolebar owner"></div>
+<div class="topbar"><div class="tt">Quản lý đơn hàng</div></div>
+<div class="scr"><div class="pad" style="padding-top:16px">
+<div class="skc"><div class="sk" style="width:35%"></div><div class="sk" style="width:60%;margin-top:9px;height:10px"></div><div class="sk" style="width:45%;margin-top:9px;height:10px"></div></div>
+<div class="skc"><div class="sk" style="width:35%"></div><div class="sk" style="width:60%;margin-top:9px;height:10px"></div><div class="sk" style="width:45%;margin-top:9px;height:10px"></div></div>
+<div class="skc"><div class="sk" style="width:35%"></div><div class="sk" style="width:60%;margin-top:9px;height:10px"></div><div class="sk" style="width:45%;margin-top:9px;height:10px"></div></div>
+</div></div>
+<div class="nav"><span class="ni"><span class="nbox"></span>Tổng quan</span><span class="ni on"><span class="nbox"></span>Đơn hàng</span><span class="ni"><span class="nbox"></span>Phân tích</span><span class="ni"><span class="nbox"></span>Thu nhập</span></div>
+</div>
+</div>
+
+<div class="frame" style="left:1500px;top:3172px">
+<div class="flabel" data-drags-parent="1">4.4 · Lỗi (toast + thử lại)</div>
+<div class="phone">
+<div class="sb"><span>8:56</span><span>5G<i></i><i style="height:11px"></i><i style="height:7px"></i>　78%</span></div>
+<div class="rolebar owner"></div>
+<div class="topbar"><div class="tt">Quản lý đơn hàng</div></div>
+<div class="scr"><div class="pad" style="padding-top:16px;opacity:.5">
+<div class="skc"><div class="sk" style="width:35%"></div><div class="sk" style="width:60%;margin-top:9px;height:10px"></div></div>
+<div class="skc"><div class="sk" style="width:35%"></div><div class="sk" style="width:60%;margin-top:9px;height:10px"></div></div>
+</div></div>
+<div class="toast"><span>⚠</span>Có lỗi xảy ra, thử lại<span class="rt">Thử lại</span></div>
+<div class="nav"><span class="ni"><span class="nbox"></span>Tổng quan</span><span class="ni on"><span class="nbox"></span>Đơn hàng</span><span class="ni"><span class="nbox"></span>Phân tích</span><span class="ni"><span class="nbox"></span>Thu nhập</span></div>
+</div>
+</div>
+
+<div class="card-shell" style="position:absolute;left:1990px;top:172px;width:330px;padding:18px 20px">
+<div class="legttl">Mã màu trạng thái đơn</div>
+<div class="legrow"><span class="bdg gray">Chờ xác nhận</span> pending</div>
+<div class="legrow"><span class="bdg blue">Đã xác nhận</span> confirmed</div>
+<div class="legrow"><span class="bdg yellow">Đang đóng gói</span> preparing</div>
+<div class="legrow"><span class="bdg orange">Chờ giao</span> delivering</div>
+<div class="legrow"><span class="bdg purple">Đang giao</span> out_for_delivery</div>
+<div class="legrow"><span class="bdg green">Đã giao</span> delivered</div>
+<div class="legrow"><span class="bdg red">Đã huỷ</span> cancelled</div>
+<div class="legttl">Pill phân công đóng gói</div>
+<div class="legrow"><span class="bdg red">Chưa có người</span> unassigned</div>
+<div class="legrow"><span class="bdg gray">Đã phân công</span> assigned</div>
+<div class="legrow"><span class="bdg yellow">Đang đóng</span> packing</div>
+<div class="legrow"><span class="bdg green">Đã đóng xong</span> packed</div>
+</div>
+
+<div class="note" style="position:absolute;left:1990px;top:712px;width:330px"><span class="pin">Nguyên tắc chống "rối"</span>① Dải màu role ở đầu mỗi màn → biết ngay mình là ai.<br>② Mỗi card chỉ 1 hành động chính theo trạng thái.<br>③ Thao tác sâu (phân công, bàn giao) đẩy vào chi tiết + bottom sheet, không nhồi vào danh sách.<br>④ Bỏ FAB + thanh nổi chồng nội dung của bản cũ.</div>
+</x-dc>
+</body>
+</html>
