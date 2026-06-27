@@ -144,7 +144,12 @@ function FarmHeader(props: {
         {/* Tab gốc farm: logo + tên farm. Trang con: back + tiêu đề. */}
         {props.noBack ? (
           <>
-            <img src={logo} className="flex-none w-8 h-8 rounded-full object-cover" alt="" />
+            <img
+              src={farm.data?.logo ?? logo}
+              className="flex-none w-8 h-8 rounded-full object-cover"
+              alt=""
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = logo; }}
+            />
             <div className="flex-1 min-w-0">
               <h1 className="text-base font-bold leading-tight truncate">
                 {farm.data?.name ?? "Farm Hub"}

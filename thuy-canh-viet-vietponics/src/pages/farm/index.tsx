@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useFarmGuard, useEnsureJwt } from "@/hooks";
 import {
   useFarmProfile,
   useFarmOverview,
   useFarmProductsToday,
+  uploadFarmLogo,
 } from "@/utils/farm-api";
 import StatCard from "@/components/farm/stat-card";
 import ProductProgress from "@/components/farm/product-progress";
@@ -27,6 +28,8 @@ export default function FarmDashboardPage() {
   const isFarm = useFarmGuard();
   const ensureJwt = useEnsureJwt();
   const [basis, setBasis] = useState<DashboardBasis>("placed");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Đảm bảo có JWT trước khi gọi farm endpoints (re-auth nếu hết hạn).
   useEffect(() => {
@@ -74,6 +77,23 @@ export default function FarmDashboardPage() {
     ? `${metrics.orders_count} ${isPlaced ? "đơn đã đặt" : "đơn đã giao"}`
     : undefined;
 
+  const isOwner = profile.data?.viewer?.is_owner ?? false;
+
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      await uploadFarmLogo(file);
+      profile.refresh();
+    } catch {
+      // lỗi im lặng — không crash UX
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  }
+
   // Format số tiền VND ngắn gọn — không kèm "đ" (chèn ngoài JSX).
   const fmtMoney = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
@@ -82,7 +102,37 @@ export default function FarmDashboardPage() {
       <div className="m-3 bg-white rounded-lg border border-gray-200 p-3.5">
         {/* Header farm */}
         <div className="flex items-center gap-2.5 pb-3 border-b border-gray-100">
-          <img src={logo} className="w-9 h-9 rounded-full object-cover" alt="" />
+          {/* Logo: chủ farm bấm vào để đổi ảnh */}
+          <div className="relative flex-none">
+            <img
+              src={profile.data?.logo ?? logo}
+              className="w-9 h-9 rounded-full object-cover"
+              alt=""
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = logo; }}
+            />
+            {isOwner && (
+              <label
+                className={`absolute inset-0 rounded-full flex items-center justify-center cursor-pointer bg-black/30 opacity-0 hover:opacity-100 transition-opacity ${uploadingLogo ? "opacity-100" : ""}`}
+                aria-label="Đổi ảnh"
+              >
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  onChange={handleLogoChange}
+                  disabled={uploadingLogo}
+                />
+                {uploadingLogo ? (
+                  <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white" aria-hidden="true">
+                    <path d="M3 17.25V21h3.75l11.06-11.06-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                  </svg>
+                )}
+              </label>
+            )}
+          </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">{profile.data?.name ?? "—"}</div>
             <div className="text-[11px] text-gray-500 truncate">

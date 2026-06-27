@@ -428,7 +428,7 @@ function OwnerCard({
             <button
               disabled={busy}
               onClick={() => run(() => confirmOrder(order.order_id))}
-              className="flex-1 min-w-[8rem] px-3 py-2.5 text-[13px] rounded-[10px] bg-[#2a5bd7] text-white font-medium disabled:bg-[#edebe5] disabled:text-[#a7a299]"
+              className="flex-1 min-w-[8rem] px-3 py-2.5 text-[13px] rounded-[10px] bg-[var(--primary)] text-white font-medium disabled:bg-[#edebe5] disabled:text-[#a7a299]"
             >
               Xác nhận đơn
             </button>

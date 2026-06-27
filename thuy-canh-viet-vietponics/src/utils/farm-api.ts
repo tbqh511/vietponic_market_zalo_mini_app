@@ -354,6 +354,29 @@ export function useFarmPayoutDetail(id: number | null, enabled: boolean = true) 
 }
 
 /**
+ * POST /farm/me/logo — chủ farm upload ảnh logo mới.
+ * Dùng multipart/form-data (không qua farmPost JSON). Trả URL ảnh mới.
+ */
+export async function uploadFarmLogo(file: File): Promise<string> {
+  const token = localStorage.getItem("jwt_token");
+  if (!token) throw new Error("Chưa đăng nhập");
+  const { getConfig } = await import("./template");
+  const apiUrl = getConfig((c) => c.template.apiUrl) ?? "";
+  const form = new FormData();
+  form.append("logo", file);
+  const res = await fetch(`${apiUrl}/farm/me/logo`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  const json = await res.json();
+  if (json.error || !res.ok) {
+    throw new Error(json.message || "Upload thất bại");
+  }
+  return json.data.logo as string;
+}
+
+/**
  * POST /farm/request-partnership — customer xin trở thành farm partner.
  * Không dùng hook — trả promise để page register.tsx gọi trực tiếp.
  */
