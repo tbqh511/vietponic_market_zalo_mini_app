@@ -289,39 +289,40 @@ function OwnerView({
 
   return (
     <>
-      {/* Summary row — số kg lớn nổi bật theo thiết kế */}
-      <div className="px-4 pt-3 pb-1">
+      {/* Hero header — nền primary */}
+      <div style={{ background: "var(--primary)" }} className="px-4 pt-4 pb-0">
+        {/* Metric */}
         <div className="flex items-baseline gap-2">
-          <span className="text-[26px] font-semibold" style={{ color: "#1f8a4c" }}>
+          <span className="text-[32px] font-bold text-white leading-none">
             {fmtKg(summary.totalQty)}
           </span>
-          <span className="text-[15px]" style={{ color: "#8a857c" }}>
+          <span className="text-[14px] text-white/75">
             · cần chuẩn bị hôm nay
           </span>
         </div>
-        <div className="text-[13px] mt-0.5" style={{ color: "#8a857c" }}>
+        <div className="text-[13px] text-white/60 mt-1 mb-3">
           {summary.count} đơn
         </div>
-      </div>
 
-      {/* Filter tabs scrollable */}
-      <div className="flex gap-2 overflow-x-auto px-4 pb-2 border-b border-[#f0ede5]">
-        {filters.map((f) => {
-          const active = f.key === filter;
-          return (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`px-3 py-1.5 text-[13px] rounded-full whitespace-nowrap transition-colors ${
-                active
-                  ? "bg-[#1f8a4c] text-white font-medium"
-                  : "border border-[#d4d0c7] text-[#8a857c]"
-              }`}
-            >
-              {f.label} · {f.count}
-            </button>
-          );
-        })}
+        {/* Underline tabs — nằm trong hero, indicator trắng */}
+        <div className="flex gap-1 overflow-x-auto no-scrollbar -mx-4 px-4">
+          {filters.map((f) => {
+            const active = f.key === filter;
+            return (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`flex-shrink-0 px-3 pb-2.5 pt-1 text-[13px] whitespace-nowrap transition-colors border-b-2 ${
+                  active
+                    ? "text-white font-semibold border-white"
+                    : "text-white/65 font-normal border-transparent"
+                }`}
+              >
+                {f.label} · {f.count}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {visible.length === 0 ? (
