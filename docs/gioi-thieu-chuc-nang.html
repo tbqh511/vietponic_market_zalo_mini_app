@@ -1,0 +1,769 @@
+<title>Vietponics Mini App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap">
+
+<style>
+/* ─────────────────────────────────────────────────────────────
+   Vietponics — giới thiệu chức năng
+   Bảng màu bắt nguồn từ chính chủ đề: nước dinh dưỡng, lá non,
+   ống trồng thuỷ canh. Nền lệch xanh rất nhẹ, không phải xám thuần.
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --bg:#F6F8F5;
+  --surface:#FFFFFF;
+  --surface-2:#EDF1EC;
+  --ink:#101C17;
+  --ink-2:#3D4C45;
+  --ink-3:#6B7A72;
+  --line:#DCE3DC;
+  --line-strong:#C3CFC5;
+  --accent:#0E6B46;
+  --accent-ink:#0B5537;
+  --accent-wash:#E3EFE8;
+  --water:#2A6C7D;
+  --water-wash:#E1EDF0;
+  --harvest:#8F6410;
+  --harvest-wash:#F4EBD8;
+  --danger:#9E3626;
+  --shadow:0 1px 2px rgba(16,28,23,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C1310;
+    --surface:#131C18;
+    --surface-2:#1A2520;
+    --ink:#E8EFE9;
+    --ink-2:#AEBCB4;
+    --ink-3:#7F8F86;
+    --line:#243129;
+    --line-strong:#33453B;
+    --accent:#46B183;
+    --accent-ink:#77CDA6;
+    --accent-wash:#143023;
+    --water:#69AEBE;
+    --water-wash:#132A30;
+    --harvest:#D3A548;
+    --harvest-wash:#2C2413;
+    --danger:#E08B76;
+    --shadow:0 1px 2px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0C1310;
+  --surface:#131C18;
+  --surface-2:#1A2520;
+  --ink:#E8EFE9;
+  --ink-2:#AEBCB4;
+  --ink-3:#7F8F86;
+  --line:#243129;
+  --line-strong:#33453B;
+  --accent:#46B183;
+  --accent-ink:#77CDA6;
+  --accent-wash:#143023;
+  --water:#69AEBE;
+  --water-wash:#132A30;
+  --harvest:#D3A548;
+  --harvest-wash:#2C2413;
+  --danger:#E08B76;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:"Be Vietnam Pro",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:16px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+.col{max-width:70ch}
+
+/* ── Type ───────────────────────────────────────────────────── */
+h1,h2,h3,h4{margin:0;text-wrap:balance;font-weight:600}
+h1{
+  font-family:Newsreader,Georgia,serif;
+  font-weight:500;
+  font-size:clamp(2.1rem,5.2vw,3.5rem);
+  line-height:1.1;
+  letter-spacing:-.015em;
+}
+h2{
+  font-family:Newsreader,Georgia,serif;
+  font-weight:500;
+  font-size:clamp(1.55rem,3.2vw,2.15rem);
+  line-height:1.18;
+  letter-spacing:-.01em;
+}
+h3{font-size:1.03rem;line-height:1.4;font-weight:600}
+h4{font-size:.9rem;font-weight:600}
+p{margin:0}
+a{color:var(--accent-ink)}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.7rem;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+}
+.lede{font-size:1.075rem;color:var(--ink-2);line-height:1.68}
+.small{font-size:.87rem;color:var(--ink-2);line-height:1.6}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.num{font-variant-numeric:tabular-nums}
+
+/* ── Header ─────────────────────────────────────────────────── */
+.masthead{
+  border-bottom:1px solid var(--line);
+  background:var(--surface);
+}
+.masthead .wrap{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:16px;padding-top:16px;padding-bottom:16px;flex-wrap:wrap;
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.01em}
+.sprout{width:20px;height:20px;flex:none;color:var(--accent)}
+
+.hero{padding:76px 0 62px}
+.hero h1{margin:18px 0 20px}
+.hero .lede{max-width:60ch}
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:1px;
+  margin-top:46px;
+  background:var(--line);
+  border:1px solid var(--line);
+}
+.stat{background:var(--bg);padding:18px 20px}
+.stat .v{
+  font-family:Newsreader,Georgia,serif;
+  font-size:1.85rem;line-height:1;font-weight:500;
+  font-variant-numeric:tabular-nums;
+  color:var(--accent-ink);
+}
+.stat .k{margin-top:7px;font-size:.79rem;color:var(--ink-3);line-height:1.35}
+
+/* ── Sections ───────────────────────────────────────────────── */
+section{padding:58px 0;border-top:1px solid var(--line)}
+.sec-head{display:flex;flex-direction:column;gap:12px;margin-bottom:34px;max-width:66ch}
+.sec-head .eyebrow{display:flex;align-items:center;gap:10px}
+.sec-head .eyebrow::after{
+  content:"";height:1px;flex:1;background:var(--line-strong);
+}
+
+/* ── Cards ──────────────────────────────────────────────────── */
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(232px,1fr))}
+.card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:5px;
+  padding:22px;
+  box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:9px;
+}
+.card h3{display:flex;align-items:baseline;gap:9px}
+.card p{font-size:.885rem;color:var(--ink-2);line-height:1.6}
+.tag{
+  display:inline-block;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 7px;border-radius:3px;
+  background:var(--surface-2);color:var(--ink-3);
+  white-space:nowrap;
+}
+.tag.leaf{background:var(--accent-wash);color:var(--accent-ink)}
+.tag.water{background:var(--water-wash);color:var(--water)}
+.tag.harvest{background:var(--harvest-wash);color:var(--harvest)}
+
+.role-list{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:7px}
+.role-list li{
+  display:flex;gap:10px;align-items:baseline;
+  font-size:.85rem;color:var(--ink-2);
+  padding-top:7px;border-top:1px dotted var(--line-strong);
+}
+.role-list li:first-child{border-top:0;padding-top:0}
+.role-list b{color:var(--ink);font-weight:600;flex:none;min-width:74px}
+
+/* ── Hành trình: ống trồng thuỷ canh ────────────────────────── */
+.journey{list-style:none;margin:0;padding:0 0 0 42px;position:relative}
+.journey::before{
+  content:"";position:absolute;left:13px;top:10px;bottom:10px;width:2px;
+  background:linear-gradient(180deg,var(--accent) 0%,var(--water) 100%);
+  opacity:.55;border-radius:2px;
+}
+.journey li{position:relative;padding-bottom:26px}
+.journey li:last-child{padding-bottom:0}
+.journey li::before{
+  content:"";position:absolute;left:-35px;top:6px;
+  width:12px;height:12px;border-radius:50%;
+  background:var(--bg);border:2px solid var(--accent);
+}
+.journey .step{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.68rem;letter-spacing:.14em;color:var(--ink-3);
+  display:block;margin-bottom:3px;
+}
+.journey h3{margin-bottom:4px}
+.journey p{font-size:.885rem;color:var(--ink-2)}
+
+/* ── Pipeline đóng gói ──────────────────────────────────────── */
+.pipe-wrap{overflow-x:auto;padding-bottom:8px;margin-bottom:22px}
+.pipe{display:flex;align-items:center;gap:8px;min-width:max-content}
+.pipe .node{
+  border:1px solid var(--line-strong);
+  background:var(--surface);
+  border-radius:4px;padding:9px 14px;
+  font-size:.83rem;font-weight:500;white-space:nowrap;
+}
+.pipe .node .who{
+  display:block;font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.63rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);margin-top:2px;
+}
+.pipe .node.end{border-color:var(--accent);background:var(--accent-wash)}
+.pipe .arrow{color:var(--ink-3);font-size:.9rem;flex:none}
+
+/* ── Tables ─────────────────────────────────────────────────── */
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:5px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:.85rem}
+th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line)}
+thead th{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.66rem;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:500;
+  background:var(--surface-2);
+  white-space:nowrap;
+}
+tbody tr:last-child td{border-bottom:0}
+td.c{text-align:center;font-variant-numeric:tabular-nums}
+td:first-child{color:var(--ink);font-weight:500}
+.yes{color:var(--accent-ink);font-weight:600}
+.no{color:var(--ink-3)}
+
+/* ── Integrations ───────────────────────────────────────────── */
+.integr{display:flex;flex-direction:column;gap:0;border:1px solid var(--line);border-radius:5px;background:var(--surface);overflow:hidden}
+.integr .row{display:grid;grid-template-columns:180px 1fr;gap:20px;padding:20px 22px;border-bottom:1px solid var(--line)}
+.integr .row:last-child{border-bottom:0}
+.integr .row h3{color:var(--ink)}
+.integr .row .what{font-size:.6rem}
+.integr .row p{font-size:.875rem;color:var(--ink-2)}
+@media(max-width:640px){.integr .row{grid-template-columns:1fr;gap:8px}}
+
+/* ── Checklist ──────────────────────────────────────────────── */
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.checks li{
+  display:grid;grid-template-columns:auto 1fr;gap:13px;align-items:start;
+  padding:15px 18px;border:1px solid var(--line);border-radius:5px;background:var(--surface);
+}
+.checks .box{
+  width:16px;height:16px;border-radius:3px;margin-top:4px;flex:none;
+  border:1.5px solid var(--line-strong);
+}
+.checks p{font-size:.87rem;color:var(--ink-2);margin-top:3px}
+
+footer{
+  border-top:1px solid var(--line);
+  padding:34px 0 56px;
+  color:var(--ink-3);font-size:.8rem;
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+}
+
+/* ── Motion ─────────────────────────────────────────────────── */
+.reveal{opacity:0;transform:translateY(12px);transition:opacity .55s ease,transform .55s ease}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  *{scroll-behavior:auto!important}
+}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+</style>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="brand">
+      <svg class="sprout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+        <path d="M12 21v-8"/><path d="M12 13C12 9 9 6.5 5 6.5c0 4 2.8 6.5 7 6.5z"/><path d="M12 13c0-3.3 2.5-5.5 6-5.5 0 3.4-2.4 5.5-6 5.5z"/>
+      </svg>
+      Vietponics
+    </div>
+    <div class="eyebrow">Zalo Mini App · Giới thiệu chức năng</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Tài liệu dành cho khách hàng · 08/2026</div>
+    <h1>Bán rau thuỷ canh trên Zalo,<br>và vận hành cả nông trại trong cùng một ứng dụng.</h1>
+    <p class="lede">
+      Vietponics Mini App là kênh bán lẻ trực tiếp trên Zalo cho người mua, đồng thời là
+      cổng vận hành cho nông trại đối tác và cộng tác viên giới thiệu. Từ lúc khách chạm
+      vào giỏ hàng đến lúc nhân viên bấm “đã giao”, mọi bước đều nằm trong một hệ thống.
+    </p>
+
+    <div class="stats">
+      <div class="stat"><div class="v num">21</div><div class="k">màn hình cho ba nhóm người dùng</div></div>
+      <div class="stat"><div class="v num">7</div><div class="k">vai trò với quyền hạn tách bạch</div></div>
+      <div class="stat"><div class="v num">9</div><div class="k">nhóm chức năng nghiệp vụ</div></div>
+      <div class="stat"><div class="v num">4</div><div class="k">hệ thống bên ngoài đã tích hợp</div></div>
+    </div>
+  </div>
+
+  <!-- 01 ─────────────────────────────────────────────────────── -->
+  <section class="reveal">
+    <div class="sec-head">
+      <div class="eyebrow">A · Người dùng</div>
+      <h2>Một ứng dụng, ba nhóm người dùng tách biệt</h2>
+      <p class="small">
+        Khách mở app thấy cửa hàng. Đối tác nông trại được duyệt sẽ thấy thêm khu vực vận hành
+        riêng với thanh điều hướng riêng. Cộng tác viên có trang hoa hồng của mình. Không ai
+        nhìn thấy dữ liệu ngoài phạm vi của mình.
+      </p>
+    </div>
+
+    <div class="grid g3">
+      <div class="card">
+        <h3>Khách mua hàng <span class="tag leaf">Mặc định</span></h3>
+        <p>Mọi tài khoản Zalo mở app đều mua được ngay: đăng nhập một chạm, duyệt sản phẩm,
+           đặt hàng, thanh toán và theo dõi đơn. Không cần đăng ký, không mật khẩu.</p>
+      </div>
+      <div class="card">
+        <h3>Cộng tác viên <span class="tag harvest">Được duyệt</span></h3>
+        <p>Nhận mã giới thiệu riêng kèm link và mã QR chia sẻ. Theo dõi số người đã giới thiệu,
+           hoa hồng theo từng trạng thái và số dư sẵn sàng nhận.</p>
+      </div>
+      <div class="card">
+        <h3>Nông trại đối tác <span class="tag water">Được duyệt</span></h3>
+        <p>Bốn vai trò trong một nông trại, mỗi vai trò chỉ thấy đúng việc của mình:</p>
+        <ul class="role-list">
+          <li><b>Chủ trại</b><span>Toàn quyền, kể cả thu nhập và đối soát</span></li>
+          <li><b>Quản lý</b><span>Như chủ trại, trừ mục thu nhập</span></li>
+          <li><b>Đóng gói</b><span>Chỉ phiếu được giao hoặc tự nhận</span></li>
+          <li><b>Giao hàng</b><span>Chỉ đơn nội bộ được phân công</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 ─────────────────────────────────────────────────────── -->
+  <section class="reveal">
+    <div class="sec-head">
+      <div class="eyebrow">B · Hành trình mua hàng</div>
+      <h2>Bảy bước từ mở app đến nhận rau</h2>
+      <p class="small">Đây là chuỗi tuần tự thực tế trong ứng dụng — mỗi bước đều có xử lý riêng cho trường hợp lỗi.</p>
+    </div>
+
+    <ol class="journey">
+      <li>
+        <span class="step">BƯỚC 01</span>
+        <h3>Đăng nhập bằng tài khoản Zalo</h3>
+        <p>Một chạm, không mật khẩu. Khách chưa cấp quyền thông tin vẫn dùng được đầy đủ;
+           app chỉ mời bổ sung tên và số điện thoại khi thật sự cần, và luôn có nút “để sau”.</p>
+      </li>
+      <li>
+        <span class="step">BƯỚC 02</span>
+        <h3>Duyệt và chọn sản phẩm</h3>
+        <p>Trang chủ có danh mục, banner và gợi ý. Chi tiết sản phẩm hiển thị nhiều ảnh,
+           đơn vị bán và tồn kho thực tế — hết hàng thì hiện rõ và không cho thêm vào giỏ.</p>
+      </li>
+      <li>
+        <span class="step">BƯỚC 03</span>
+        <h3>Giỏ hàng đi theo tài khoản</h3>
+        <p>Giỏ được đồng bộ lên máy chủ, đổi điện thoại vẫn còn nguyên. Mỗi lần mở lại giỏ,
+           tồn kho được làm mới để khách không đặt trúng hàng vừa hết.</p>
+      </li>
+      <li>
+        <span class="step">BƯỚC 04</span>
+        <h3>Chọn cách nhận hàng</h3>
+        <p>Giao tận nơi với phí ViettelPost tính theo địa chỉ thật, hoặc tự đến lấy tại điểm
+           nhận hàng gần nhất — danh sách trạm được sắp theo khoảng cách tới vị trí khách.</p>
+      </li>
+      <li>
+        <span class="step">BƯỚC 05</span>
+        <h3>Áp mã giảm giá</h3>
+        <p>Ba loại mã: giảm theo phần trăm, giảm số tiền cố định, và miễn phí vận chuyển.
+           App hiện sẵn mã nào dùng được, mã nào chưa đủ điều kiện và vì sao.</p>
+      </li>
+      <li>
+        <span class="step">BƯỚC 06</span>
+        <h3>Thanh toán qua Zalo Pay</h3>
+        <p>Thanh toán khi nhận hàng, chuyển khoản ngân hàng hoặc ví MoMo — tất cả trong giao
+           diện thanh toán quen thuộc của Zalo, không rời khỏi ứng dụng.</p>
+      </li>
+      <li>
+        <span class="step">BƯỚC 07</span>
+        <h3>Theo dõi đến khi nhận hàng</h3>
+        <p>Năm tab trạng thái, hành trình đơn theo mốc thời gian, cập nhật vị trí vận đơn từ
+           ViettelPost, và tin nhắn Zalo OA ở mỗi bước quan trọng. Khách tự huỷ được đơn
+           khi hàng chưa rời kho.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 03 ─────────────────────────────────────────────────────── -->
+  <section class="reveal">
+    <div class="sec-head">
+      <div class="eyebrow">C · Chức năng cho khách</div>
+      <h2>Những gì người mua làm được</h2>
+    </div>
+
+    <div class="grid g3">
+      <div class="card">
+        <h3>Danh mục &amp; tìm kiếm</h3>
+        <p>Duyệt theo danh mục, tìm nhanh theo tên. Sản phẩm hiển thị đơn vị bán rõ ràng
+           (kg, bó, khay) kèm quy đổi.</p>
+      </div>
+      <div class="card">
+        <h3>Tồn kho thời gian thực</h3>
+        <p>Số lượng đặt được giới hạn ngay trên màn hình theo tồn thật, và được kiểm tra lại
+           lần nữa lúc đặt đơn để không bao giờ bán vượt kho.</p>
+      </div>
+      <div class="card">
+        <h3>Địa chỉ nhận hàng</h3>
+        <p>Chọn tỉnh · quận/huyện · phường/xã theo dữ liệu ViettelPost. Địa chỉ mặc định
+           được lưu trên máy chủ, đổi máy vẫn còn.</p>
+      </div>
+      <div class="card">
+        <h3>Phí vận chuyển minh bạch</h3>
+        <p>Phí được tính từ trọng lượng thật của đơn và kho gửi gần khách nhất, hiện trước
+           khi thanh toán chứ không phải sau.</p>
+      </div>
+      <div class="card">
+        <h3>Chi tiết &amp; hành trình đơn</h3>
+        <p>Từng dòng tiền được tách bạch: tiền hàng, phí ship, giảm giá, tổng cuối.
+           Kèm dòng thời gian từ lúc đặt đến lúc giao.</p>
+      </div>
+      <div class="card">
+        <h3>Tự huỷ đơn</h3>
+        <p>Chọn lý do huỷ trong danh sách có sẵn. Hệ thống tự hoàn kho, trả lại mã giảm giá,
+           khởi tạo hoàn tiền và huỷ vận đơn — không cần gọi tổng đài.</p>
+      </div>
+      <div class="card">
+        <h3>Thông báo qua Zalo OA</h3>
+        <p>Tin nhắn tự động khi thanh toán thành công, khi đổi trạng thái và khi đơn bị huỷ,
+           gửi thẳng vào Zalo của khách.</p>
+      </div>
+      <div class="card">
+        <h3>Hồ sơ cá nhân</h3>
+        <p>Xem và sửa thông tin, mở chat với cửa hàng, tạo lối tắt ứng dụng ra màn hình chính,
+           theo dõi OA.</p>
+      </div>
+      <div class="card">
+        <h3>Hoàn tiền có trạng thái</h3>
+        <p>Khách thấy rõ đơn đang ở bước nào: chờ chuyển tay, đang xử lý, hay đã hoàn —
+           kèm thời gian dự kiến theo từng phương thức.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 ─────────────────────────────────────────────────────── -->
+  <section class="reveal">
+    <div class="sec-head">
+      <div class="eyebrow">D · Cổng vận hành nông trại</div>
+      <h2>Nông trại điều hành ngay trên điện thoại</h2>
+      <p class="small">
+        Khu vực dành riêng cho đối tác đã được duyệt, có thanh điều hướng riêng. Quyền truy cập
+        được kiểm tra lại ở mỗi lần thao tác, nên khi quản trị viên tạm dừng một đối tác thì
+        hiệu lực là tức thì.
+      </p>
+    </div>
+
+    <h3 style="margin-bottom:12px">Quy trình đóng gói một đơn</h3>
+    <div class="pipe-wrap">
+      <div class="pipe">
+        <span class="node">Đơn mới<span class="who">Khách đặt</span></span>
+        <span class="arrow" aria-hidden="true">→</span>
+        <span class="node">Xác nhận<span class="who">Chủ / quản lý</span></span>
+        <span class="arrow" aria-hidden="true">→</span>
+        <span class="node">Nhận phiếu<span class="who">Tự nhận hoặc được giao</span></span>
+        <span class="arrow" aria-hidden="true">→</span>
+        <span class="node">Đang đóng<span class="who">Nhân viên đóng gói</span></span>
+        <span class="arrow" aria-hidden="true">→</span>
+        <span class="node">Đã đóng xong<span class="who">Nhân viên đóng gói</span></span>
+        <span class="arrow" aria-hidden="true">→</span>
+        <span class="node end">Bàn giao<span class="who">ViettelPost hoặc shipper nhà</span></span>
+      </div>
+    </div>
+    <p class="small col" style="margin-bottom:34px">
+      Mọi thao tác đều được ghi nhật ký để truy vết. Thao tác sai thứ tự — ví dụ giao lại phiếu
+      đã đóng xong — bị chặn kèm thông báo tiếng Việt rõ ràng. Thông tin liên hệ của khách
+      được che bớt trên màn hình đóng gói: số điện thoại hiện dạng <span class="mono">0937***739</span>,
+      địa chỉ rút gọn.
+    </p>
+
+    <div class="grid g3">
+      <div class="card">
+        <h3>Tổng quan trong ngày</h3>
+        <p>Hai bộ số tách bạch — <b>đã đặt hôm nay</b> và <b>đã giao hôm nay</b> — mỗi bộ gồm
+           doanh thu, giá vốn, lợi nhuận, số đơn, sản lượng và giá trị đơn trung bình.</p>
+      </div>
+      <div class="card">
+        <h3>Sản phẩm hôm nay</h3>
+        <p>Từng mặt hàng: đã nhập bao nhiêu, bán được bao nhiêu, còn lại bao nhiêu, tỷ lệ bán hết,
+           kèm gợi ý nhập thêm hay xả hàng.</p>
+      </div>
+      <div class="card">
+        <h3>Phân tích 7 / 30 ngày</h3>
+        <p>Biểu đồ doanh thu theo ngày hoặc tuần, top sản phẩm theo sản lượng, doanh thu,
+           giá vốn và lợi nhuận.</p>
+      </div>
+      <div class="card">
+        <h3>Khai báo nhập kho</h3>
+        <p>Hệ thống gợi ý sẵn số lượng nên nhập dựa trên sức bán 7 ngày, đánh dấu mặt hàng
+           cháy hàng hôm qua và tự điền hạn dùng.</p>
+      </div>
+      <div class="card">
+        <h3>Tồn kho theo lô</h3>
+        <p>Quản lý theo lô có hạn sử dụng, xuất theo nguyên tắc hết hạn trước — bán trước.
+           Xem đầy đủ lịch sử biến động của từng mặt hàng.</p>
+      </div>
+      <div class="card">
+        <h3>Giao hàng nội bộ</h3>
+        <p>Đơn nhà tự giao được bàn giao cho shipper của trại: nhận hàng, giao xong, xác nhận
+           — không đi qua ViettelPost.</p>
+      </div>
+      <div class="card">
+        <h3>Thu nhập &amp; đối soát</h3>
+        <p>Từng kỳ thanh toán liệt kê sản lượng, doanh thu gộp, tỷ lệ trại giữ lại, điều chỉnh
+           và số tiền thực nhận — kèm danh sách từng đơn đóng góp để đối chiếu.</p>
+      </div>
+      <div class="card">
+        <h3>Hồ sơ nông trại</h3>
+        <p>Tên, logo, ảnh bìa, mô tả, địa chỉ, chu kỳ thanh toán. Chủ trại tự cập nhật
+           hình ảnh thương hiệu.</p>
+      </div>
+      <div class="card">
+        <h3>Đóng gói tập trung</h3>
+        <p>Một đầu mối đóng gói xử lý toàn bộ đơn. Các trại khác vẫn xem được đơn có hàng của
+           mình ở chế độ chỉ đọc để chủ động chuẩn bị.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 ─────────────────────────────────────────────────────── -->
+  <section class="reveal">
+    <div class="sec-head">
+      <div class="eyebrow">E · Phân quyền</div>
+      <h2>Ai được làm gì</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Chức năng</th>
+            <th class="c">Khách</th>
+            <th class="c">CTV</th>
+            <th class="c">Đóng gói</th>
+            <th class="c">Giao hàng</th>
+            <th class="c">Quản lý</th>
+            <th class="c">Chủ trại</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Mua hàng &amp; thanh toán</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+          <tr><td>Trang hoa hồng CTV</td><td class="c no">đăng ký</td><td class="c yes">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr>
+          <tr><td>Xem đơn cần đóng gói</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+          <tr><td>Đóng gói đơn</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">phiếu của mình</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+          <tr><td>Xác nhận đơn &amp; phân công</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+          <tr><td>Giao hàng nội bộ</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">đơn của mình</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+          <tr><td>Nhập kho &amp; tồn kho</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+          <tr><td>Thu nhập &amp; đối soát</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 06 ─────────────────────────────────────────────────────── -->
+  <section class="reveal">
+    <div class="sec-head">
+      <div class="eyebrow">F · Cộng tác viên</div>
+      <h2>Kênh giới thiệu có thể bật tắt</h2>
+      <p class="small">
+        Toàn bộ chương trình cộng tác viên nằm sau một công tắc cấu hình — chưa cần thì tắt,
+        người dùng không thấy gì cả.
+      </p>
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <h3>Mã giới thiệu riêng</h3>
+        <p>Mỗi cộng tác viên có mã riêng kèm link chia sẻ và mã QR. Người mới mở app qua link
+           đó được ghi nhận tự động sau khi đăng nhập, chỉ ghi nhận một lần và người giới thiệu
+           đầu tiên được giữ.</p>
+      </div>
+      <div class="card">
+        <h3>Hoa hồng theo đơn giao thành công</h3>
+        <p>Hoa hồng chỉ được ghi khi đơn <b>đã giao tới tay khách</b> — áp dụng cho cả đơn
+           thanh toán khi nhận hàng. Tỷ lệ do quản trị cấu hình, mặc định 5% giá trị đơn.</p>
+      </div>
+      <div class="card">
+        <h3>Bảng theo dõi thu nhập</h3>
+        <p>Số người đã giới thiệu, hoa hồng chia theo trạng thái chờ · đã xác nhận · đã trả ·
+           đã huỷ, và số dư sẵn sàng nhận. Danh sách người giới thiệu che bớt tên và số điện thoại.</p>
+      </div>
+      <div class="card">
+        <h3>Thông tin nhận tiền</h3>
+        <p>Cộng tác viên tự khai ngân hàng, số tài khoản và tên chủ tài khoản để đối soát chi trả.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 ─────────────────────────────────────────────────────── -->
+  <section class="reveal">
+    <div class="sec-head">
+      <div class="eyebrow">G · Tích hợp</div>
+      <h2>Bốn hệ thống bên ngoài đã kết nối</h2>
+    </div>
+    <div class="integr">
+      <div class="row">
+        <div><h3>Zalo Pay</h3><div class="eyebrow what">Thanh toán</div></div>
+        <p>Thanh toán ngay trong giao diện Zalo: khi nhận hàng, chuyển khoản ngân hàng, ví MoMo.
+           Kết quả giao dịch được xác nhận hai chiều — Zalo báo về, đồng thời hệ thống chủ động
+           hỏi lại để không bỏ sót đơn nào.</p>
+      </div>
+      <div class="row">
+        <div><h3>ViettelPost</h3><div class="eyebrow what">Vận chuyển</div></div>
+        <p>Tính phí theo địa chỉ và trọng lượng thật, tạo vận đơn tự động khi đơn được bàn giao,
+           và cập nhật vị trí hàng theo thời gian thực về màn hình theo dõi của khách.</p>
+      </div>
+      <div class="row">
+        <div><h3>Zalo Official Account</h3><div class="eyebrow what">Thông báo</div></div>
+        <p>Tin nhắn tự động ở các mốc quan trọng của đơn, và mở chat trực tiếp với cửa hàng
+           từ trong ứng dụng.</p>
+      </div>
+      <div class="row">
+        <div><h3>Zalo Mini App SDK</h3><div class="eyebrow what">Nền tảng</div></div>
+        <p>Đăng nhập một chạm, lấy số điện thoại có xin phép, định vị để sắp xếp điểm nhận hàng,
+           chia sẻ sản phẩm và tạo lối tắt ra màn hình chính.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 ─────────────────────────────────────────────────────── -->
+  <section class="reveal">
+    <div class="sec-head">
+      <div class="eyebrow">H · Độ tin cậy</div>
+      <h2>Những gì hệ thống tự lo</h2>
+      <p class="small">Đây là phần khách không nhìn thấy, nhưng là phần quyết định việc cửa hàng có mất tiền hay mất hàng hay không.</p>
+    </div>
+    <div class="grid g3">
+      <div class="card">
+        <h3>Không đặt trùng đơn</h3>
+        <p>Bấm nút thanh toán hai lần hoặc mạng chập chờn gửi lại yêu cầu đều chỉ tạo đúng
+           một đơn. Lần thứ hai nhận lại chính đơn cũ.</p>
+      </div>
+      <div class="card">
+        <h3>Không bán vượt kho</h3>
+        <p>Hàng được giữ ngay khi đơn được tạo. Hai khách bấm mua cùng lúc mặt hàng cuối,
+           chỉ một đơn thành công, đơn kia nhận thông báo rõ còn thiếu bao nhiêu.</p>
+      </div>
+      <div class="card">
+        <h3>Giá do máy chủ quyết</h3>
+        <p>Tiền hàng, phí ship và giảm giá đều được tính lại từ dữ liệu gốc. Giá gửi lên từ
+           điện thoại chỉ để đối chiếu, lệch quá ngưỡng là từ chối đơn.</p>
+      </div>
+      <div class="card">
+        <h3>Đơn treo tự dọn</h3>
+        <p>Đơn chuyển khoản không thanh toán trong 20 phút được tự huỷ và trả hàng về kho.
+           Một tác vụ định kỳ quét lại 5 phút một lần để không sót đơn nào.</p>
+      </div>
+      <div class="card">
+        <h3>Huỷ đơn là trọn gói</h3>
+        <p>Một lần huỷ kéo theo: hoàn kho, trả lại mã giảm giá, khởi tạo hoàn tiền, thu hồi
+           hoa hồng, huỷ vận đơn và báo cho khách. Một bước lỗi không chặn các bước còn lại.</p>
+      </div>
+      <div class="card">
+        <h3>Backend chết vẫn mở được app</h3>
+        <p>Các phần không trọng yếu như banner, danh mục, danh sách trạm sẽ hiện rỗng thay vì
+           làm vỡ trang. Mọi yêu cầu đều có giới hạn thời gian chờ.</p>
+      </div>
+      <div class="card">
+        <h3>Bảo vệ thông tin khách</h3>
+        <p>Nhân viên đóng gói chỉ thấy số điện thoại và địa chỉ đã che bớt — đủ để giao hàng,
+           không đủ để mang dữ liệu khách đi nơi khác.</p>
+      </div>
+      <div class="card">
+        <h3>Phiên đăng nhập tự gia hạn</h3>
+        <p>Khách không bao giờ bị đá ra giữa lúc thanh toán. Quyền truy cập khu vực nông trại
+           được kiểm tra lại ở từng thao tác, không dựa vào phiên cũ.</p>
+      </div>
+      <div class="card">
+        <h3>Mọi thao tác đều truy vết được</h3>
+        <p>Lịch sử biến động tồn kho và nhật ký đóng gói ghi lại ai làm gì, lúc nào — dùng để
+           đối soát khi có tranh chấp.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 09 ─────────────────────────────────────────────────────── -->
+  <section class="reveal">
+    <div class="sec-head">
+      <div class="eyebrow">I · Trước khi mở bán</div>
+      <h2>Việc còn lại để chuyển sang chạy thật</h2>
+      <p class="small">
+        Toàn bộ chức năng ở trên đã hoạt động. Các hạng mục dưới đây là bước chuyển từ môi
+        trường thử nghiệm sang môi trường thật.
+      </p>
+    </div>
+    <ul class="checks">
+      <li>
+        <span class="box" aria-hidden="true"></span>
+        <div>
+          <h4>Chuyển kênh thanh toán sang môi trường thật</h4>
+          <p>Hiện đang chạy trên kênh thử nghiệm của Zalo Pay. Cần đổi mã kênh và khoá bí mật
+             sang bản chính thức, sau đó chạy lại bộ kiểm thử thanh toán đầu–cuối.</p>
+        </div>
+      </li>
+      <li>
+        <span class="box" aria-hidden="true"></span>
+        <div>
+          <h4>Bật lịch chạy tự động trên máy chủ</h4>
+          <p>Các tác vụ định kỳ lo việc dọn đơn treo, chốt số liệu phân tích cuối ngày và làm mới
+             kết nối ViettelPost. Thiếu lịch chạy là nguyên nhân phổ biến nhất của số liệu cũ.</p>
+        </div>
+      </li>
+      <li>
+        <span class="box" aria-hidden="true"></span>
+        <div>
+          <h4>Hoàn thiện hiển thị đơn giao nội bộ</h4>
+          <p>Đơn do shipper của trại tự giao hiện chưa xuất hiện đúng tab trên màn hình khách
+             trong khoảng thời gian shipper đang trên đường. Đã xác định nguyên nhân, cần một
+             bản sửa nhỏ.</p>
+        </div>
+      </li>
+      <li>
+        <span class="box" aria-hidden="true"></span>
+        <div>
+          <h4>Chạy nốt checklist kiểm thử tay</h4>
+          <p>Còn 11 tình huống trong danh sách kiểm thử cần chạy tay trên thiết bị thật trước
+             ngày mở bán.</p>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <footer>
+    <div>Vietponics · Zalo Mini App — tài liệu giới thiệu chức năng</div>
+    <div class="mono num">08 / 2026</div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var els = document.querySelectorAll('.reveal');
+  if(!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    els.forEach(function(e){ e.classList.add('in'); });
+    return;
+  }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); }
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
+  els.forEach(function(e){ io.observe(e); });
+})();
+</script>
